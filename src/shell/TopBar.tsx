@@ -1,10 +1,22 @@
+import { ipc } from "../core/ipc";
 import { useProjectStore } from "../stores/projectStore";
 import { useOpenProject } from "../core/useOpenProject";
 
 export function TopBar() {
   const projectPath = useProjectStore((s) => s.projectPath);
+  const setProject = useProjectStore((s) => s.setProject);
   const closeProject = useProjectStore((s) => s.closeProject);
   const openProject = useOpenProject();
+
+  async function handleRefresh() {
+    if (!projectPath) return;
+    try {
+      const snap = await ipc.reloadProject();
+      setProject(projectPath, snap.cards, snap.card_types);
+    } catch (e) {
+      alert("刷新失败: " + e);
+    }
+  }
 
   return (
     <div
@@ -15,7 +27,7 @@ export function TopBar() {
         padding: "0 12px",
         borderBottom: "1px solid #e0e0e0",
         background: "#fafafa",
-        gap: 12,
+        gap: 8,
         fontSize: 13,
       }}
     >
@@ -27,6 +39,11 @@ export function TopBar() {
       <button onClick={openProject} style={{ fontSize: 12 }}>
         {projectPath ? "切换" : "打开"}
       </button>
+      {projectPath && (
+        <button onClick={handleRefresh} style={{ fontSize: 12 }} title="重新读取项目文件">
+          刷新
+        </button>
+      )}
 
       <div style={{ flex: 1 }} />
 

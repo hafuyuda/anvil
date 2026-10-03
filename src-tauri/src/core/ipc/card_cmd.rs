@@ -54,3 +54,43 @@ pub fn seed_example_world(state: State<AppState>) -> Result<(), String> {
     let p = guard.as_ref().ok_or("no project open")?;
     p.seed_example_world().map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub fn search_cards(
+    state: State<AppState>,
+    query: String,
+    limit: Option<usize>,
+) -> Result<Vec<String>, String> {
+    let guard = state.project.lock().unwrap();
+    let p = guard.as_ref().ok_or("no project open")?;
+    p.search_cards(&query, limit.unwrap_or(200))
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn rebuild_index(state: State<AppState>) -> Result<(), String> {
+    let guard = state.project.lock().unwrap();
+    let p = guard.as_ref().ok_or("no project open")?;
+    p.rebuild_index().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn delete_card(state: State<AppState>, id: String) -> Result<(), String> {
+    let guard = state.project.lock().unwrap();
+    let p = guard.as_ref().ok_or("no project open")?;
+    p.delete_card(&id).map_err(|e| e.to_string())
+}
+
+#[derive(serde::Serialize)]
+pub struct ProjectSnapshot {
+    pub cards: Vec<Card>,
+    pub card_types: Vec<CardType>,
+}
+
+#[tauri::command]
+pub fn reload_project(state: State<AppState>) -> Result<ProjectSnapshot, String> {
+    let guard = state.project.lock().unwrap();
+    let p = guard.as_ref().ok_or("no project open")?;
+    let (cards, card_types) = p.reload().map_err(|e| e.to_string())?;
+    Ok(ProjectSnapshot { cards, card_types })
+}

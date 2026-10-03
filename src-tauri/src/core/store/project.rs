@@ -1,20 +1,45 @@
+use crate::core::index as idx;
 use crate::core::model::card::Card;
 use crate::core::model::card_type::{CardType, FieldDef, FieldType};
 use crate::core::store::atomic::write_atomic;
+use rusqlite::Connection;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
+use std::sync::Mutex;
 
 pub struct Project {
     pub root: PathBuf,
+    index: Mutex<Connection>,
 }
 
 impl Project {
-    pub fn open(root: impl Into<PathBuf>) -> std::io::Result<Self> {
+    pub fn open(root: impl Into<PathBuf>) -> anyhow::Result<Self> {
         let root = root.into();
         std::fs::create_dir_all(root.join("cards"))?;
-        std::fs::create_dir_all(root.join(".anvil"))?;
         std::fs::create_dir_all(root.join("types"))?;
-        Ok(Self { root })
+        std::fs::create_dir_all(root.join(".anvil"))?;
+
+        let db_path = root.join(".anvil").join("index.db");
+        let conn = crate::core::index::open_or_create(&db_path)?;
+
+        let project = Self {
+            root,
+            index: Mutex::new(conn),
+        };
+        project.rebuild_index()?;
+        Ok(project)
+    }
+
+    pub fn rebuild_index(&self) -> anyhow::Result<()> {
+        let cards = self.load_all_cards()?;
+        let mut conn = self.index.lock().unwrap();
+        idx::rebuild(&mut conn, &cards)?;
+        Ok(())
+    }
+
+    pub fn search_cards(&self, query: &str, limit: usize) -> anyhow::Result<Vec<String>> {
+        let conn = self.index.lock().unwrap();
+        idx::search(&conn, query, limit)
     }
 
     pub fn card_path(&self, id: &str) -> PathBuf {
@@ -32,6 +57,9 @@ impl Project {
         }
         let json = serde_json::to_vec_pretty(card)?;
         write_atomic(&path, &json)?;
+
+        let conn = self.index.lock().unwrap();
+        idx::upsert_card(&conn, card)?;
         Ok(())
     }
 
@@ -100,6 +128,27 @@ impl Project {
         write_atomic(&path, &json)?;
         Ok(())
     }
+
+    pub fn delete_card(&self, id: &str) -> anyhow::Result<()> {
+        let path = self.card_path(id);
+        if path.exists() {
+            std::fs::remove_file(&path)?;
+        }
+        let conn = self.index.lock().unwrap();
+        idx::delete_card(&conn, id)?;
+        Ok(())
+    }
+
+    pub fn reload(&self) -> anyhow::Result<(Vec<Card>, Vec<CardType>)> {
+        let cards = self.load_all_cards()?;
+        let card_types = self.load_card_types()?;
+        {
+            let mut conn = self.index.lock().unwrap();
+            idx::rebuild(&mut conn, &cards)?;
+        }
+        Ok((cards, card_types))
+    }
+
     pub fn seed_example_world(&self) -> anyhow::Result<()> {
         let existing_types = self.load_card_types()?;
         let existing_cards = self.load_all_cards()?;

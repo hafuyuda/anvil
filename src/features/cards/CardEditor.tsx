@@ -10,6 +10,7 @@ interface Props {
 
 export function CardEditor({ card, cardType }: Props) {
   const updateCard = useProjectStore((s) => s.updateCard);
+  const removeCard = useProjectStore((s) => s.removeCard);
   const [draft, setDraft] = useState<Card>(card);
   const [dirty, setDirty] = useState(false);
 
@@ -33,6 +34,16 @@ export function CardEditor({ card, cardType }: Props) {
     setDirty(false);
   }
 
+  async function handleDelete() {
+    if (!confirm(`确认删除卡牌「${card.name}」？此操作不可撤销。`)) return;
+    try {
+      await ipc.deleteCard(card.id);
+      removeCard(card.id);
+    } catch (e) {
+      alert("删除失败: " + e);
+    }
+  }
+
   const visibleFields = cardType.fields
     .filter((f) => !f.deprecated)
     .sort((a, b) => a.order - b.order);
@@ -44,7 +55,11 @@ export function CardEditor({ card, cardType }: Props) {
         <input
           value={draft.name}
           onChange={(e) => {
-            setDraft((d) => ({ ...d, name: e.target.value, updated_at: Date.now() }));
+            setDraft((d) => ({
+              ...d,
+              name: e.target.value,
+              updated_at: Date.now(),
+            }));
             setDirty(true);
           }}
           style={{
@@ -77,6 +92,12 @@ export function CardEditor({ card, cardType }: Props) {
       <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
         <button onClick={save} disabled={!dirty}>
           {dirty ? "保存" : "已保存"}
+        </button>
+        <button
+          onClick={handleDelete}
+          style={{ marginLeft: "auto", color: "#c33" }}
+        >
+          删除
         </button>
       </div>
 

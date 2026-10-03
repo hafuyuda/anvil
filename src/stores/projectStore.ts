@@ -18,6 +18,7 @@ interface ProjectState {
   upsertCardType: (type: CardType) => void;
   selectCard: (id: string | null) => void;
   setActiveModule: (m: ModuleKey) => void;
+  removeCard: (id: string) => void;
 }
 
 export const useProjectStore = create<ProjectState>((set) => ({
@@ -53,4 +54,9 @@ export const useProjectStore = create<ProjectState>((set) => ({
     }),
   selectCard: (selectedCardId) => set({ selectedCardId }),
   setActiveModule: (activeModule) => set({ activeModule }),
+  removeCard: (id) =>
+    set((s) => ({
+      cards: s.cards.filter((c) => c.id !== id),
+      selectedCardId: s.selectedCardId === id ? null : s.selectedCardId,
+    })),
 }));

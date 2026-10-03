@@ -56,4 +56,10 @@ export const ipc = {
   upsertCardType: (cardType: CardType) =>
     invoke<void>("upsert_card_type", { cardType }),
   seedExampleWorld: () => invoke<void>("seed_example_world"),
+  searchCards: (query: string, limit?: number) =>
+    invoke<string[]>("search_cards", { query, limit }),
+  rebuildIndex: () => invoke<void>("rebuild_index"),
+  deleteCard: (id: string) => invoke<void>("delete_card", { id }),
+  reloadProject: () =>
+    invoke<{ cards: Card[]; card_types: CardType[] }>("reload_project"),
 };

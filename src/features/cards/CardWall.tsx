@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ipc, type Card } from "../../core/ipc";
 import { useOpenProject } from "../../core/useOpenProject";
 import { useProjectStore } from "../../stores/projectStore";
@@ -6,14 +6,46 @@ import { useProjectStore } from "../../stores/projectStore";
 type SortKey = "name" | "updated_at" | "type";
 
 export function CardWall() {
-  const { projectPath, cards, cardTypes, addCard, selectCard, selectedCardId } =
-    useProjectStore();
+  const {
+    projectPath,
+    cards,
+    cardTypes,
+    addCard,
+    selectCard,
+    selectedCardId,
+    setProject,
+  } = useProjectStore();
   const openProject = useOpenProject();
 
   const [query, setQuery] = useState("");
+  const [ftsIds, setFtsIds] = useState<string[] | null>(null);
   const [typeFilter, setTypeFilter] = useState<string>("");
   const [sortKey, setSortKey] = useState<SortKey>("updated_at");
   const [sortAsc, setSortAsc] = useState(false);
+
+  // FTS 搜索：输入停止 150ms 后查询
+  useEffect(() => {
+    const q = query.trim();
+    if (!q) {
+      setFtsIds(null);
+      return;
+    }
+    // 少于 3 个字符，trigram 匹配不到，直接走内存
+    if (q.length < 3) {
+      setFtsIds(null);
+      return;
+    }
+    const handle = setTimeout(async () => {
+      try {
+        const ids = await ipc.searchCards(q, 500);
+        // FTS 空结果也回退内存，避免 trigram 漏匹配
+        setFtsIds(ids.length > 0 ? ids : null);
+      } catch {
+        setFtsIds(null);
+      }
+    }, 150);
+    return () => clearTimeout(handle);
+  }, [query]);
 
   async function handleAddCard() {
     if (cardTypes.length === 0) {
@@ -38,44 +70,6 @@ export function CardWall() {
     }
   }
 
-  const typeName = (typeId: string) =>
-    cardTypes.find((t) => t.id === typeId)?.name ?? typeId.slice(0, 8);
-
-  const visible = useMemo(() => {
-    let list = cards;
-    const q = query.trim().toLowerCase();
-    if (q) {
-      list = list.filter((c) => {
-        if (c.name.toLowerCase().includes(q)) return true;
-        // 简单搜 values 里的字符串
-        return Object.values(c.values).some((v) =>
-          typeof v === "string" ? v.toLowerCase().includes(q) : false,
-        );
-      });
-    }
-    if (typeFilter) {
-      list = list.filter((c) => c.type_id === typeFilter);
-    }
-    const sorted = [...list].sort((a, b) => {
-      let cmp = 0;
-      if (sortKey === "name") cmp = a.name.localeCompare(b.name);
-      else if (sortKey === "updated_at") cmp = a.updated_at - b.updated_at;
-      else cmp = typeName(a.type_id).localeCompare(typeName(b.type_id));
-      return sortAsc ? cmp : -cmp;
-    });
-    return sorted;
-  }, [cards, query, typeFilter, sortKey, sortAsc, cardTypes]);
-
-  function toggleSort(k: SortKey) {
-    if (sortKey === k) setSortAsc((v) => !v);
-    else {
-      setSortKey(k);
-      setSortAsc(false);
-    }
-  }
-
-  const setProject = useProjectStore((s) => s.setProject);
-
   async function handleSeed() {
     if (!projectPath) return;
     if (!confirm("将写入示例类型和卡牌，当前项目为空才会生效。继续？")) return;
@@ -91,9 +85,52 @@ export function CardWall() {
     }
   }
 
+  const typeName = (typeId: string) =>
+    cardTypes.find((t) => t.id === typeId)?.name ?? typeId.slice(0, 8);
+
+  const visible = useMemo(() => {
+    let list = cards;
+    const q = query.trim();
+    if (q) {
+      if (ftsIds && ftsIds.length > 0) {
+        const set = new Set(ftsIds);
+        list = list.filter((c) => set.has(c.id));
+      } else {
+        const lower = q.toLowerCase();
+        list = list.filter((c) => {
+          if (c.name.toLowerCase().includes(lower)) return true;
+          return Object.values(c.values).some((v) =>
+            typeof v === "string" ? v.toLowerCase().includes(lower) : false,
+          );
+        });
+      }
+    }
+    if (typeFilter) {
+      list = list.filter((c) => c.type_id === typeFilter);
+    }
+    const sorted = [...list].sort((a, b) => {
+      let cmp = 0;
+      if (sortKey === "name") cmp = a.name.localeCompare(b.name);
+      else if (sortKey === "updated_at") cmp = a.updated_at - b.updated_at;
+      else cmp = typeName(a.type_id).localeCompare(typeName(b.type_id));
+      return sortAsc ? cmp : -cmp;
+    });
+    return sorted;
+  }, [cards, query, ftsIds, typeFilter, sortKey, sortAsc, cardTypes]);
+
+  function toggleSort(k: SortKey) {
+    if (sortKey === k) setSortAsc((v) => !v);
+    else {
+      setSortKey(k);
+      setSortAsc(false);
+    }
+  }
+
+  const isEmpty = cards.length === 0 && cardTypes.length === 0;
+
   return (
     <div>
-      {projectPath && cards.length === 0 && cardTypes.length === 0 && (
+      {projectPath && isEmpty && (
         <div
           style={{
             padding: 16,
@@ -109,8 +146,15 @@ export function CardWall() {
           <button onClick={handleSeed}>载入示例世界</button>
         </div>
       )}
+
       <div
-        style={{ marginBottom: 12, display: "flex", gap: 8, flexWrap: "wrap" }}
+        style={{
+          marginBottom: 12,
+          display: "flex",
+          gap: 8,
+          flexWrap: "wrap",
+          alignItems: "center",
+        }}
       >
         <button onClick={openProject}>切换项目</button>
         <button onClick={handleAddCard} disabled={!projectPath}>
@@ -161,6 +205,7 @@ export function CardWall() {
 
       <div style={{ fontSize: 12, color: "#888", marginBottom: 8 }}>
         {visible.length} / {cards.length}
+        {query && ftsIds && <span style={{ marginLeft: 8 }}>FTS</span>}
       </div>
 
       {visible.length === 0 ? (
