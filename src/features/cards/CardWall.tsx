@@ -1,0 +1,192 @@
+import { useMemo, useState } from "react";
+import { ipc, type Card } from "../../core/ipc";
+import { useOpenProject } from "../../core/useOpenProject";
+import { useProjectStore } from "../../stores/projectStore";
+
+type SortKey = "name" | "updated_at" | "type";
+
+export function CardWall() {
+  const { projectPath, cards, cardTypes, addCard, selectCard, selectedCardId } =
+    useProjectStore();
+  const openProject = useOpenProject();
+
+  const [query, setQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState<string>("");
+  const [sortKey, setSortKey] = useState<SortKey>("updated_at");
+  const [sortAsc, setSortAsc] = useState(false);
+
+  async function handleAddCard() {
+    if (cardTypes.length === 0) {
+      alert("请先创建一个卡牌类型");
+      return;
+    }
+    const now = Date.now();
+    const card: Card = {
+      id: crypto.randomUUID(),
+      type_id: cardTypes[0].id,
+      name: "新卡",
+      values: {},
+      created_at: now,
+      updated_at: now,
+    };
+    try {
+      await ipc.saveCard(card);
+      addCard(card);
+      selectCard(card.id);
+    } catch (e) {
+      alert("保存失败: " + e);
+    }
+  }
+
+  const typeName = (typeId: string) =>
+    cardTypes.find((t) => t.id === typeId)?.name ?? typeId.slice(0, 8);
+
+  const visible = useMemo(() => {
+    let list = cards;
+    const q = query.trim().toLowerCase();
+    if (q) {
+      list = list.filter((c) => {
+        if (c.name.toLowerCase().includes(q)) return true;
+        // 简单搜 values 里的字符串
+        return Object.values(c.values).some((v) =>
+          typeof v === "string" ? v.toLowerCase().includes(q) : false,
+        );
+      });
+    }
+    if (typeFilter) {
+      list = list.filter((c) => c.type_id === typeFilter);
+    }
+    const sorted = [...list].sort((a, b) => {
+      let cmp = 0;
+      if (sortKey === "name") cmp = a.name.localeCompare(b.name);
+      else if (sortKey === "updated_at") cmp = a.updated_at - b.updated_at;
+      else cmp = typeName(a.type_id).localeCompare(typeName(b.type_id));
+      return sortAsc ? cmp : -cmp;
+    });
+    return sorted;
+  }, [cards, query, typeFilter, sortKey, sortAsc, cardTypes]);
+
+  function toggleSort(k: SortKey) {
+    if (sortKey === k) setSortAsc((v) => !v);
+    else {
+      setSortKey(k);
+      setSortAsc(false);
+    }
+  }
+
+  const setProject = useProjectStore((s) => s.setProject);
+
+  async function handleSeed() {
+    if (!projectPath) return;
+    if (!confirm("将写入示例类型和卡牌，当前项目为空才会生效。继续？")) return;
+    try {
+      await ipc.seedExampleWorld();
+      const [newCards, newTypes] = await Promise.all([
+        ipc.listCards(),
+        ipc.listCardTypes(),
+      ]);
+      setProject(projectPath, newCards, newTypes);
+    } catch (e) {
+      alert("载入示例失败: " + e);
+    }
+  }
+
+  return (
+    <div>
+      {projectPath && cards.length === 0 && cardTypes.length === 0 && (
+        <div
+          style={{
+            padding: 16,
+            marginBottom: 12,
+            background: "#f6f3ec",
+            border: "1px solid #e4dcc8",
+            borderRadius: 6,
+          }}
+        >
+          <div style={{ fontSize: 13, marginBottom: 8 }}>
+            这是一个空项目。要不要载入「矮人铁匠铺」示例世界？
+          </div>
+          <button onClick={handleSeed}>载入示例世界</button>
+        </div>
+      )}
+      <div
+        style={{ marginBottom: 12, display: "flex", gap: 8, flexWrap: "wrap" }}
+      >
+        <button onClick={openProject}>切换项目</button>
+        <button onClick={handleAddCard} disabled={!projectPath}>
+          新建卡牌
+        </button>
+        <input
+          placeholder="搜索名称或字段"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          style={{ padding: "4px 8px", width: 200, fontSize: 12 }}
+        />
+        <select
+          value={typeFilter}
+          onChange={(e) => setTypeFilter(e.target.value)}
+          style={{ padding: "4px 8px", fontSize: 12 }}
+        >
+          <option value="">全部类型</option>
+          {cardTypes.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
+            </option>
+          ))}
+        </select>
+        <div style={{ display: "flex", gap: 4, marginLeft: "auto" }}>
+          <button
+            onClick={() => toggleSort("name")}
+            style={{ fontSize: 12, fontWeight: sortKey === "name" ? 600 : 400 }}
+          >
+            名称 {sortKey === "name" ? (sortAsc ? "↑" : "↓") : ""}
+          </button>
+          <button
+            onClick={() => toggleSort("type")}
+            style={{ fontSize: 12, fontWeight: sortKey === "type" ? 600 : 400 }}
+          >
+            类型 {sortKey === "type" ? (sortAsc ? "↑" : "↓") : ""}
+          </button>
+          <button
+            onClick={() => toggleSort("updated_at")}
+            style={{
+              fontSize: 12,
+              fontWeight: sortKey === "updated_at" ? 600 : 400,
+            }}
+          >
+            更新 {sortKey === "updated_at" ? (sortAsc ? "↑" : "↓") : ""}
+          </button>
+        </div>
+      </div>
+
+      <div style={{ fontSize: 12, color: "#888", marginBottom: 8 }}>
+        {visible.length} / {cards.length}
+      </div>
+
+      {visible.length === 0 ? (
+        <p style={{ color: "#888" }}>没有匹配的卡牌</p>
+      ) : (
+        <ul style={{ listStyle: "none", padding: 0 }}>
+          {visible.map((c) => (
+            <li
+              key={c.id}
+              onClick={() => selectCard(c.id)}
+              style={{
+                cursor: "pointer",
+                padding: "6px 8px",
+                borderRadius: 4,
+                background: selectedCardId === c.id ? "#eef" : "transparent",
+              }}
+            >
+              {c.name} ·{" "}
+              <span style={{ color: "#888" }}>{typeName(c.type_id)}</span> —{" "}
+              <span style={{ color: "#aaa", fontSize: 12 }}>
+                {c.id.slice(0, 8)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
