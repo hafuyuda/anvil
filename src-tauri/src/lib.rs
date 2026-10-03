@@ -2,8 +2,9 @@ mod core;
 mod features;
 
 use core::ipc::card_cmd::{
-    delete_card, list_card_types, list_cards, open_project, rebuild_index, reload_project,
-    save_card, search_cards, seed_example_world, upsert_card_type, AppState,
+    delete_card, list_card_types, list_cards, list_relation_kinds, open_project, rebuild_index,
+    reload_project, save_card, search_cards, seed_example_world, upsert_card_type,
+    upsert_relation_kind, AppState,
 };
 use std::sync::Mutex;
 
@@ -24,7 +25,9 @@ pub fn run() {
             search_cards,
             rebuild_index,
             delete_card,
-            reload_project
+            reload_project,
+            list_relation_kinds,
+            upsert_relation_kind
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

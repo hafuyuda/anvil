@@ -12,7 +12,7 @@ export function TopBar() {
     if (!projectPath) return;
     try {
       const snap = await ipc.reloadProject();
-      setProject(projectPath, snap.cards, snap.card_types);
+      setProject(projectPath, snap.cards, snap.card_types, snap.relation_kinds);
     } catch (e) {
       alert("刷新失败: " + e);
     }

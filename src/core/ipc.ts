@@ -48,6 +48,29 @@ export interface CardType {
   updated_at: number;
 }
 
+export interface RelationKind {
+  id: string;
+  name: string;
+  inverse_name?: string | null;
+  directed: boolean;
+  color?: string | null;
+  from_types: string[];
+  to_types: string[];
+  fields: FieldDef[];
+  created_at: number;
+  updated_at: number;
+}
+
+export interface Relation {
+  id: string;
+  from: string;
+  to: string;
+  kind: string;
+  label?: string | null;
+  meta: Record<string, unknown>;
+  created_at: number;
+}
+
 export const ipc = {
   openProject: (path: string) => invoke<void>("open_project", { path }),
   saveCard: (card: Card) => invoke<void>("save_card", { card }),
@@ -60,6 +83,15 @@ export const ipc = {
     invoke<string[]>("search_cards", { query, limit }),
   rebuildIndex: () => invoke<void>("rebuild_index"),
   deleteCard: (id: string) => invoke<void>("delete_card", { id }),
+  listRelationKinds: () => invoke<RelationKind[]>("list_relation_kinds"),
+  upsertRelationKind: (relationKind: RelationKind) =>
+    invoke<void>("upsert_relation_kind", { relationKind }),
+  // reloadProject 返回值更新：
   reloadProject: () =>
-    invoke<{ cards: Card[]; card_types: CardType[] }>("reload_project"),
+    invoke<{
+      cards: Card[];
+      card_types: CardType[];
+      relation_kinds: RelationKind[];
+      relations: Relation[];
+    }>("reload_project"),
 };

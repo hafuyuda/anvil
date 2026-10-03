@@ -2,8 +2,34 @@ import { useState } from "react";
 import { ipc, type CardType } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
 import { CardTypeEditor } from "./CardTypeEditor";
+import { RelationKindList } from "./RelationKindList";
 
 export function CardTypeList() {
+  const [subTab, setSubTab] = useState<"card" | "relation">("card");
+
+  return (
+    <div>
+      <div style={{ marginBottom: 12, borderBottom: "1px solid #eee" }}>
+        <button
+          onClick={() => setSubTab("card")}
+          disabled={subTab === "card"}
+          style={{ marginRight: 8 }}
+        >
+          卡牌类型
+        </button>
+        <button
+          onClick={() => setSubTab("relation")}
+          disabled={subTab === "relation"}
+        >
+          关系类型
+        </button>
+      </div>
+      {subTab === "card" ? <CardTypeSection /> : <RelationKindList />}
+    </div>
+  );
+}
+
+function CardTypeSection() {
   const cardTypes = useProjectStore((s) => s.cardTypes);
   const upsertCardType = useProjectStore((s) => s.upsertCardType);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -50,7 +76,7 @@ export function CardTypeList() {
         {selected ? (
           <CardTypeEditor key={selected.id} cardType={selected} />
         ) : (
-          <p style={{ color: "#888" }}>选择或新建一个类型</p>
+          <p style={{ color: "#888" }}>选择或新建一个卡牌类型</p>
         )}
       </div>
     </div>

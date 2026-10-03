@@ -1,4 +1,5 @@
 use crate::core::model::card::Card;
+use crate::core::model::relation::Relation;
 use rusqlite::{params, Connection};
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -31,15 +32,34 @@ fn init_schema(conn: &Connection) -> anyhow::Result<()> {
         );
 
         CREATE INDEX IF NOT EXISTS idx_cards_type ON cards(type_id);
+
+        CREATE TABLE IF NOT EXISTS relations (
+            id         TEXT PRIMARY KEY,
+            from_id    TEXT NOT NULL,
+            to_id      TEXT NOT NULL,
+            kind       TEXT NOT NULL,
+            label      TEXT,
+            meta       TEXT NOT NULL,
+            created_at INTEGER NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_relations_from ON relations(from_id);
+        CREATE INDEX IF NOT EXISTS idx_relations_to   ON relations(to_id);
+        CREATE INDEX IF NOT EXISTS idx_relations_kind ON relations(kind);
         "#,
     )?;
     Ok(())
 }
 
-pub fn rebuild(conn: &mut Connection, cards: &[Card]) -> anyhow::Result<()> {
+pub fn rebuild(
+    conn: &mut Connection,
+    cards: &[Card],
+    relations: &[Relation],
+) -> anyhow::Result<()> {
     let tx = conn.transaction()?;
     tx.execute("DELETE FROM cards", [])?;
     tx.execute("DELETE FROM cards_fts", [])?;
+    tx.execute("DELETE FROM relations", [])?;
     {
         let mut ins_card = tx.prepare(
             "INSERT INTO cards (id, type_id, name, values_json, updated_at)
@@ -53,6 +73,18 @@ pub fn rebuild(conn: &mut Connection, cards: &[Card]) -> anyhow::Result<()> {
             let values_text = collect_text(&c.values);
             ins_card.execute(params![c.id, c.type_id, c.name, values_json, c.updated_at])?;
             ins_fts.execute(params![c.id, c.name, values_text])?;
+        }
+    }
+    {
+        let mut ins_rel = tx.prepare(
+            "INSERT INTO relations (id, from_id, to_id, kind, label, meta, created_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        )?;
+        for r in relations {
+            let meta = serde_json::to_string(&r.meta)?;
+            ins_rel.execute(params![
+                r.id, r.from, r.to, r.kind, r.label, meta, r.created_at
+            ])?;
         }
     }
     tx.commit()?;
@@ -85,6 +117,37 @@ pub fn upsert_card(conn: &Connection, card: &Card) -> anyhow::Result<()> {
 pub fn delete_card(conn: &Connection, id: &str) -> anyhow::Result<()> {
     conn.execute("DELETE FROM cards WHERE id = ?1", params![id])?;
     conn.execute("DELETE FROM cards_fts WHERE id = ?1", params![id])?;
+    conn.execute("DELETE FROM relations WHERE from_id = ?1 OR to_id = ?1", params![id])?;
+    Ok(())
+}
+
+pub fn upsert_relation(conn: &Connection, relation: &Relation) -> anyhow::Result<()> {
+    let meta = serde_json::to_string(&relation.meta)?;
+    conn.execute(
+        "INSERT INTO relations (id, from_id, to_id, kind, label, meta, created_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+         ON CONFLICT(id) DO UPDATE SET
+             from_id = excluded.from_id,
+             to_id = excluded.to_id,
+             kind = excluded.kind,
+             label = excluded.label,
+             meta = excluded.meta,
+             created_at = excluded.created_at",
+        params![
+            relation.id,
+            relation.from,
+            relation.to,
+            relation.kind,
+            relation.label,
+            meta,
+            relation.created_at
+        ],
+    )?;
+    Ok(())
+}
+
+pub fn delete_relation(conn: &Connection, id: &str) -> anyhow::Result<()> {
+    conn.execute("DELETE FROM relations WHERE id = ?1", params![id])?;
     Ok(())
 }
 
@@ -109,7 +172,6 @@ fn sanitize_fts_query(input: &str) -> String {
     if trimmed.is_empty() {
         return String::new();
     }
-    // FTS5 的 MATCH 语法里特殊字符多，用双引号包成短语最稳
     let escaped = trimmed.replace('"', "\"\"");
     format!("\"{escaped}\"")
 }

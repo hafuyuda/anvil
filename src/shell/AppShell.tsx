@@ -16,7 +16,12 @@ export function AppShell() {
       if (!projectPath) return;
       try {
         const snap = await ipc.reloadProject();
-        setProject(projectPath, snap.cards, snap.card_types);
+        setProject(
+          projectPath,
+          snap.cards,
+          snap.card_types,
+          snap.relation_kinds,
+        );
       } catch {
         // 项目可能被移动或删除，忽略
       }

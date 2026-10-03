@@ -1,6 +1,7 @@
 use crate::core::index as idx;
 use crate::core::model::card::Card;
 use crate::core::model::card_type::{CardType, FieldDef, FieldType};
+use crate::core::model::relation::Relation;
 use crate::core::store::atomic::write_atomic;
 use rusqlite::Connection;
 use std::collections::BTreeMap;
@@ -18,6 +19,7 @@ impl Project {
         std::fs::create_dir_all(root.join("cards"))?;
         std::fs::create_dir_all(root.join("types"))?;
         std::fs::create_dir_all(root.join(".anvil"))?;
+        std::fs::create_dir_all(root.join("relations").join("from"))?;
 
         let db_path = root.join(".anvil").join("index.db");
         let conn = crate::core::index::open_or_create(&db_path)?;
@@ -32,8 +34,9 @@ impl Project {
 
     pub fn rebuild_index(&self) -> anyhow::Result<()> {
         let cards = self.load_all_cards()?;
+        let relations = self.list_all_relations()?;
         let mut conn = self.index.lock().unwrap();
-        idx::rebuild(&mut conn, &cards)?;
+        idx::rebuild(&mut conn, &cards, &relations)?;
         Ok(())
     }
 
@@ -139,14 +142,23 @@ impl Project {
         Ok(())
     }
 
-    pub fn reload(&self) -> anyhow::Result<(Vec<Card>, Vec<CardType>)> {
+    pub fn reload(
+        &self,
+    ) -> anyhow::Result<(
+        Vec<Card>,
+        Vec<CardType>,
+        Vec<crate::core::model::relation_kind::RelationKind>,
+        Vec<Relation>,
+    )> {
         let cards = self.load_all_cards()?;
         let card_types = self.load_card_types()?;
+        let relation_kinds = self.load_relation_kinds()?;
+        let relations = self.list_all_relations()?;
         {
             let mut conn = self.index.lock().unwrap();
-            idx::rebuild(&mut conn, &cards)?;
+            idx::rebuild(&mut conn, &cards, &relations)?;
         }
-        Ok((cards, card_types))
+        Ok((cards, card_types, relation_kinds, relations))
     }
 
     pub fn seed_example_world(&self) -> anyhow::Result<()> {
@@ -309,6 +321,107 @@ impl Project {
         }
 
         Ok(())
+    }
+
+    pub fn relation_kinds_path(&self) -> PathBuf {
+        self.root.join("types").join("relation_kinds.json")
+    }
+
+    pub fn load_relation_kinds(
+        &self,
+    ) -> anyhow::Result<Vec<crate::core::model::relation_kind::RelationKind>> {
+        let path = self.relation_kinds_path();
+        if !path.exists() {
+            return Ok(Vec::new());
+        }
+        let bytes = std::fs::read(&path)?;
+        Ok(serde_json::from_slice(&bytes)?)
+    }
+
+    pub fn save_relation_kinds(
+        &self,
+        kinds: &[crate::core::model::relation_kind::RelationKind],
+    ) -> anyhow::Result<()> {
+        let path = self.relation_kinds_path();
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        let json = serde_json::to_vec_pretty(kinds)?;
+        write_atomic(&path, &json)?;
+        Ok(())
+    }
+
+    pub fn relations_from_path(&self, card_id: &str) -> PathBuf {
+        self.root
+            .join("relations")
+            .join("from")
+            .join(format!("{card_id}.jsonl"))
+    }
+
+    pub fn load_relations_from(&self, card_id: &str) -> anyhow::Result<Vec<Relation>> {
+        let path = self.relations_from_path(card_id);
+        if !path.exists() {
+            return Ok(Vec::new());
+        }
+        let text = std::fs::read_to_string(&path)?;
+        let mut out = Vec::new();
+        for (lineno, line) in text.lines().enumerate() {
+            let line = line.trim();
+            if line.is_empty() {
+                continue;
+            }
+            match serde_json::from_str::<Relation>(line) {
+                Ok(r) => out.push(r),
+                Err(e) => eprintln!("relations {} line {}: {}", path.display(), lineno + 1, e),
+            }
+        }
+        Ok(out)
+    }
+
+    pub fn save_relations_from(&self, card_id: &str, rels: &[Relation]) -> anyhow::Result<()> {
+        let path = self.relations_from_path(card_id);
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        if rels.is_empty() {
+            if path.exists() {
+                std::fs::remove_file(&path)?;
+            }
+            return Ok(());
+        }
+        let mut buf = String::new();
+        for r in rels {
+            buf.push_str(&serde_json::to_string(r)?);
+            buf.push('\n');
+        }
+        write_atomic(&path, buf.as_bytes())?;
+        Ok(())
+    }
+
+    pub fn list_all_relations(&self) -> anyhow::Result<Vec<Relation>> {
+        let dir = self.root.join("relations").join("from");
+        if !dir.exists() {
+            return Ok(Vec::new());
+        }
+        let mut out = Vec::new();
+        for entry in std::fs::read_dir(&dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.extension().and_then(|s| s.to_str()) != Some("jsonl") {
+                continue;
+            }
+            let text = std::fs::read_to_string(&path)?;
+            for line in text.lines() {
+                let line = line.trim();
+                if line.is_empty() {
+                    continue;
+                }
+                if let Ok(r) = serde_json::from_str::<Relation>(line) {
+                    out.push(r);
+                }
+            }
+        }
+        Ok(out)
     }
 }
 
