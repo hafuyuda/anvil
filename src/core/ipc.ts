@@ -90,6 +90,39 @@ export interface Scenario {
   created_at: number;
   updated_at: number;
 }
+export interface GridConfig {
+  size: number;
+  offset_x: number;
+  offset_y: number;
+  visible: boolean;
+  snap: boolean;
+}
+
+export interface Token {
+  id: string;
+  card_id?: string | null;
+  name_override?: string | null;
+  value_overrides: Record<string, unknown>;
+  x: number;
+  y: number;
+  w?: number | null;
+  h?: number | null;
+  rotation: number;
+  layer: number;
+  visible: boolean;
+}
+
+export interface Board {
+  id: string;
+  name: string;
+  width: number;
+  height: number;
+  grid: GridConfig;
+  background?: string | null;
+  tokens: Token[];
+  created_at: number;
+  updated_at: number;
+}
 
 export const ipc = {
   openProject: (path: string) => invoke<void>("open_project", { path }),
@@ -108,13 +141,14 @@ export const ipc = {
     invoke<void>("upsert_relation_kind", { relationKind }),
   // reloadProject 返回值更新：
   reloadProject: () =>
-  invoke<{
-    cards: Card[];
-    card_types: CardType[];
-    relation_kinds: RelationKind[];
-    relations: Relation[];
-    scenarios: Scenario[];
-  }>("reload_project"),
+    invoke<{
+      cards: Card[];
+      card_types: CardType[];
+      relation_kinds: RelationKind[];
+      relations: Relation[];
+      scenarios: Scenario[];
+      boards: Board[];
+    }>("reload_project"),
   listAllRelations: () => invoke<Relation[]>("list_all_relations"),
   upsertRelation: (relation: Relation) =>
     invoke<void>("upsert_relation", { relation }),
@@ -122,8 +156,18 @@ export const ipc = {
     invoke<void>("delete_relation", { fromId, relationId }),
   closeProject: () => invoke<void>("close_project"),
   listScenarios: () => invoke<Scenario[]>("list_scenarios"),
-upsertScenario: (scenario: Scenario) =>
-  invoke<void>("upsert_scenario", { scenario }),
-deleteScenario: (id: string) =>
-  invoke<void>("delete_scenario", { id }),
+  upsertScenario: (scenario: Scenario) =>
+    invoke<void>("upsert_scenario", { scenario }),
+  deleteScenario: (id: string) => invoke<void>("delete_scenario", { id }),
+
+  validateCondition: (scenario: Scenario, expr: string) =>
+    invoke<void>("validate_condition", { scenario, expr }),
+  evalCondition: (
+    scenario: Scenario,
+    expr: string,
+    overrides: Record<string, unknown>,
+  ) => invoke<boolean>("eval_condition", { scenario, expr, overrides }),
+  listBoards: () => invoke<Board[]>("list_boards"),
+  upsertBoard: (board: Board) => invoke<void>("upsert_board", { board }),
+  deleteBoard: (id: string) => invoke<void>("delete_board", { id }),
 };

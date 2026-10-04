@@ -18,6 +18,8 @@ export function TopBar() {
         snap.card_types,
         snap.relation_kinds,
         snap.relations,
+        snap.scenarios,
+        snap.boards,
       );
     } catch (e) {
       alert("刷新失败: " + e);

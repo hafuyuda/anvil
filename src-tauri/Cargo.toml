@@ -26,6 +26,7 @@ anyhow = "1"
 tauri-plugin-dialog = "2.8.1"
 uuid = { version = "1.27.0", features = ["v4"] }
 rusqlite = { version = "0.40.2", features = ["bundled"] }
+evalexpr = "13.1.0"
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
 [profile.release]

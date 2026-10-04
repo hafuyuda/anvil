@@ -34,7 +34,6 @@ export function GraphView() {
     [cards, relations, cardTypes, relationKinds]
   );
 
-  // 计算每个节点的匹配状态
   const matchMap = useMemo(() => {
     const q = query.trim().toLowerCase();
     const m = new Map<string, boolean>();
@@ -54,7 +53,7 @@ export function GraphView() {
     return m;
   }, [raw.nodes, query, typeFilter, cards]);
 
-  const visibleNodes = useMemo(() => {
+  const visibleNodes: Node[] = useMemo(() => {
     const q = query.trim();
     const hasFilter = Boolean(q || typeFilter);
     return raw.nodes.map((n) => {
@@ -62,7 +61,7 @@ export function GraphView() {
       const color = cardType?.color ?? "#888888";
       const matched = matchMap.get(n.id) ?? true;
       const dim = hasFilter && !matched;
-      const flowNode: Node = {
+      return {
         id: n.id,
         position: n.position,
         data: { label: n.data.label },
@@ -72,19 +71,18 @@ export function GraphView() {
           border: `2px solid ${color}`,
           background: dim ? "#f5f5f5" : `${color}22`,
           fontSize: 12,
-          whiteSpace: "pre-line",
-          textAlign: "center",
+          whiteSpace: "pre-line" as const,
+          textAlign: "center" as const,
           width: 140,
           color: dim ? "#aaa" : "#222",
           opacity: dim ? 0.35 : 1,
           transition: "opacity 0.15s",
         },
       };
-      return flowNode;
     });
   }, [raw.nodes, cardTypes, matchMap, query, typeFilter]);
 
-  const visibleEdges = useMemo(() => {
+  const visibleEdges: Edge[] = useMemo(() => {
     return raw.edges.map((e) => {
       const kind = relationKinds.find((k) => k.id === e.kind);
       const color = kind?.color ?? "#999999";
@@ -96,7 +94,7 @@ export function GraphView() {
       if (typeFilter && !(fromMatch && toMatch)) hide = true;
       if (query.trim() && !(fromMatch || toMatch)) hide = true;
 
-      const edge: Edge = {
+      return {
         id: e.id,
         source: e.source,
         target: e.target,
@@ -106,7 +104,6 @@ export function GraphView() {
         labelStyle: { fontSize: 10, fill: color },
         labelBgStyle: { fill: "#ffffffcc" },
       };
-      return edge;
     });
   }, [raw.edges, relationKinds, matchMap, kindFilter, typeFilter, query]);
 
@@ -127,7 +124,15 @@ export function GraphView() {
   }
 
   return (
-    <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column" }}>
+    <div
+      style={{
+        flex: 1,
+        minHeight: 0,
+        minWidth: 0,
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
       <div
         style={{
           display: "flex",
@@ -137,6 +142,7 @@ export function GraphView() {
           borderBottom: "1px solid #eee",
           background: "#fafafa",
           flexWrap: "wrap",
+          flexShrink: 0,
         }}
       >
         <input
@@ -179,12 +185,13 @@ export function GraphView() {
         </span>
       </div>
 
-      <div style={{ flex: 1, minHeight: 0 }}>
+      <div style={{ flex: 1, minHeight: 0, position: "relative" }}>
         <ReactFlow
           nodes={visibleNodes}
           edges={visibleEdges}
           onNodeClick={(_, node) => selectCard(node.id)}
           fitView
+          fitViewOptions={{ padding: 0.15 }}
           proOptions={{ hideAttribution: true }}
         >
           <Background />

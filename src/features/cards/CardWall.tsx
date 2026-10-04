@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ipc, type Card } from "../../core/ipc";
+import { ipc, type Board, type Card } from "../../core/ipc";
 import { useOpenProject } from "../../core/useOpenProject";
 import { useProjectStore } from "../../stores/projectStore";
 
@@ -22,6 +22,9 @@ export function CardWall() {
   const [typeFilter, setTypeFilter] = useState<string>("");
   const [sortKey, setSortKey] = useState<SortKey>("updated_at");
   const [sortAsc, setSortAsc] = useState(false);
+
+  const boards = useProjectStore((s) => s.boards) ?? [];
+  const upsertBoard = useProjectStore((s) => s.upsertBoard);
 
   // FTS 搜索：输入停止 150ms 后查询
   useEffect(() => {
@@ -75,13 +78,30 @@ export function CardWall() {
     if (!confirm("将写入示例类型和卡牌，当前项目为空才会生效。继续？")) return;
     try {
       await ipc.seedExampleWorld();
-      const [newCards, newTypes, newKinds, newRelations] = await Promise.all([
+      const [
+        newCards,
+        newTypes,
+        newKinds,
+        newRelations,
+        newScenarios,
+        newBoards,
+      ] = await Promise.all([
         ipc.listCards(),
         ipc.listCardTypes(),
         ipc.listRelationKinds(),
         ipc.listAllRelations(),
+        ipc.listScenarios(),
+        ipc.listBoards(),
       ]);
-      setProject(projectPath, newCards, newTypes, newKinds, newRelations);
+      setProject(
+        projectPath,
+        newCards,
+        newTypes,
+        newKinds,
+        newRelations,
+        newScenarios,
+        newBoards,
+      );
     } catch (e) {
       alert("载入示例失败: " + e);
     }
@@ -130,6 +150,53 @@ export function CardWall() {
 
   const isEmpty = cards.length === 0 && cardTypes.length === 0;
 
+  async function handleAddToBoard(card: Card) {
+    if (boards.length === 0) {
+      alert("请先在「棋盘」里创建一个棋盘");
+      return;
+    }
+    let targetBoard: Board | undefined;
+    if (boards.length === 1) {
+      targetBoard = boards[0];
+    } else {
+      const names = boards.map((b, i) => `${i + 1}. ${b.name}`).join("\n");
+      const input = prompt(`选择棋盘：\n${names}\n\n输入序号`);
+      if (!input) return;
+      const idx = Number(input) - 1;
+      targetBoard = boards[idx];
+      if (!targetBoard) {
+        alert("无效序号");
+        return;
+      }
+    }
+
+    const tokens = targetBoard.tokens ?? [];
+    const count = tokens.length;
+    const gx = 100 + (count % 8) * 100;
+    const gy = 100 + Math.floor(count / 8) * 100;
+
+    const newToken = {
+      id: crypto.randomUUID(),
+      card_id: card.id,
+      name_override: null,
+      value_overrides: {},
+      x: gx,
+      y: gy,
+      w: 80,
+      h: 80,
+      rotation: 0,
+      layer: 0,
+      visible: true,
+    };
+
+    const next: Board = {
+      ...targetBoard,
+      tokens: [...tokens, newToken],
+      updated_at: Date.now(),
+    };
+    await ipc.upsertBoard(next);
+    upsertBoard(next);
+  }
   return (
     <div>
       {projectPath && isEmpty && (
@@ -223,13 +290,28 @@ export function CardWall() {
                 padding: "6px 8px",
                 borderRadius: 4,
                 background: selectedCardId === c.id ? "#eef" : "transparent",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
               }}
             >
-              {c.name} ·{" "}
-              <span style={{ color: "#888" }}>{typeName(c.type_id)}</span> —{" "}
-              <span style={{ color: "#aaa", fontSize: 12 }}>
-                {c.id.slice(0, 8)}
+              <span style={{ flex: 1 }}>
+                {c.name} ·{" "}
+                <span style={{ color: "#888" }}>{typeName(c.type_id)}</span> —{" "}
+                <span style={{ color: "#aaa", fontSize: 12 }}>
+                  {c.id.slice(0, 8)}
+                </span>
               </span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleAddToBoard(c);
+                }}
+                style={{ fontSize: 11 }}
+                title="添加到棋盘"
+              >
+                → 棋盘
+              </button>
             </li>
           ))}
         </ul>

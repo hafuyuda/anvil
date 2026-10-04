@@ -4,6 +4,7 @@ const modules: { key: ModuleKey; label: string }[] = [
   { key: "world", label: "世界观" },
   { key: "story", label: "分支故事" },
   { key: "types", label: "类型" },
+  { key: "board", label: "棋盘" },
 ];
 
 export function LeftNav() {

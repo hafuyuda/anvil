@@ -22,6 +22,7 @@ impl Project {
         std::fs::create_dir_all(root.join("relations").join("from"))?;
         std::fs::create_dir_all(root.join(".anvil"))?;
         std::fs::create_dir_all(root.join("scenarios"))?;
+        std::fs::create_dir_all(root.join("boards"))?;
 
         let db_path = root.join(".anvil").join("index.db");
         let conn = crate::core::index::open_or_create(&db_path)?;
@@ -154,17 +155,26 @@ impl Project {
         Vec<crate::core::model::relation_kind::RelationKind>,
         Vec<Relation>,
         Vec<crate::core::model::scenario::Scenario>,
+        Vec<crate::core::model::board::Board>,
     )> {
         let cards = self.load_all_cards()?;
         let card_types = self.load_card_types()?;
         let relation_kinds = self.load_relation_kinds()?;
         let relations = self.list_all_relations()?;
         let scenarios = self.load_scenarios()?;
+        let boards = self.load_boards()?;
         {
             let mut conn = self.index.lock().unwrap();
             idx::rebuild(&mut conn, &cards, &relations)?;
         }
-        Ok((cards, card_types, relation_kinds, relations, scenarios))
+        Ok((
+            cards,
+            card_types,
+            relation_kinds,
+            relations,
+            scenarios,
+            boards,
+        ))
     }
 
     pub fn seed_example_world(&self) -> anyhow::Result<()> {
@@ -627,6 +637,51 @@ impl Project {
 
     pub fn delete_scenario(&self, id: &str) -> anyhow::Result<()> {
         let path = self.scenario_path(id);
+        if path.exists() {
+            std::fs::remove_file(&path)?;
+        }
+        Ok(())
+    }
+
+    pub fn boards_dir(&self) -> PathBuf {
+        self.root.join("boards")
+    }
+
+    pub fn board_path(&self, id: &str) -> PathBuf {
+        self.boards_dir().join(format!("{id}.json"))
+    }
+
+    pub fn load_boards(&self) -> anyhow::Result<Vec<crate::core::model::board::Board>> {
+        let dir = self.boards_dir();
+        if !dir.exists() {
+            return Ok(Vec::new());
+        }
+        let mut out = Vec::new();
+        for entry in std::fs::read_dir(&dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.extension().and_then(|s| s.to_str()) != Some("json") {
+                continue;
+            }
+            let bytes = std::fs::read(&path)?;
+            match serde_json::from_slice::<crate::core::model::board::Board>(&bytes) {
+                Ok(b) => out.push(b),
+                Err(e) => eprintln!("board {}: {}", path.display(), e),
+            }
+        }
+        Ok(out)
+    }
+
+    pub fn save_board(&self, board: &crate::core::model::board::Board) -> anyhow::Result<()> {
+        std::fs::create_dir_all(self.boards_dir())?;
+        let path = self.board_path(&board.id);
+        let json = serde_json::to_vec_pretty(board)?;
+        write_atomic(&path, &json)?;
+        Ok(())
+    }
+
+    pub fn delete_board(&self, id: &str) -> anyhow::Result<()> {
+        let path = self.board_path(id);
         if path.exists() {
             std::fs::remove_file(&path)?;
         }

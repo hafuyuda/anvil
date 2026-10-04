@@ -4,6 +4,8 @@ import { CardWall } from "../features/cards/CardWall";
 import { CardTypeList } from "../features/cards/CardTypeList";
 import { GraphView } from "../features/world/GraphView";
 import { ScenarioList } from "../features/story/ScenarioList";
+import { BoardList } from "../features/board/BoardList";
+import { ErrorBoundary } from "./ErrorBoundary";
 
 export function Workspace() {
   const projectPath = useProjectStore((s) => s.projectPath);
@@ -31,24 +33,55 @@ export function Workspace() {
         >
           打开项目
         </button>
+        <div style={{ fontSize: 12, color: "#aaa" }}>
+          选择一个空文件夹，或已有的 .anvil 项目
+        </div>
       </div>
     );
   }
+
+  const isGraph =
+    (activeModule === "world" && worldSubView === "graph") ||
+    activeModule === "story" ||
+    activeModule === "board";
 
   return (
     <div
       style={{
         flex: 1,
-        overflow: "auto",
-        padding: activeModule === "world" && worldSubView === "graph" ? 0 : 16,
+        minWidth: 0,
+        minHeight: 0,
         display: "flex",
         flexDirection: "column",
+        overflow: isGraph ? "hidden" : "auto",
+        padding: isGraph ? 0 : 16,
       }}
     >
-      {activeModule === "world" && worldSubView === "cards" && <CardWall />}
-      {activeModule === "world" && worldSubView === "graph" && <GraphView />}
-      {activeModule === "types" && <CardTypeList />}
-      {activeModule === "story" && <ScenarioList />}
+      {activeModule === "world" && worldSubView === "cards" && (
+        <ErrorBoundary>
+          <CardWall />
+        </ErrorBoundary>
+      )}
+      {activeModule === "world" && worldSubView === "graph" && (
+        <ErrorBoundary>
+          <GraphView />
+        </ErrorBoundary>
+      )}
+      {activeModule === "types" && (
+        <ErrorBoundary>
+          <CardTypeList />
+        </ErrorBoundary>
+      )}
+      {activeModule === "story" && (
+        <ErrorBoundary>
+          <ScenarioList />
+        </ErrorBoundary>
+      )}
+      {activeModule === "board" && (
+        <ErrorBoundary>
+          <BoardList />
+        </ErrorBoundary>
+      )}
     </div>
   );
 }

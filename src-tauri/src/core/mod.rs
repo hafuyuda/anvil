@@ -1,3 +1,4 @@
+pub mod eval;
 pub mod index;
 pub mod ipc;
 pub mod model;

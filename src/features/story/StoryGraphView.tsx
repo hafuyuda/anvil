@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   Background,
   Controls,
@@ -14,6 +14,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import { ipc, type Card, type Relation, type Scenario } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
+import { EdgeEditorDialog } from "./EdgeEditorDialog";
 
 interface Props {
   scenario: Scenario;
@@ -28,13 +29,14 @@ export function StoryGraphView({ scenario }: Props) {
   const upsertRelation = useProjectStore((s) => s.upsertRelation);
   const removeRelation = useProjectStore((s) => s.removeRelation);
   const selectCard = useProjectStore((s) => s.selectCard);
+  const [editingEdgeId, setEditingEdgeId] = useState<string | null>(null);
 
   const scenarioNodes = useMemo(
     () =>
       scenario.node_ids
         .map((id) => cards.find((c) => c.id === id))
         .filter(Boolean) as Card[],
-    [scenario.node_ids, cards]
+    [scenario.node_ids, cards],
   );
 
   const scenarioEdges = useMemo(() => {
@@ -46,7 +48,7 @@ export function StoryGraphView({ scenario }: Props) {
       (r) =>
         ids.has(r.from) &&
         ids.has(r.to) &&
-        (kindSet === null || kindSet.has(r.kind))
+        (kindSet === null || kindSet.has(r.kind)),
     );
   }, [relations, scenario.node_ids, scenario.edge_kinds]);
 
@@ -91,7 +93,7 @@ export function StoryGraphView({ scenario }: Props) {
         id: r.id,
         source: r.from,
         target: r.to,
-        label: r.label || (condition ? `[${condition}]` : kind?.name ?? ""),
+        label: r.label || (condition ? `[${condition}]` : (kind?.name ?? "")),
         data: { condition, kind: r.kind, label: r.label ?? null },
         style: { stroke: color },
         labelStyle: { fontSize: 10, fill: color },
@@ -102,6 +104,9 @@ export function StoryGraphView({ scenario }: Props) {
 
   const [nodes, setNodes] = useState<Node[]>(initialNodes);
   const [edges, setEdges] = useState<Edge[]>(initialEdges);
+  useEffect(() => {
+    setEdges(initialEdges);
+  }, [initialEdges]);
   const [lastScenarioId, setLastScenarioId] = useState(scenario.id);
 
   if (lastScenarioId !== scenario.id) {
@@ -160,41 +165,13 @@ export function StoryGraphView({ scenario }: Props) {
           labelStyle: { fontSize: 10, fill: kindObj?.color ?? "#666" },
           labelBgStyle: { fill: "#ffffffcc" },
         },
-        es
-      )
+        es,
+      ),
     );
   }
 
-  async function onEdgeClick(_: unknown, edge: Edge) {
-    const data = edge.data as {
-      condition: string;
-      kind: string;
-      label: string | null;
-    };
-    const next = prompt("条件表达式（留空表示无条件）：", data.condition ?? "");
-    if (next === null) return;
-    const relation = relations.find((r) => r.id === edge.id);
-    if (!relation) return;
-    const updated: Relation = {
-      ...relation,
-      meta: { ...relation.meta, condition: next },
-    };
-    await ipc.upsertRelation(updated);
-    upsertRelation(updated);
-    const kindObj = relationKinds.find((k) => k.id === updated.kind);
-    setEdges((es) =>
-      es.map((e) =>
-        e.id === edge.id
-          ? {
-              ...e,
-              label:
-                updated.label ||
-                (next ? `[${next}]` : kindObj?.name ?? ""),
-              data: { ...data, condition: next },
-            }
-          : e
-      )
-    );
+  function onEdgeClick(_: unknown, edge: Edge) {
+    setEditingEdgeId(edge.id);
   }
 
   async function onEdgesDelete(deleted: Edge[]) {
@@ -216,7 +193,13 @@ export function StoryGraphView({ scenario }: Props) {
   }
 
   return (
-    <div style={{ width: "100%", height: "100%", minHeight: 400 }}>
+    <div 
+    style={{ 
+      flex: 1, 
+      minHeight: 0, 
+      minWidth: 0, 
+      position: "relative",
+       }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -227,12 +210,25 @@ export function StoryGraphView({ scenario }: Props) {
         onEdgesDelete={onEdgesDelete}
         onNodeClick={(_, node) => selectCard(node.id)}
         fitView
+        fitViewOptions={{ padding: 0.15 }}
         proOptions={{ hideAttribution: true }}
       >
         <Background />
         <Controls />
         <MiniMap pannable zoomable />
       </ReactFlow>
+      {editingEdgeId &&
+        (() => {
+          const rel = relations.find((r) => r.id === editingEdgeId);
+          if (!rel) return null;
+          return (
+            <EdgeEditorDialog
+              scenario={scenario}
+              relation={rel}
+              onClose={() => setEditingEdgeId(null)}
+            />
+          );
+        })()}
     </div>
   );
 }

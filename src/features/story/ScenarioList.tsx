@@ -30,8 +30,16 @@ export function ScenarioList() {
   const selected = scenarios.find((s) => s.id === selectedId) ?? null;
 
   return (
-    <div style={{ display: "flex", gap: 16, height: "100%" }}>
-      <div style={{ minWidth: 180 }}>
+    <div
+      style={{
+        display: "flex",
+        gap: 16,
+        flex: 1,
+        minHeight: 0,
+        minWidth: 0,
+      }}
+    >
+      <div style={{ minWidth: 180, overflow: "auto" }}>
         <button onClick={addScenario}>新建剧情</button>
         <ul style={{ listStyle: "none", padding: 0 }}>
           {scenarios.map((s) => (
@@ -49,7 +57,15 @@ export function ScenarioList() {
           ))}
         </ul>
       </div>
-      <div style={{ flex: 1, minWidth: 0, minHeight: 500 }}>
+      <div
+        style={{
+          flex: 1,
+          minWidth: 0,
+          minHeight: 0,
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
         {selected ? (
           <ScenarioEditor key={selected.id} scenario={selected} />
         ) : (

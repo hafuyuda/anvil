@@ -7,6 +7,7 @@ import {
 } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
 import { StoryGraphView } from "./StoryGraphView";
+import { PlayView } from "./PlayView";
 
 interface Props {
   scenario: Scenario;
@@ -29,7 +30,7 @@ export function ScenarioEditor({ scenario }: Props) {
 
   const [draft, setDraft] = useState<Scenario>(scenario);
   const [dirty, setDirty] = useState(false);
-  const [tab, setTab] = useState<"settings" | "graph">("settings");
+  const [tab, setTab] = useState<"settings" | "graph" | "play">("settings");
 
   if (draft.id !== scenario.id) {
     setDraft(scenario);
@@ -53,7 +54,7 @@ export function ScenarioEditor({ scenario }: Props) {
 
   function updateVariable(i: number, patch: Partial<VariableDef>) {
     const variables = draft.variables.map((v, idx) =>
-      idx === i ? { ...v, ...patch } : v
+      idx === i ? { ...v, ...patch } : v,
     );
     update({ variables });
   }
@@ -84,7 +85,8 @@ export function ScenarioEditor({ scenario }: Props) {
         display: "flex",
         flexDirection: "column",
         gap: 12,
-        height: "100%",
+        flex: 1,
+        minHeight: 0,
       }}
     >
       <div style={{ borderBottom: "1px solid #eee", paddingBottom: 4 }}>
@@ -98,10 +100,22 @@ export function ScenarioEditor({ scenario }: Props) {
         <button onClick={() => setTab("graph")} disabled={tab === "graph"}>
           节点图
         </button>
+        <button onClick={() => setTab("play")} disabled={tab === "play"}>
+          运行
+        </button>
       </div>
 
       {tab === "settings" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 12,
+            overflow: "auto",
+            flex: 1,
+            minHeight: 0,
+          }}
+        >
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <input
               value={draft.name}
@@ -169,7 +183,9 @@ export function ScenarioEditor({ scenario }: Props) {
                         update({ edge_kinds: [...draft.edge_kinds, k.id] });
                       else
                         update({
-                          edge_kinds: draft.edge_kinds.filter((x) => x !== k.id),
+                          edge_kinds: draft.edge_kinds.filter(
+                            (x) => x !== k.id,
+                          ),
                         });
                     }}
                   />
@@ -271,6 +287,11 @@ export function ScenarioEditor({ scenario }: Props) {
                     </option>
                   ))}
                 </select>
+                <DefaultValueInput
+                  ty={v.ty}
+                  value={v.default}
+                  onChange={(value) => updateVariable(i, { default: value })}
+                />
                 <button onClick={() => removeVariable(i)}>×</button>
               </div>
             ))}
@@ -279,10 +300,66 @@ export function ScenarioEditor({ scenario }: Props) {
       )}
 
       {tab === "graph" && (
-        <div style={{ flex: 1, minHeight: 500 }}>
+        <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
           <StoryGraphView scenario={scenario} />
+        </div>
+      )}
+      {tab === "play" && (
+        <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
+          <PlayView scenario={scenario} />
         </div>
       )}
     </div>
   );
+}
+
+function DefaultValueInput({
+  ty,
+  value,
+  onChange,
+}: {
+  ty: FieldType;
+  value: unknown;
+  onChange: (v: unknown) => void;
+}) {
+  const style = {
+    padding: "3px 6px",
+    width: "100%",
+    boxSizing: "border-box" as const,
+  };
+
+  switch (ty.kind) {
+    case "bool":
+      return (
+        <label style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <input
+            type="checkbox"
+            checked={Boolean(value)}
+            onChange={(e) => onChange(e.target.checked)}
+          />
+          默认
+        </label>
+      );
+    case "number":
+      return (
+        <input
+          type="number"
+          value={value === undefined || value === null ? "" : String(value)}
+          onChange={(e) =>
+            onChange(e.target.value === "" ? null : Number(e.target.value))
+          }
+          placeholder="默认值"
+          style={style}
+        />
+      );
+    default:
+      return (
+        <input
+          value={(value as string) ?? ""}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="默认值"
+          style={style}
+        />
+      );
+  }
 }

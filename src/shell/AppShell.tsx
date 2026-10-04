@@ -12,23 +12,32 @@ export function AppShell() {
   const setProject = useProjectStore((s) => s.setProject);
 
   useEffect(() => {
+    let timer: number | null = null;
     async function onFocus() {
-      if (!projectPath) return;
-      try {
-        const snap = await ipc.reloadProject();
-        setProject(
-          projectPath,
-          snap.cards,
-          snap.card_types,
-          snap.relation_kinds,
-          snap.relations,
-        );
-      } catch {
-        // 项目可能被移动或删除，忽略
-      }
+      if (timer !== null) window.clearTimeout(timer);
+      timer = window.setTimeout(async () => {
+        if (!projectPath) return;
+        try {
+          const snap = await ipc.reloadProject();
+          setProject(
+            projectPath,
+            snap.cards,
+            snap.card_types,
+            snap.relation_kinds,
+            snap.relations,
+            snap.scenarios,
+            snap.boards,
+          );
+        } catch {
+          // 项目可能被移动或删除，忽略
+        }
+      }, 500);
     }
     window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      if (timer !== null) window.clearTimeout(timer);
+    };
   }, [projectPath, setProject]);
 
   return (

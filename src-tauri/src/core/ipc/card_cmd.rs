@@ -1,9 +1,12 @@
+use crate::core::eval;
+use crate::core::model::board::Board;
 use crate::core::model::card::Card;
 use crate::core::model::card_type::CardType;
 use crate::core::model::relation::Relation;
 use crate::core::model::relation_kind::RelationKind;
 use crate::core::model::scenario::Scenario;
 use crate::core::store::project::Project;
+use std::collections::BTreeMap;
 use std::sync::Mutex;
 use tauri::State;
 
@@ -91,24 +94,22 @@ pub struct ProjectSnapshot {
     pub relation_kinds: Vec<RelationKind>,
     pub relations: Vec<Relation>,
     pub scenarios: Vec<Scenario>,
+    pub boards: Vec<Board>,
 }
 
 #[tauri::command]
 pub fn reload_project(state: State<AppState>) -> Result<ProjectSnapshot, String> {
     let guard = state.project.lock().unwrap();
     let p = guard.as_ref().ok_or("no project open")?;
-    let (cards,
-         card_types,
-          relation_kinds, 
-          relations,
-          scenarios
-        ) = p.reload().map_err(|e| e.to_string())?;
+    let (cards, card_types, relation_kinds, relations, scenarios, boards) =
+        p.reload().map_err(|e| e.to_string())?;
     Ok(ProjectSnapshot {
         cards,
         card_types,
         relation_kinds,
         relations,
         scenarios,
+        boards,
     })
 }
 
@@ -185,4 +186,42 @@ pub fn delete_scenario(state: State<AppState>, id: String) -> Result<(), String>
     let guard = state.project.lock().unwrap();
     let p = guard.as_ref().ok_or("no project open")?;
     p.delete_scenario(&id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn validate_condition(
+    scenario: crate::core::model::scenario::Scenario,
+    expr: String,
+) -> Result<(), String> {
+    eval::validate_condition(&scenario, &expr).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn eval_condition(
+    scenario: crate::core::model::scenario::Scenario,
+    expr: String,
+    overrides: BTreeMap<String, serde_json::Value>,
+) -> Result<bool, String> {
+    eval::eval_condition(&scenario, &expr, &overrides).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn upsert_board(state: State<AppState>, board: Board) -> Result<(), String> {
+    let guard = state.project.lock().unwrap();
+    let p = guard.as_ref().ok_or("no project open")?;
+    p.save_board(&board).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn list_boards(state: State<AppState>) -> Result<Vec<Board>, String> {
+    let guard = state.project.lock().unwrap();
+    let p = guard.as_ref().ok_or("no project open")?;
+    p.load_boards().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn delete_board(state: State<AppState>, id: String) -> Result<(), String> {
+    let guard = state.project.lock().unwrap();
+    let p = guard.as_ref().ok_or("no project open")?;
+    p.delete_board(&id).map_err(|e| e.to_string())
 }

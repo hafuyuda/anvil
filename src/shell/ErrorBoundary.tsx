@@ -18,9 +18,16 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.error) {
       return (
-        <div style={{ padding: 12, color: "#c33", fontSize: 12 }}>
+        <div
+          style={{ padding: 12, color: "#c33", fontSize: 12, overflow: "auto" }}
+        >
           <div style={{ fontWeight: 600, marginBottom: 4 }}>渲染出错</div>
-          <pre style={{ whiteSpace: "pre-wrap" }}>{this.state.error.message}</pre>
+          <pre style={{ whiteSpace: "pre-wrap" }}>
+            {this.state.error.message}
+          </pre>
+          <pre style={{ whiteSpace: "pre-wrap", fontSize: 11, color: "#888" }}>
+            {this.state.error.stack}
+          </pre>
         </div>
       );
     }
