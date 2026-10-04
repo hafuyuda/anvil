@@ -21,6 +21,7 @@ export function AppShell() {
           snap.cards,
           snap.card_types,
           snap.relation_kinds,
+          snap.relations,
         );
       } catch {
         // 项目可能被移动或删除，忽略

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ipc, type Card, type CardType } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
 import { FieldInput } from "./FieldInput";
+import { RelationsPanel } from "./RelationsPanel";
 
 interface Props {
   card: Card;
@@ -101,6 +102,16 @@ export function CardEditor({ card, cardType }: Props) {
         </button>
       </div>
 
+      <div
+        style={{
+          borderTop: "1px solid #eee",
+          paddingTop: 12,
+          marginTop: 12,
+        }}
+      >
+        <RelationsPanel card={card} />
+      </div>
+      
       <details style={{ fontSize: 11, color: "#aaa" }}>
         <summary>原始数据</summary>
         <pre style={{ overflow: "auto", maxHeight: 200 }}>

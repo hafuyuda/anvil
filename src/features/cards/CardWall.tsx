@@ -75,12 +75,13 @@ export function CardWall() {
     if (!confirm("将写入示例类型和卡牌，当前项目为空才会生效。继续？")) return;
     try {
       await ipc.seedExampleWorld();
-      const [newCards, newTypes, newKinds] = await Promise.all([
+      const [newCards, newTypes, newKinds, newRelations] = await Promise.all([
         ipc.listCards(),
         ipc.listCardTypes(),
         ipc.listRelationKinds(),
+        ipc.listAllRelations(),
       ]);
-      setProject(projectPath, newCards, newTypes, newKinds);
+      setProject(projectPath, newCards, newTypes, newKinds, newRelations);
     } catch (e) {
       alert("载入示例失败: " + e);
     }

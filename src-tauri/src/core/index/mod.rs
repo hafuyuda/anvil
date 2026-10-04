@@ -88,6 +88,8 @@ pub fn rebuild(
         }
     }
     tx.commit()?;
+
+    conn.execute_batch("PRAGMA user_version = 1")?;
     Ok(())
 }
 

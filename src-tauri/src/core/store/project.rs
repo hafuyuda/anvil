@@ -2,6 +2,7 @@ use crate::core::index as idx;
 use crate::core::model::card::Card;
 use crate::core::model::card_type::{CardType, FieldDef, FieldType};
 use crate::core::model::relation::Relation;
+use crate::core::model::relation_kind::RelationKind;
 use crate::core::store::atomic::write_atomic;
 use rusqlite::Connection;
 use std::collections::BTreeMap;
@@ -18,8 +19,9 @@ impl Project {
         let root = root.into();
         std::fs::create_dir_all(root.join("cards"))?;
         std::fs::create_dir_all(root.join("types"))?;
-        std::fs::create_dir_all(root.join(".anvil"))?;
         std::fs::create_dir_all(root.join("relations").join("from"))?;
+        std::fs::create_dir_all(root.join(".anvil"))?;
+        std::fs::create_dir_all(root.join("scenarios"))?;
 
         let db_path = root.join(".anvil").join("index.db");
         let conn = crate::core::index::open_or_create(&db_path)?;
@@ -28,7 +30,9 @@ impl Project {
             root,
             index: Mutex::new(conn),
         };
-        project.rebuild_index()?;
+        if project.needs_rebuild(&db_path) {
+            project.rebuild_index()?;
+        }
         Ok(project)
     }
 
@@ -149,16 +153,18 @@ impl Project {
         Vec<CardType>,
         Vec<crate::core::model::relation_kind::RelationKind>,
         Vec<Relation>,
+        Vec<crate::core::model::scenario::Scenario>,
     )> {
         let cards = self.load_all_cards()?;
         let card_types = self.load_card_types()?;
         let relation_kinds = self.load_relation_kinds()?;
         let relations = self.list_all_relations()?;
+        let scenarios = self.load_scenarios()?;
         {
             let mut conn = self.index.lock().unwrap();
             idx::rebuild(&mut conn, &cards, &relations)?;
         }
-        Ok((cards, card_types, relation_kinds, relations))
+        Ok((cards, card_types, relation_kinds, relations, scenarios))
     }
 
     pub fn seed_example_world(&self) -> anyhow::Result<()> {
@@ -320,6 +326,99 @@ impl Project {
             self.save_card(c)?;
         }
 
+        // 加几条关系做示范
+        let brokkr = cards.iter().find(|c| c.name == "铁匠布洛克").unwrap();
+        let gretta = cards.iter().find(|c| c.name == "学徒格蕾塔").unwrap();
+        let anvil = cards.iter().find(|c| c.name == "铁砧堡").unwrap();
+        let hammer = cards.iter().find(|c| c.name == "熔炉之锤").unwrap();
+
+        let located_in = RelationKind {
+            id: "located_in".into(),
+            name: "位于".into(),
+            inverse_name: Some("包含".into()),
+            directed: true,
+            color: Some("#4a7a8c".into()),
+            from_types: vec![],
+            to_types: vec![],
+            fields: vec![],
+            created_at: now,
+            updated_at: now,
+        };
+        let apprentice_of = RelationKind {
+            id: "apprentice_of".into(),
+            name: "学徒于".into(),
+            inverse_name: Some("师傅是".into()),
+            directed: true,
+            color: Some("#8b6f47".into()),
+            from_types: vec![],
+            to_types: vec![],
+            fields: vec![],
+            created_at: now,
+            updated_at: now,
+        };
+        let owns = RelationKind {
+            id: "owns".into(),
+            name: "持有".into(),
+            inverse_name: Some("被持有".into()),
+            directed: true,
+            color: Some("#a05a2c".into()),
+            from_types: vec![],
+            to_types: vec![],
+            fields: vec![],
+            created_at: now,
+            updated_at: now,
+        };
+
+        self.save_relation_kinds(&[located_in, apprentice_of, owns])?;
+
+        let rels = vec![
+            Relation {
+                id: uuid::Uuid::new_v4().to_string(),
+                from: brokkr.id.clone(),
+                to: anvil.id.clone(),
+                kind: "located_in".into(),
+                label: None,
+                meta: BTreeMap::new(),
+                created_at: now,
+            },
+            Relation {
+                id: uuid::Uuid::new_v4().to_string(),
+                from: gretta.id.clone(),
+                to: anvil.id.clone(),
+                kind: "located_in".into(),
+                label: None,
+                meta: BTreeMap::new(),
+                created_at: now,
+            },
+            Relation {
+                id: uuid::Uuid::new_v4().to_string(),
+                from: gretta.id.clone(),
+                to: brokkr.id.clone(),
+                kind: "apprentice_of".into(),
+                label: None,
+                meta: BTreeMap::new(),
+                created_at: now,
+            },
+            Relation {
+                id: uuid::Uuid::new_v4().to_string(),
+                from: brokkr.id.clone(),
+                to: hammer.id.clone(),
+                kind: "owns".into(),
+                label: None,
+                meta: BTreeMap::new(),
+                created_at: now,
+            },
+        ];
+
+        // 按 from 分组写入
+        let mut by_from: std::collections::BTreeMap<String, Vec<Relation>> = BTreeMap::new();
+        for r in rels {
+            by_from.entry(r.from.clone()).or_default().push(r);
+        }
+        for (from, list) in by_from {
+            self.save_relations_from(&from, &list)?;
+        }
+
         Ok(())
     }
 
@@ -423,6 +522,116 @@ impl Project {
         }
         Ok(out)
     }
+
+    pub fn upsert_relation(
+        &self,
+        relation: &crate::core::model::relation::Relation,
+    ) -> anyhow::Result<()> {
+        let mut rels = self.load_relations_from(&relation.from)?;
+        match rels.iter_mut().find(|r| r.id == relation.id) {
+            Some(existing) => *existing = relation.clone(),
+            None => rels.push(relation.clone()),
+        }
+        self.save_relations_from(&relation.from, &rels)?;
+
+        let conn = self.index.lock().unwrap();
+        crate::core::index::upsert_relation(&conn, relation)?;
+        Ok(())
+    }
+
+    pub fn delete_relation(&self, from_id: &str, relation_id: &str) -> anyhow::Result<()> {
+        let mut rels = self.load_relations_from(from_id)?;
+        let before = rels.len();
+        rels.retain(|r| r.id != relation_id);
+        if rels.len() == before {
+            return Ok(());
+        }
+        self.save_relations_from(from_id, &rels)?;
+
+        let conn = self.index.lock().unwrap();
+        crate::core::index::delete_relation(&conn, relation_id)?;
+        Ok(())
+    }
+
+    fn needs_rebuild(&self, db_path: &std::path::Path) -> bool {
+        // 未索引过（user_version == 0）→ 需要
+        let user_version: i64 = {
+            let conn = self.index.lock().unwrap();
+            conn.query_row("PRAGMA user_version", [], |r| r.get(0))
+                .unwrap_or(0)
+        };
+        if user_version == 0 {
+            return true;
+        }
+
+        // 比较 db mtime 和项目目录里最新文件的 mtime
+        let db_mtime = match std::fs::metadata(db_path).and_then(|m| m.modified()) {
+            Ok(t) => t,
+            Err(_) => return true,
+        };
+
+        for dir in [
+            self.root.join("cards"),
+            self.root.join("types"),
+            self.root.join("relations"),
+        ] {
+            if let Some(newest) = newest_mtime_recursive(&dir) {
+                if newest > db_mtime {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    pub fn scenarios_dir(&self) -> PathBuf {
+        self.root.join("scenarios")
+    }
+
+    pub fn scenario_path(&self, id: &str) -> PathBuf {
+        self.scenarios_dir().join(format!("{id}.json"))
+    }
+
+    pub fn load_scenarios(&self) -> anyhow::Result<Vec<crate::core::model::scenario::Scenario>> {
+        let dir = self.scenarios_dir();
+        if !dir.exists() {
+            return Ok(Vec::new());
+        }
+        let mut out = Vec::new();
+        for entry in std::fs::read_dir(&dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.extension().and_then(|s| s.to_str()) != Some("json") {
+                continue;
+            }
+            let bytes = std::fs::read(&path)?;
+            match serde_json::from_slice::<crate::core::model::scenario::Scenario>(&bytes) {
+                Ok(s) => out.push(s),
+                Err(e) => eprintln!("scenario {}: {}", path.display(), e),
+            }
+        }
+        Ok(out)
+    }
+
+    pub fn save_scenario(
+        &self,
+        scenario: &crate::core::model::scenario::Scenario,
+    ) -> anyhow::Result<()> {
+        let dir = self.scenarios_dir();
+        std::fs::create_dir_all(&dir)?;
+        let path = self.scenario_path(&scenario.id);
+        let json = serde_json::to_vec_pretty(scenario)?;
+        write_atomic(&path, &json)?;
+        Ok(())
+    }
+
+    pub fn delete_scenario(&self, id: &str) -> anyhow::Result<()> {
+        let path = self.scenario_path(id);
+        if path.exists() {
+            std::fs::remove_file(&path)?;
+        }
+        Ok(())
+    }
 }
 
 fn now_ms() -> i64 {
@@ -450,4 +659,33 @@ fn values(pairs: &[(&str, serde_json::Value)]) -> BTreeMap<String, serde_json::V
         .iter()
         .map(|(k, v)| ((*k).to_string(), v.clone()))
         .collect()
+}
+
+fn newest_mtime_recursive(dir: &std::path::Path) -> Option<std::time::SystemTime> {
+    if !dir.exists() {
+        return None;
+    }
+    let mut newest: Option<std::time::SystemTime> = None;
+    let mut stack = vec![dir.to_path_buf()];
+    while let Some(current) = stack.pop() {
+        let entries = match std::fs::read_dir(&current) {
+            Ok(e) => e,
+            Err(_) => continue,
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                stack.push(path);
+                continue;
+            }
+            if let Ok(meta) = std::fs::metadata(&path) {
+                if let Ok(t) = meta.modified() {
+                    if newest.map_or(true, |n| t > n) {
+                        newest = Some(t);
+                    }
+                }
+            }
+        }
+    }
+    newest
 }

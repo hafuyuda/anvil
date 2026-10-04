@@ -1,5 +1,6 @@
 import { useProjectStore } from "../stores/projectStore";
 import { CardEditor } from "../features/cards/CardEditor";
+import { ErrorBoundary } from "./ErrorBoundary";
 
 export function Inspector() {
   const selectedCardId = useProjectStore((s) => s.selectedCardId);
@@ -42,7 +43,9 @@ export function Inspector() {
       )}
 
       {card && cardType && (
-        <CardEditor key={card.id} card={card} cardType={cardType} />
+        <ErrorBoundary>
+          <CardEditor key={card.id} card={card} cardType={cardType} />
+        </ErrorBoundary>
       )}
     </div>
   );

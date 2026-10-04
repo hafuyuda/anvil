@@ -15,12 +15,22 @@ export function useOpenProject() {
 
     try {
       await ipc.openProject(selected);
-      const [cards, cardTypes, relationKinds] = await Promise.all([
-        ipc.listCards(),
-        ipc.listCardTypes(),
-        ipc.listRelationKinds(),
-      ]);
-      setProject(selected, cards, cardTypes, relationKinds);
+      const [cards, cardTypes, relationKinds, relations, scenarios] =
+        await Promise.all([
+          ipc.listCards(),
+          ipc.listCardTypes(),
+          ipc.listRelationKinds(),
+          ipc.listAllRelations(),
+          ipc.listScenarios(),
+        ]);
+      setProject(
+        selected,
+        cards,
+        cardTypes,
+        relationKinds,
+        relations,
+        scenarios,
+      );
     } catch (e) {
       alert("打开失败: " + e);
     }

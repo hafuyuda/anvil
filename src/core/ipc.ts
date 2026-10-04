@@ -71,6 +71,26 @@ export interface Relation {
   created_at: number;
 }
 
+export interface VariableDef {
+  key: string;
+  label: string;
+  ty: FieldType;
+  default?: unknown;
+}
+
+export interface Scenario {
+  id: string;
+  name: string;
+  description?: string | null;
+  entry_node?: string | null;
+  node_ids: string[];
+  edge_kinds: string[];
+  node_positions: Record<string, [number, number]>;
+  variables: VariableDef[];
+  created_at: number;
+  updated_at: number;
+}
+
 export const ipc = {
   openProject: (path: string) => invoke<void>("open_project", { path }),
   saveCard: (card: Card) => invoke<void>("save_card", { card }),
@@ -88,10 +108,22 @@ export const ipc = {
     invoke<void>("upsert_relation_kind", { relationKind }),
   // reloadProject 返回值更新：
   reloadProject: () =>
-    invoke<{
-      cards: Card[];
-      card_types: CardType[];
-      relation_kinds: RelationKind[];
-      relations: Relation[];
-    }>("reload_project"),
+  invoke<{
+    cards: Card[];
+    card_types: CardType[];
+    relation_kinds: RelationKind[];
+    relations: Relation[];
+    scenarios: Scenario[];
+  }>("reload_project"),
+  listAllRelations: () => invoke<Relation[]>("list_all_relations"),
+  upsertRelation: (relation: Relation) =>
+    invoke<void>("upsert_relation", { relation }),
+  deleteRelation: (fromId: string, relationId: string) =>
+    invoke<void>("delete_relation", { fromId, relationId }),
+  closeProject: () => invoke<void>("close_project"),
+  listScenarios: () => invoke<Scenario[]>("list_scenarios"),
+upsertScenario: (scenario: Scenario) =>
+  invoke<void>("upsert_scenario", { scenario }),
+deleteScenario: (id: string) =>
+  invoke<void>("delete_scenario", { id }),
 };

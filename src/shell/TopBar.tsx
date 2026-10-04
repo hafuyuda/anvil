@@ -12,10 +12,24 @@ export function TopBar() {
     if (!projectPath) return;
     try {
       const snap = await ipc.reloadProject();
-      setProject(projectPath, snap.cards, snap.card_types, snap.relation_kinds);
+      setProject(
+        projectPath,
+        snap.cards,
+        snap.card_types,
+        snap.relation_kinds,
+        snap.relations,
+      );
     } catch (e) {
       alert("刷新失败: " + e);
     }
+  }
+
+  // projectStore.ts 里不好直接调 ipc，改成 TopBar 里：
+  async function handleClose() {
+    try {
+      await ipc.closeProject();
+    } catch {}
+    closeProject();
   }
 
   return (
@@ -40,7 +54,11 @@ export function TopBar() {
         {projectPath ? "切换" : "打开"}
       </button>
       {projectPath && (
-        <button onClick={handleRefresh} style={{ fontSize: 12 }} title="重新读取项目文件">
+        <button
+          onClick={handleRefresh}
+          style={{ fontSize: 12 }}
+          title="重新读取项目文件"
+        >
           刷新
         </button>
       )}
@@ -63,7 +81,7 @@ export function TopBar() {
         设置
       </button>
       {projectPath && (
-        <button onClick={closeProject} style={{ fontSize: 12 }}>
+        <button onClick={handleClose} style={{ fontSize: 12 }}>
           关闭项目
         </button>
       )}

@@ -2,6 +2,7 @@ use crate::core::model::card::Card;
 use crate::core::model::card_type::CardType;
 use crate::core::model::relation::Relation;
 use crate::core::model::relation_kind::RelationKind;
+use crate::core::model::scenario::Scenario;
 use crate::core::store::project::Project;
 use std::sync::Mutex;
 use tauri::State;
@@ -89,19 +90,26 @@ pub struct ProjectSnapshot {
     pub card_types: Vec<CardType>,
     pub relation_kinds: Vec<RelationKind>,
     pub relations: Vec<Relation>,
+    pub scenarios: Vec<Scenario>,
 }
 
 #[tauri::command]
 pub fn reload_project(state: State<AppState>) -> Result<ProjectSnapshot, String> {
     let guard = state.project.lock().unwrap();
     let p = guard.as_ref().ok_or("no project open")?;
-    let (cards, card_types, relation_kinds, relations) = p.reload().map_err(|e| e.to_string())?;
-    Ok(ProjectSnapshot { 
-        cards, 
-        card_types, 
-        relation_kinds, 
+    let (cards,
+         card_types,
+          relation_kinds, 
+          relations,
+          scenarios
+        ) = p.reload().map_err(|e| e.to_string())?;
+    Ok(ProjectSnapshot {
+        cards,
+        card_types,
+        relation_kinds,
         relations,
-      })
+        scenarios,
+    })
 }
 
 #[tauri::command]
@@ -124,4 +132,57 @@ pub fn upsert_relation_kind(
         None => kinds.push(relation_kind),
     }
     p.save_relation_kinds(&kinds).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn list_all_relations(state: State<AppState>) -> Result<Vec<Relation>, String> {
+    let guard = state.project.lock().unwrap();
+    let p = guard.as_ref().ok_or("no project open")?;
+    p.list_all_relations().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn upsert_relation(state: State<AppState>, relation: Relation) -> Result<(), String> {
+    let guard = state.project.lock().unwrap();
+    let p = guard.as_ref().ok_or("no project open")?;
+    p.upsert_relation(&relation).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn delete_relation(
+    state: State<AppState>,
+    from_id: String,
+    relation_id: String,
+) -> Result<(), String> {
+    let guard = state.project.lock().unwrap();
+    let p = guard.as_ref().ok_or("no project open")?;
+    p.delete_relation(&from_id, &relation_id)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn close_project(state: State<AppState>) -> Result<(), String> {
+    *state.project.lock().unwrap() = None;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn list_scenarios(state: State<AppState>) -> Result<Vec<Scenario>, String> {
+    let guard = state.project.lock().unwrap();
+    let p = guard.as_ref().ok_or("no project open")?;
+    p.load_scenarios().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn upsert_scenario(state: State<AppState>, scenario: Scenario) -> Result<(), String> {
+    let guard = state.project.lock().unwrap();
+    let p = guard.as_ref().ok_or("no project open")?;
+    p.save_scenario(&scenario).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn delete_scenario(state: State<AppState>, id: String) -> Result<(), String> {
+    let guard = state.project.lock().unwrap();
+    let p = guard.as_ref().ok_or("no project open")?;
+    p.delete_scenario(&id).map_err(|e| e.to_string())
 }
