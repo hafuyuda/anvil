@@ -68,121 +68,148 @@ export function TokenInspector({ board, token }: Props) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <div>
-        <div style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>
+        <div
+          style={{
+            fontSize: 11,
+            color: "var(--fg-muted)",
+            marginBottom: 4,
+            textTransform: "uppercase",
+            letterSpacing: 0.5,
+          }}
+        >
           名称覆盖
         </div>
         <input
+          className="input"
           value={draft.name_override ?? ""}
           placeholder={linkedCard?.name ?? "（无）"}
           onChange={(e) => update({ name_override: e.target.value || null })}
-          style={{ width: "100%", padding: "4px 6px", boxSizing: "border-box" }}
         />
         {linkedCard && (
-          <div style={{ fontSize: 11, color: "#aaa", marginTop: 2 }}>
+          <div
+            style={{
+              fontSize: 11,
+              color: "var(--fg-muted)",
+              marginTop: 2,
+            }}
+          >
             原卡：{linkedCard.name}
           </div>
         )}
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        <label style={{ fontSize: 12 }}>
-          <div style={{ color: "#888", marginBottom: 2 }}>宽</div>
-          <input
-            type="number"
-            value={draft.w ?? 80}
-            onChange={(e) => update({ w: Number(e.target.value) || 80 })}
-            style={{
-              width: "100%",
-              padding: "3px 6px",
-              boxSizing: "border-box",
-            }}
-          />
-        </label>
-        <label style={{ fontSize: 12 }}>
-          <div style={{ color: "#888", marginBottom: 2 }}>高</div>
-          <input
-            type="number"
-            value={draft.h ?? 80}
-            onChange={(e) => update({ h: Number(e.target.value) || 80 })}
-            style={{
-              width: "100%",
-              padding: "3px 6px",
-              boxSizing: "border-box",
-            }}
-          />
-        </label>
+        <LabeledInput
+          label="宽"
+          type="number"
+          value={draft.w ?? 80}
+          onChange={(v) => update({ w: Number(v) || 80 })}
+        />
+        <LabeledInput
+          label="高"
+          type="number"
+          value={draft.h ?? 80}
+          onChange={(v) => update({ h: Number(v) || 80 })}
+        />
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        <label style={{ fontSize: 12 }}>
-          <div style={{ color: "#888", marginBottom: 2 }}>X</div>
-          <input
-            type="number"
-            value={draft.x}
-            onChange={(e) => update({ x: Number(e.target.value) || 0 })}
-            style={{
-              width: "100%",
-              padding: "3px 6px",
-              boxSizing: "border-box",
-            }}
-          />
-        </label>
-        <label style={{ fontSize: 12 }}>
-          <div style={{ color: "#888", marginBottom: 2 }}>Y</div>
-          <input
-            type="number"
-            value={draft.y}
-            onChange={(e) => update({ y: Number(e.target.value) || 0 })}
-            style={{
-              width: "100%",
-              padding: "3px 6px",
-              boxSizing: "border-box",
-            }}
-          />
-        </label>
+        <LabeledInput
+          label="X"
+          type="number"
+          value={draft.x}
+          onChange={(v) => update({ x: Number(v) || 0 })}
+        />
+        <LabeledInput
+          label="Y"
+          type="number"
+          value={draft.y}
+          onChange={(v) => update({ y: Number(v) || 0 })}
+        />
       </div>
 
-      <label style={{ fontSize: 12 }}>
-        <div style={{ color: "#888", marginBottom: 2 }}>层级</div>
-        <input
-          type="number"
-          value={draft.layer}
-          onChange={(e) => update({ layer: Number(e.target.value) || 0 })}
-          style={{ width: "100%", padding: "3px 6px", boxSizing: "border-box" }}
-        />
-      </label>
+      <LabeledInput
+        label="层级"
+        type="number"
+        value={draft.layer}
+        onChange={(v) => update({ layer: Number(v) || 0 })}
+      />
 
       <label
         style={{
           fontSize: 12,
           display: "flex",
           alignItems: "center",
-          gap: 4,
+          gap: 6,
+          color: "var(--fg-secondary)",
+          cursor: "pointer",
         }}
       >
         <input
           type="checkbox"
           checked={draft.visible}
           onChange={(e) => update({ visible: e.target.checked })}
+          style={{ accentColor: "var(--accent-gold)" }}
         />
         可见
       </label>
 
-      <div style={{ fontSize: 11, color: "#aaa" }}>
+      <div
+        style={{
+          fontSize: 11,
+          color: "var(--fg-muted)",
+          fontFamily: "var(--font-mono)",
+        }}
+      >
         Token ID: {token.id.slice(0, 8)}
       </div>
 
       <div style={{ display: "flex", gap: 8 }}>
-        <button onClick={save} disabled={!dirty}>
+        <button className="btn" onClick={save} disabled={!dirty}>
           {dirty ? "保存" : "已保存"}
         </button>
         <button
+          className="btn btn-danger"
           onClick={handleDelete}
-          style={{ marginLeft: "auto", color: "#c33" }}
+          style={{ marginLeft: "auto" }}
         >
           删除
         </button>
       </div>
     </div>
+  );
+}
+
+function LabeledInput({
+  label,
+  type,
+  value,
+  onChange,
+}: {
+  label: string;
+  type: "number" | "text";
+  value: string | number;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <label style={{ fontSize: 12 }}>
+      <div
+        style={{
+          color: "var(--fg-muted)",
+          marginBottom: 3,
+          textTransform: "uppercase",
+          letterSpacing: 0.5,
+          fontSize: 11,
+        }}
+      >
+        {label}
+      </div>
+      <input
+        className="input"
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </label>
   );
 }

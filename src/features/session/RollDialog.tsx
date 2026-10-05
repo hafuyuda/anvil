@@ -14,10 +14,8 @@ export function RollDialog({ onRoll, onClose }: Props) {
 
   function parseAndRoll(): RollInfo | null {
     const trimmed = expr.trim().toLowerCase();
-    // 支持形式：NdM、NdM+K、NdM-K、纯数字
     const m = trimmed.match(/^(\d*)d(\d+)([+-]\d+)?$/);
     if (!m) {
-      // 退化为纯数字
       const n = Number(trimmed);
       if (!Number.isNaN(n)) {
         return { expr: trimmed, result: n, detail: [n] };
@@ -27,9 +25,7 @@ export function RollDialog({ onRoll, onClose }: Props) {
     const count = m[1] ? Number(m[1]) : 1;
     const face = Number(m[2]);
     const mod = m[3] ? Number(m[3]) : 0;
-    if (count < 1 || count > 100 || face < 2 || face > 1000) {
-      return null;
-    }
+    if (count < 1 || count > 100 || face < 2 || face > 1000) return null;
     const detail: number[] = [];
     for (let i = 0; i < count; i++) {
       detail.push(Math.floor(Math.random() * face) + 1);
@@ -54,14 +50,28 @@ export function RollDialog({ onRoll, onClose }: Props) {
       onClose={onClose}
       footer={
         <>
-          <button onClick={onClose}>取消</button>
-          <button onClick={handleRoll}>掷</button>
+          <button className="btn" onClick={onClose}>
+            取消
+          </button>
+          <button className="btn btn-primary" onClick={handleRoll}>
+            掷
+          </button>
         </>
       }
     >
       <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        <span style={{ fontSize: 11, color: "#888" }}>表达式</span>
+        <span
+          style={{
+            fontSize: 11,
+            color: "var(--fg-muted)",
+            textTransform: "uppercase",
+            letterSpacing: 0.5,
+          }}
+        >
+          表达式
+        </span>
         <input
+          className="input"
           value={expr}
           onChange={(e) => {
             setExpr(e.target.value);
@@ -70,28 +80,35 @@ export function RollDialog({ onRoll, onClose }: Props) {
           onKeyDown={(e) => {
             if (e.key === "Enter") handleRoll();
           }}
-          style={{
-            padding: "6px 8px",
-            fontSize: 14,
-            fontFamily: "monospace",
-          }}
+          style={{ fontFamily: "var(--font-mono)", fontSize: 14 }}
           autoFocus
         />
       </label>
 
       <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        <span style={{ fontSize: 11, color: "#888" }}>说明（可选）</span>
+        <span
+          style={{
+            fontSize: 11,
+            color: "var(--fg-muted)",
+            textTransform: "uppercase",
+            letterSpacing: 0.5,
+          }}
+        >
+          说明（可选）
+        </span>
         <input
+          className="input"
           value={note}
           onChange={(e) => setNote(e.target.value)}
           placeholder="例如：洞察检定"
-          style={{ padding: "4px 6px" }}
         />
       </label>
 
-      {error && <div style={{ fontSize: 12, color: "#c33" }}>{error}</div>}
+      {error && (
+        <div style={{ fontSize: 12, color: "var(--danger)" }}>{error}</div>
+      )}
 
-      <div style={{ fontSize: 11, color: "#aaa" }}>
+      <div style={{ fontSize: 11, color: "var(--fg-muted)" }}>
         支持：1d20、2d6+3、3d8-2、纯数字
       </div>
     </Modal>

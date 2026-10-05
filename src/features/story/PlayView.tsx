@@ -7,11 +7,10 @@ interface Props {
 }
 
 export function PlayView({ scenario }: Props) {
-  const cards = useProjectStore((s) => s.cards);
-  const relations = useProjectStore((s) => s.relations);
-  const relationKinds = useProjectStore((s) => s.relationKinds);
+  const cards = useProjectStore((s) => s.cards) ?? [];
+  const relations = useProjectStore((s) => s.relations) ?? [];
+  const relationKinds = useProjectStore((s) => s.relationKinds) ?? [];
 
-  // 初始化变量值
   const [values, setValues] = useState<Record<string, unknown>>(() => {
     const init: Record<string, unknown> = {};
     for (const v of scenario.variables) {
@@ -21,7 +20,7 @@ export function PlayView({ scenario }: Props) {
   });
 
   const [currentId, setCurrentId] = useState<string | null>(
-    scenario.entry_node ?? scenario.node_ids[0] ?? null,
+    scenario.entry_node ?? scenario.node_ids[0] ?? null
   );
   const [history, setHistory] = useState<string[]>([]);
   const [edgeStates, setEdgeStates] = useState<
@@ -30,22 +29,20 @@ export function PlayView({ scenario }: Props) {
 
   const nodeIds = useMemo(
     () => new Set(scenario.node_ids),
-    [scenario.node_ids],
+    [scenario.node_ids]
   );
 
-  // 当前节点相关的出边
   const outgoing = useMemo(
     () => relations.filter((r) => r.from === currentId && nodeIds.has(r.to)),
-    [relations, currentId, nodeIds],
+    [relations, currentId, nodeIds]
   );
 
-  // 每次变量或当前节点变化，重新求值所有边
   useEffect(() => {
     let cancelled = false;
     async function run() {
       const states: Record<string, { ok: boolean; error?: string }> = {};
       const allEdges = relations.filter(
-        (r) => nodeIds.has(r.from) && nodeIds.has(r.to),
+        (r) => nodeIds.has(r.from) && nodeIds.has(r.to)
       );
       for (const r of allEdges) {
         const expr =
@@ -102,7 +99,13 @@ export function PlayView({ scenario }: Props) {
 
   if (!currentId) {
     return (
-      <div style={{ padding: 24, color: "#888" }}>
+      <div
+        style={{
+          padding: 24,
+          color: "var(--fg-muted)",
+          fontSize: 13,
+        }}
+      >
         该剧情没有入口节点。去「设置」里指定。
       </div>
     );
@@ -114,45 +117,54 @@ export function PlayView({ scenario }: Props) {
         flex: 1,
         minHeight: 0,
         display: "flex",
-        gap: 16,
+        gap: 0,
       }}
     >
       {/* 左：变量面板 + 历史 */}
       <div
         style={{
           width: 240,
-          borderRight: "1px solid #eee",
+          borderRight: "1px solid var(--border-subtle)",
           padding: 12,
           overflow: "auto",
           display: "flex",
           flexDirection: "column",
           gap: 12,
+          background: "var(--bg-panel)",
+          flexShrink: 0,
         }}
       >
         <div>
           <div
             style={{
-              fontSize: 11,
-              color: "#888",
+              fontSize: 10,
+              color: "var(--fg-muted)",
               textTransform: "uppercase",
+              letterSpacing: 1,
               marginBottom: 6,
             }}
           >
             变量
           </div>
           {scenario.variables.length === 0 && (
-            <div style={{ fontSize: 12, color: "#aaa" }}>无</div>
+            <div style={{ fontSize: 12, color: "var(--fg-muted)" }}>无</div>
           )}
           {scenario.variables.map((v) => (
             <VariableRow
               key={v.key}
               def={v}
               value={values[v.key]}
-              onChange={(val) => setValues((s) => ({ ...s, [v.key]: val }))}
+              onChange={(val) =>
+                setValues((s) => ({ ...s, [v.key]: val }))
+              }
             />
           ))}
           {scenario.variables.length > 0 && (
-            <button onClick={resetVars} style={{ fontSize: 12, marginTop: 6 }}>
+            <button
+              className="btn"
+              onClick={resetVars}
+              style={{ fontSize: 11, marginTop: 6 }}
+            >
               重置变量
             </button>
           )}
@@ -161,19 +173,28 @@ export function PlayView({ scenario }: Props) {
         <div>
           <div
             style={{
-              fontSize: 11,
-              color: "#888",
+              fontSize: 10,
+              color: "var(--fg-muted)",
               textTransform: "uppercase",
+              letterSpacing: 1,
               marginBottom: 6,
             }}
           >
             历史（{history.length}）
           </div>
           <ul
-            style={{ listStyle: "none", padding: 0, margin: 0, fontSize: 12 }}
+            style={{
+              listStyle: "none",
+              padding: 0,
+              margin: 0,
+              fontSize: 12,
+            }}
           >
             {history.map((id, i) => (
-              <li key={i} style={{ color: "#666", padding: "2px 0" }}>
+              <li
+                key={i}
+                style={{ color: "var(--fg-secondary)", padding: "2px 0" }}
+              >
                 {cardName(id)}
               </li>
             ))}
@@ -182,36 +203,63 @@ export function PlayView({ scenario }: Props) {
       </div>
 
       {/* 右：当前节点 + 可达边 */}
-      <div style={{ flex: 1, minWidth: 0, padding: 16, overflow: "auto" }}>
+      <div
+        style={{
+          flex: 1,
+          minWidth: 0,
+          padding: 16,
+          overflow: "auto",
+        }}
+      >
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>
+          <div
+            style={{
+              fontSize: 10,
+              color: "var(--fg-muted)",
+              textTransform: "uppercase",
+              letterSpacing: 1,
+              marginBottom: 4,
+            }}
+          >
             当前节点
           </div>
-          <div style={{ fontSize: 18, fontWeight: 600 }}>
+          <div
+            style={{
+              fontSize: 20,
+              fontFamily: "var(--font-title)",
+              fontWeight: 600,
+              color: "var(--accent-gold)",
+            }}
+          >
             {cardName(currentId)}
           </div>
         </div>
 
         <div style={{ marginBottom: 12, display: "flex", gap: 8 }}>
-          <button onClick={back} disabled={history.length === 0}>
+          <button className="btn" onClick={back} disabled={history.length === 0}>
             回退
           </button>
-          <button onClick={reset}>重置</button>
+          <button className="btn" onClick={reset}>
+            重置
+          </button>
         </div>
 
         <div>
           <div
             style={{
-              fontSize: 11,
-              color: "#888",
+              fontSize: 10,
+              color: "var(--fg-muted)",
               textTransform: "uppercase",
+              letterSpacing: 1,
               marginBottom: 6,
             }}
           >
             可走的分支（{outgoing.length}）
           </div>
           {outgoing.length === 0 && (
-            <div style={{ fontSize: 12, color: "#aaa" }}>没有出边</div>
+            <div style={{ fontSize: 12, color: "var(--fg-muted)" }}>
+              没有出边
+            </div>
           )}
           {outgoing.map((r) => {
             const state = edgeStates[r.id];
@@ -221,33 +269,44 @@ export function PlayView({ scenario }: Props) {
             return (
               <div
                 key={r.id}
+                onClick={() => reachable && advance(r.to)}
                 style={{
                   display: "flex",
                   alignItems: "center",
                   gap: 8,
-                  padding: "6px 8px",
+                  padding: "8px 10px",
                   marginBottom: 4,
-                  borderRadius: 4,
-                  background: reachable ? "#eef8ee" : "#f6f6f6",
+                  borderRadius: "var(--radius-md)",
+                  background: reachable
+                    ? "var(--bg-surface)"
+                    : "var(--bg-panel)",
+                  border: reachable
+                    ? "1px solid var(--border-default)"
+                    : "1px solid var(--border-subtle)",
                   opacity: reachable ? 1 : 0.5,
                   cursor: reachable ? "pointer" : "not-allowed",
+                  transition: "border-color 0.12s",
                 }}
-                onClick={() => reachable && advance(r.to)}
               >
                 <span
                   style={{
                     fontSize: 11,
-                    color: kind?.color ?? "#666",
+                    color: kind?.color ?? "var(--fg-secondary)",
                     minWidth: 60,
+                    fontWeight: 600,
                   }}
                 >
                   {kind?.name ?? r.kind}
                 </span>
-                <span style={{ flex: 1 }}>{cardName(r.to)}</span>
+                <span style={{ flex: 1, color: "var(--fg-primary)" }}>
+                  {cardName(r.to)}
+                </span>
                 <span
                   style={{
                     fontSize: 11,
-                    color: reachable ? "#286" : "#c33",
+                    color: reachable
+                      ? "var(--success)"
+                      : "var(--danger)",
                   }}
                 >
                   {err ? "错误" : reachable ? "可达" : "不可达"}
@@ -260,8 +319,8 @@ export function PlayView({ scenario }: Props) {
               style={{
                 marginTop: 8,
                 fontSize: 11,
-                color: "#c33",
-                fontFamily: "monospace",
+                color: "var(--danger)",
+                fontFamily: "var(--font-mono)",
               }}
             >
               {outgoing
@@ -289,29 +348,38 @@ function VariableRow({
   onChange: (v: unknown) => void;
 }) {
   const label = (
-    <div style={{ fontSize: 11, color: "#666", marginBottom: 2 }}>
+    <div
+      style={{
+        fontSize: 11,
+        color: "var(--fg-secondary)",
+        marginBottom: 3,
+      }}
+    >
       {def.label}
     </div>
   );
-
-  const style = {
-    width: "100%",
-    padding: "3px 6px",
-    fontSize: 12,
-    boxSizing: "border-box" as const,
-  };
 
   if (def.ty.kind === "bool") {
     return (
       <div style={{ marginBottom: 6 }}>
         {label}
-        <label style={{ display: "flex", gap: 4, alignItems: "center" }}>
+        <label
+          style={{
+            display: "flex",
+            gap: 6,
+            alignItems: "center",
+            fontSize: 12,
+            color: "var(--fg-secondary)",
+            cursor: "pointer",
+          }}
+        >
           <input
             type="checkbox"
             checked={Boolean(value)}
             onChange={(e) => onChange(e.target.checked)}
+            style={{ accentColor: "var(--accent-gold)" }}
           />
-          <span style={{ fontSize: 12 }}>{String(Boolean(value))}</span>
+          {String(Boolean(value))}
         </label>
       </div>
     );
@@ -322,12 +390,12 @@ function VariableRow({
       <div style={{ marginBottom: 6 }}>
         {label}
         <input
+          className="input"
           type="number"
           value={value === undefined || value === null ? "" : String(value)}
           onChange={(e) =>
             onChange(e.target.value === "" ? null : Number(e.target.value))
           }
-          style={style}
         />
       </div>
     );
@@ -337,9 +405,9 @@ function VariableRow({
     <div style={{ marginBottom: 6 }}>
       {label}
       <input
+        className="input"
         value={(value as string) ?? ""}
         onChange={(e) => onChange(e.target.value)}
-        style={style}
       />
     </div>
   );

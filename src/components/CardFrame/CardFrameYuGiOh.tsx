@@ -19,7 +19,7 @@ export function CardFrameYuGiOh({
 }: Props) {
   const spec = SIZE_MAP[size];
   const m = mapCard(card, cardType);
-  const accent = cardType.color ?? "#8b6f47";
+  const accent = cardType.color ?? "var(--accent-copper)";
 
   const displayBody = m.body.length > 0 ? m.body : (cardType.description ?? "");
   const stars = m.level ? "★".repeat(Math.min(m.level, 12)) : "";
@@ -33,10 +33,10 @@ export function CardFrameYuGiOh({
         borderRadius: spec.borderRadius,
         padding: 3,
         boxSizing: "border-box",
-        background: `linear-gradient(145deg, #d4c5a0 0%, #b8a678 50%, #8f7d52 100%)`,
+        background: `linear-gradient(145deg, var(--card-yugioh-outer-1) 0%, var(--card-yugioh-outer-2) 50%, var(--card-yugioh-outer-3) 100%)`,
         boxShadow: selected
-          ? `0 0 0 2px #fff, 0 0 0 4px ${accent}, 0 4px 12px rgba(0,0,0,0.3)`
-          : "0 2px 6px rgba(0,0,0,0.25)",
+          ? `0 0 0 2px var(--bg-panel), 0 0 0 4px ${accent}, var(--card-yugioh-shadow-selected)`
+          : "var(--card-yugioh-shadow)",
         cursor: onClick ? "pointer" : "default",
         display: "flex",
         flexDirection: "column",
@@ -45,7 +45,6 @@ export function CardFrameYuGiOh({
         transform: selected ? "translateY(-2px)" : "none",
       }}
     >
-      {/* 内层金边 */}
       <div
         style={{
           flex: 1,
@@ -56,7 +55,7 @@ export function CardFrameYuGiOh({
           display: "flex",
           flexDirection: "column",
           gap: spec.padding / 2,
-          background: `linear-gradient(180deg, #f7efd6 0%, #ede0bf 100%)`,
+          background: `linear-gradient(180deg, var(--card-yugioh-inner-bg-1) 0%, var(--card-yugioh-inner-bg-2) 100%)`,
         }}
       >
         {/* 标题栏 */}
@@ -80,7 +79,7 @@ export function CardFrameYuGiOh({
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
-              fontFamily: "Georgia, serif",
+              fontFamily: "var(--font-title)",
             }}
             title={m.title}
           >
@@ -99,12 +98,27 @@ export function CardFrameYuGiOh({
           </span>
         </div>
 
+        {/* 副标题（可选） */}
+        {m.subtitle && (
+          <div
+            style={{
+              fontSize: spec.metaSize,
+              color: "var(--card-yugioh-text-dim)",
+              textAlign: "center",
+              padding: "0 4px",
+              fontStyle: "italic",
+            }}
+          >
+            {m.subtitle}
+          </div>
+        )}
+
         {/* 图像区 */}
         <div
           style={{
             flex: "0 0 auto",
             height: spec.h * 0.38,
-            background: `linear-gradient(180deg, ${accent}22 0%, ${accent}55 100%)`,
+            background: `${accent}33`,
             border: `1px solid ${darken(accent, 0.2)}`,
             borderRadius: 3,
             display: "flex",
@@ -121,21 +135,21 @@ export function CardFrameYuGiOh({
               color: "#fff",
               textShadow: `0 2px 4px ${darken(accent, 0.3)}`,
               opacity: 0.85,
-              fontFamily: "Georgia, serif",
+              fontFamily: "var(--font-title)",
             }}
           >
             {m.title.slice(0, 2)}
           </div>
         </div>
 
-        {/* 等级条 */}
+        {/* 等级星 */}
         {stars && (
           <div
             style={{
               display: "flex",
               justifyContent: "flex-end",
               fontSize: spec.metaSize,
-              color: "#b8860b",
+              color: "var(--card-yugioh-star)",
               letterSpacing: -1,
               padding: "0 4px",
               textShadow: "0 0 1px #fff",
@@ -150,7 +164,7 @@ export function CardFrameYuGiOh({
           style={{
             fontSize: spec.typeSize,
             textAlign: "center",
-            color: "#4a3a1a",
+            color: "var(--card-yugioh-text-dim)",
             padding: "1px 0",
             borderTop: `1px solid ${accent}66`,
             borderBottom: `1px solid ${accent}66`,
@@ -166,13 +180,13 @@ export function CardFrameYuGiOh({
           style={{
             flex: 1,
             minHeight: 0,
-            background: "#fdfaee",
+            background: "var(--card-yugioh-parchment)",
             border: `1px solid ${accent}88`,
             borderRadius: 3,
             padding: `${spec.padding}px ${spec.padding + 2}px`,
             fontSize: spec.bodySize,
             lineHeight: 1.35,
-            color: "#3a2a10",
+            color: "var(--card-yugioh-text)",
             overflow: "hidden",
             whiteSpace: "pre-wrap",
             position: "relative",
@@ -190,7 +204,6 @@ export function CardFrameYuGiOh({
             {displayBody}
           </div>
 
-          {/* ATK/DEF */}
           {(m.atk !== undefined || m.def !== undefined) && (
             <div
               style={{
@@ -201,8 +214,8 @@ export function CardFrameYuGiOh({
                 gap: 6,
                 fontSize: spec.statSize,
                 fontWeight: 700,
-                color: "#3a2a10",
-                background: "#fdfaeecc",
+                color: "var(--card-yugioh-text)",
+                background: "var(--card-yugioh-parchment)",
                 padding: "0 4px",
               }}
             >
@@ -216,11 +229,12 @@ export function CardFrameYuGiOh({
   );
 }
 
-/** 简易颜色加深 */
+/** 简易颜色加深，仅当 accent 是 hex 时有效 */
 function darken(hex: string, amount = 0.2): string {
   const clean = hex.replace("#", "");
   if (clean.length !== 6) return hex;
   const n = parseInt(clean, 16);
+  if (Number.isNaN(n)) return hex;
   let r = (n >> 16) & 0xff;
   let g = (n >> 8) & 0xff;
   let b = n & 0xff;

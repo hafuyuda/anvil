@@ -212,9 +212,9 @@ function FieldRow({ field, onChange, onRemove, onMoveUp }: FieldRowProps) {
         flexDirection: "column",
         gap: 6,
         padding: 8,
-        border: "1px solid #eee",
-        borderRadius: 4,
-        background: "#fff",
+        border: "1px solid var(--border-subtle)",
+        borderRadius: "var(--radius-md)",
+        background: "var(--bg-surface)",
         fontSize: 12,
       }}
     >
@@ -227,25 +227,26 @@ function FieldRow({ field, onChange, onRemove, onMoveUp }: FieldRowProps) {
         }}
       >
         <input
+          className="input"
           value={field.label}
           onChange={(e) => onChange({ label: e.target.value })}
           placeholder="显示名"
-          style={{ padding: "4px 6px" }}
         />
         <input
+          className="input"
           value={field.key}
           onChange={(e) => onChange({ key: e.target.value })}
           placeholder="key"
-          style={{ padding: "4px 6px", fontFamily: "monospace" }}
+          style={{ fontFamily: "var(--font-mono)" }}
         />
         <select
+          className="select"
           value={field.ty.kind}
           onChange={(e) =>
             onChange({
               ty: defaultFieldType(e.target.value as FieldType["kind"]),
             })
           }
-          style={{ padding: "4px 6px" }}
         >
           {FIELD_KINDS.map((k) => (
             <option key={k.kind} value={k.kind}>
@@ -253,18 +254,39 @@ function FieldRow({ field, onChange, onRemove, onMoveUp }: FieldRowProps) {
             </option>
           ))}
         </select>
-        <label style={{ display: "flex", alignItems: "center", gap: 4 }}>
+        <label
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+            color: "var(--fg-secondary)",
+            cursor: "pointer",
+            whiteSpace: "nowrap",
+          }}
+        >
           <input
             type="checkbox"
             checked={field.required}
             onChange={(e) => onChange({ required: e.target.checked })}
+            style={{ accentColor: "var(--accent-gold)" }}
           />
           必填
         </label>
-        <button onClick={onMoveUp} disabled={!onMoveUp} title="上移">
+        <button
+          className="btn btn-ghost"
+          onClick={onMoveUp}
+          disabled={!onMoveUp}
+          title="上移"
+          style={{ padding: "2px 8px" }}
+        >
           ↑
         </button>
-        <button onClick={onRemove} title="删除">
+        <button
+          className="btn btn-ghost"
+          onClick={onRemove}
+          title="删除"
+          style={{ padding: "2px 8px", color: "var(--danger)" }}
+        >
           ×
         </button>
       </div>
@@ -310,28 +332,41 @@ function OptionsEditor({
 }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-      <div style={{ fontSize: 11, color: "#888" }}>选项</div>
+      <div
+        style={{
+          fontSize: 10,
+          color: "var(--fg-muted)",
+          textTransform: "uppercase",
+          letterSpacing: 1,
+        }}
+      >
+        选项
+      </div>
       {options.map((o, i) => (
         <div key={i} style={{ display: "flex", gap: 4 }}>
           <input
+            className="input"
             value={o}
             onChange={(e) => {
               const next = [...options];
               next[i] = e.target.value;
               onChange(next);
             }}
-            style={{ flex: 1, padding: "3px 6px" }}
+            style={{ flex: 1 }}
           />
           <button
+            className="btn btn-ghost"
             onClick={() => onChange(options.filter((_, idx) => idx !== i))}
+            style={{ color: "var(--danger)", padding: "2px 8px" }}
           >
             ×
           </button>
         </div>
       ))}
       <button
+        className="btn"
         onClick={() => onChange([...options, `选项${options.length + 1}`])}
-        style={{ alignSelf: "flex-start" }}
+        style={{ alignSelf: "flex-start", fontSize: 11 }}
       >
         + 选项
       </button>

@@ -53,6 +53,41 @@
   --leftnav-w: 200px;
 
   color-scheme: dark;
+
+  /* 卡牌（游戏王风格） */
+  --card-yugioh-outer-1: #d4c5a0;
+  --card-yugioh-outer-2: #b8a678;
+  --card-yugioh-outer-3: #8f7d52;
+  --card-yugioh-inner-bg-1: #f7efd6;
+  --card-yugioh-inner-bg-2: #ede0bf;
+  --card-yugioh-parchment: #fdfaee;
+  --card-yugioh-text: #3a2a10;
+  --card-yugioh-text-dim: #4a3a1a;
+  --card-yugioh-star: #b8860b;
+  --card-yugioh-image-1: rgba(0, 0, 0, 0);
+  --card-yugioh-image-2: rgba(0, 0, 0, 0);
+  --card-yugioh-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+  --card-yugioh-shadow-selected: 0 4px 14px rgba(0, 0, 0, 0.6);
+
+  /* 对话气泡 */
+  --chat-bubble-bg: #2f2922;
+  --chat-bubble-border: #4a4033;
+  --chat-bubble-text: #e8dcc5;
+  --chat-action-text: #a89880;
+  --chat-roll-bg: #25201a;
+  --chat-roll-border: #4a4033;
+  --chat-roll-accent: #7a8590;
+  --chat-narration-bg: #2a2118;
+  --chat-narration-border: #c9a961;
+  --chat-narration-text: #d4c5a0;
+  --chat-ooc-bg: #2a2a26;
+  --chat-ooc-text: #a89880;
+  --chat-whisper-bg: #2c2436;
+  --chat-whisper-border: #7a5a94;
+  --chat-whisper-text: #c8a8d8;
+  --chat-system-text: #6d6252;
+  --chat-system-line: #3a3226;
+  --chat-panel-bg: #1f1a14;
 }
 
 * {

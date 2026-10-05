@@ -11,9 +11,7 @@ interface Props {
 
 export function ChatLog({ events, cards, cardTypes, filter = "all" }: Props) {
   const bottomRef = useRef<HTMLDivElement | null>(null);
-  const containerRef = useRef<HTMLDivElement | null>(null);
 
-  // 事件变化时滚到底部
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [events.length]);
@@ -31,8 +29,9 @@ export function ChatLog({ events, cards, cardTypes, filter = "all" }: Props) {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          color: "#aaa",
+          color: "var(--fg-muted)",
           fontSize: 12,
+          background: "var(--chat-panel-bg)",
         }}
       >
         还没有消息，下面输入框开始吧
@@ -42,13 +41,12 @@ export function ChatLog({ events, cards, cardTypes, filter = "all" }: Props) {
 
   return (
     <div
-      ref={containerRef}
       style={{
         flex: 1,
         minHeight: 0,
         overflowY: "auto",
         padding: "8px 12px",
-        background: "#fbfbfb",
+        background: "var(--chat-panel-bg)",
       }}
     >
       {shown.map((e) => (

@@ -815,6 +815,36 @@ impl Project {
         writeln!(f, "{}", line)?;
         Ok(())
     }
+
+    pub fn manifest_path(&self) -> PathBuf {
+        self.root.join("manifest.json")
+    }
+
+    pub fn load_manifest(&self) -> anyhow::Result<crate::core::model::manifest::Manifest> {
+        let path = self.manifest_path();
+        if !path.exists() {
+            let name = self
+                .root
+                .file_name()
+                .and_then(|s| s.to_str())
+                .unwrap_or("未命名项目")
+                .to_string();
+            let m = crate::core::model::manifest::Manifest::new(name);
+            self.save_manifest(&m)?;
+            return Ok(m);
+        }
+        let bytes = std::fs::read(&path)?;
+        Ok(serde_json::from_slice(&bytes)?)
+    }
+
+    pub fn save_manifest(
+        &self,
+        manifest: &crate::core::model::manifest::Manifest,
+    ) -> anyhow::Result<()> {
+        let json = serde_json::to_vec_pretty(manifest)?;
+        write_atomic(&self.manifest_path(), &json)?;
+        Ok(())
+    }
 }
 
 fn newest_mtime_recursive(dir: &std::path::Path) -> Option<std::time::SystemTime> {

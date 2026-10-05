@@ -12,6 +12,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import { useProjectStore } from "../../stores/projectStore";
 import { buildGraph } from "./graphLayout";
+import { Toolbar, ToolbarSpacer } from "../../components/Toolbar";
 
 export function GraphView() {
   const cards = useProjectStore((s) => s.cards) ?? [];
@@ -36,14 +37,9 @@ export function GraphView() {
     [cards, relations, cardTypes, relationKinds],
   );
 
-  // 图数据变化时基于 raw 生成一次，之后由本地 state 驱动
-  const [nodes, setNodes] = useState<Node[]>([]);
-  const [dataVersion, setDataVersion] = useState(0);
-
-  // 每次 raw 或过滤条件变化时重建 nodes/edges 并重算布局
-  useMemo(() => {
-    const matchMap = new Map<string, boolean>();
+  const matchMap = useMemo(() => {
     const q = query.trim().toLowerCase();
+    const m = new Map<string, boolean>();
     for (const n of raw.nodes) {
       const card = cards.find((c) => c.id === n.id);
       let ok = true;
@@ -55,12 +51,15 @@ export function GraphView() {
         ok = inName || inValues;
       }
       if (typeFilter && card && card.type_id !== typeFilter) ok = false;
-      matchMap.set(n.id, ok);
+      m.set(n.id, ok);
     }
+    return m;
+  }, [raw.nodes, query, typeFilter, cards]);
 
+  const visibleNodes: Node[] = useMemo(() => {
+    const q = query.trim();
     const hasFilter = Boolean(q || typeFilter);
-
-    const flowNodes: Node[] = raw.nodes.map((n) => {
+    return raw.nodes.map((n) => {
       const cardType = cardTypes.find((t) => t.id === n.data.typeId);
       const color = cardType?.color ?? "#888888";
       const matched = matchMap.get(n.id) ?? true;
@@ -71,30 +70,33 @@ export function GraphView() {
         data: { label: n.data.label },
         style: {
           padding: 8,
-          borderRadius: 6,
+          borderRadius: 4,
           border: `2px solid ${color}`,
-          background: dim ? "#f5f5f5" : `${color}22`,
+          background: dim ? "var(--bg-surface)" : `${color}22`,
           fontSize: 12,
           whiteSpace: "pre-line" as const,
           textAlign: "center" as const,
           width: 140,
-          color: dim ? "#aaa" : "#222",
+          color: dim ? "var(--fg-muted)" : "var(--fg-primary)",
           opacity: dim ? 0.35 : 1,
           transition: "opacity 0.15s",
         },
       };
     });
-
-    setNodes(flowNodes);
-    setDataVersion((v) => v + 1);
-  }, [raw, query, typeFilter, cards, cardTypes]);
+  }, [raw.nodes, cardTypes, matchMap, query, typeFilter]);
 
   const visibleEdges: Edge[] = useMemo(() => {
     return raw.edges.map((e) => {
       const kind = relationKinds.find((k) => k.id === e.kind);
       const color = kind?.color ?? "#999999";
+      const fromMatch = matchMap.get(e.source) ?? true;
+      const toMatch = matchMap.get(e.target) ?? true;
+
       let hide = false;
       if (kindFilter && e.kind !== kindFilter) hide = true;
+      if (typeFilter && !(fromMatch && toMatch)) hide = true;
+      if (query.trim() && !(fromMatch || toMatch)) hide = true;
+
       return {
         id: e.id,
         source: e.source,
@@ -103,13 +105,16 @@ export function GraphView() {
         hidden: hide,
         style: { stroke: color },
         labelStyle: { fontSize: 10, fill: color },
-        labelBgStyle: { fill: "#ffffffcc" },
+        labelBgStyle: { fill: "var(--bg-panel)" },
+        labelBgPadding: [4, 2] as [number, number],
+        labelBgBorderRadius: 2,
       };
     });
-  }, [raw.edges, relationKinds, kindFilter]);
+  }, [raw.edges, relationKinds, matchMap, kindFilter, typeFilter, query]);
 
   function onNodesChange(changes: NodeChange<Node>[]) {
-    setNodes((ns) => applyNodeChanges(changes, ns));
+    // 位置变动本地保留，不持久化（图谱布局每次重算）
+    void changes;
   }
 
   const hasFilter = Boolean(query.trim() || typeFilter || kindFilter);
@@ -122,7 +127,16 @@ export function GraphView() {
 
   if (cards.length === 0) {
     return (
-      <div style={{ color: "#888", padding: 24 }}>
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "var(--fg-muted)",
+          fontSize: 13,
+        }}
+      >
         还没有卡牌，先去「世界观 · 卡片」创建。
       </div>
     );
@@ -136,30 +150,22 @@ export function GraphView() {
         minWidth: 0,
         display: "flex",
         flexDirection: "column",
+        background: "var(--bg-app)",
       }}
     >
-      <div
-        style={{
-          display: "flex",
-          gap: 8,
-          alignItems: "center",
-          padding: "8px 12px",
-          borderBottom: "1px solid #eee",
-          background: "#fafafa",
-          flexWrap: "wrap",
-          flexShrink: 0,
-        }}
-      >
+      <Toolbar>
         <input
+          className="input"
           placeholder="搜索节点"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          style={{ padding: "4px 8px", fontSize: 12, width: 180 }}
+          style={{ width: 180 }}
         />
         <select
+          className="select"
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value)}
-          style={{ padding: "4px 8px", fontSize: 12 }}
+          style={{ width: 130 }}
         >
           <option value="">全部类型</option>
           {cardTypes.map((t) => (
@@ -169,9 +175,10 @@ export function GraphView() {
           ))}
         </select>
         <select
+          className="select"
           value={kindFilter}
           onChange={(e) => setKindFilter(e.target.value)}
-          style={{ padding: "4px 8px", fontSize: 12 }}
+          style={{ width: 130 }}
         >
           <option value="">全部关系</option>
           {relationKinds.map((k) => (
@@ -181,28 +188,53 @@ export function GraphView() {
           ))}
         </select>
         {hasFilter && (
-          <button onClick={reset} style={{ fontSize: 12 }}>
+          <button className="btn" onClick={reset}>
             重置
           </button>
         )}
-        <span style={{ marginLeft: "auto", fontSize: 11, color: "#999" }}>
+
+        <ToolbarSpacer />
+
+        <span
+          style={{
+            fontSize: 11,
+            color: "var(--fg-muted)",
+            fontFamily: "var(--font-mono)",
+          }}
+        >
           {raw.nodes.length} 节点 · {raw.edges.length} 边
         </span>
-      </div>
+      </Toolbar>
 
       <div style={{ flex: 1, minHeight: 0, position: "relative" }}>
         <ReactFlow
-          key={dataVersion}
-          nodes={nodes}
+          nodes={visibleNodes}
           edges={visibleEdges}
           onNodesChange={onNodesChange}
           onNodeClick={(_, node) => selectCard(node.id)}
           fitView
           fitViewOptions={{ padding: 0.15 }}
+          proOptions={{ hideAttribution: true }}
         >
-          <Background />
-          <Controls />
-          <MiniMap pannable zoomable />
+          <Background color="var(--border-subtle)" gap={20} />
+          <Controls
+            style={{
+              background: "var(--bg-panel)",
+              border: "1px solid var(--border-default)",
+              borderRadius: "var(--radius-md)",
+            }}
+          />
+          <MiniMap
+            pannable
+            zoomable
+            style={{
+              background: "var(--bg-panel)",
+              border: "1px solid var(--border-default)",
+              borderRadius: "var(--radius-md)",
+            }}
+            maskColor="rgba(0,0,0,0.5)"
+            nodeColor={() => "var(--bg-raised)"}
+          />
         </ReactFlow>
       </div>
     </div>

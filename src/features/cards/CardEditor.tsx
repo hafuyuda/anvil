@@ -54,20 +54,27 @@ export function CardEditor({ card, cardType }: Props) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div>
-        <div style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>名称</div>
+        <div
+          style={{
+            fontSize: 10,
+            color: "var(--fg-muted)",
+            textTransform: "uppercase",
+            letterSpacing: 1,
+            marginBottom: 4,
+          }}
+        >
+          名称
+        </div>
         <input
+          className="input"
           value={draft.name}
           onChange={(e) =>
             update({ name: e.target.value, updated_at: nowMs() })
           }
           style={{
-            width: "100%",
-            boxSizing: "border-box",
-            padding: "4px 6px",
             fontSize: 14,
             fontWeight: 600,
-            border: "1px solid #ddd",
-            borderRadius: 4,
+            fontFamily: "var(--font-title)",
           }}
         />
       </div>
@@ -95,20 +102,26 @@ export function CardEditor({ card, cardType }: Props) {
           alignItems: "center",
         }}
       >
-        <span style={{ fontSize: 11, color: dirty ? "#c80" : "#888" }}>
+        <span
+          style={{
+            fontSize: 11,
+            color: dirty ? "var(--warning)" : "var(--fg-muted)",
+          }}
+        >
           {dirty ? "保存中…" : "已保存"}
         </span>
         <button
+          className="btn"
           onClick={commit}
           disabled={!dirty}
           style={{ fontSize: 11 }}
-          title="立即保存"
         >
           保存
         </button>
         <button
+          className="btn btn-danger"
           onClick={handleDelete}
-          style={{ marginLeft: "auto", color: "#c33" }}
+          style={{ marginLeft: "auto" }}
         >
           删除
         </button>

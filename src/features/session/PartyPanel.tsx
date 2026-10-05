@@ -16,7 +16,6 @@ export function PartyPanel({
   selectedTokenId,
   onSelectToken,
 }: Props) {
-  // 找出 session.tokens 里所有挂卡的 token（去重，一张卡只显示一个卡牌实例）
   const seen = new Set<string>();
   const entries: {
     tokenId: string;
@@ -38,8 +37,8 @@ export function PartyPanel({
     <div
       style={{
         width: 176,
-        borderLeft: "1px solid #eee",
-        background: "#fafafa",
+        borderLeft: "1px solid var(--border-subtle)",
+        background: "var(--bg-panel)",
         padding: 8,
         overflow: "auto",
         flexShrink: 0,
@@ -50,9 +49,10 @@ export function PartyPanel({
     >
       <div
         style={{
-          fontSize: 11,
-          color: "#888",
+          fontSize: 10,
+          color: "var(--fg-muted)",
           textTransform: "uppercase",
+          letterSpacing: 1,
           padding: "0 2px",
         }}
       >
@@ -60,8 +60,17 @@ export function PartyPanel({
       </div>
 
       {entries.length === 0 && (
-        <div style={{ fontSize: 12, color: "#aaa", padding: "0 2px" }}>
-          没有角色卡。先从卡片墙加 Token 到棋盘，或直接在棋盘上放置。
+        <div
+          style={{
+            fontSize: 12,
+            color: "var(--fg-muted)",
+            padding: "0 2px",
+            lineHeight: 1.5,
+          }}
+        >
+          没有角色卡。
+          <br />
+          从卡片墙加 Token 到棋盘。
         </div>
       )}
 

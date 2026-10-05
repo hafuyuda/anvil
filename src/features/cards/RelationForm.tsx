@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import { ipc, type Relation, type RelationKind } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
 import { FieldInput } from "../../components/FieldInput";
+import { newId } from "../../lib/id";
+import { nowMs } from "../../lib/time";
 
 interface Props {
   fromCardId: string;
@@ -10,16 +12,17 @@ interface Props {
 }
 
 export function RelationForm({ fromCardId, fromTypeId, onDone }: Props) {
-  const relationKinds = useProjectStore((s) => s.relationKinds);
-  const cards = useProjectStore((s) => s.cards);
+  const relationKinds = useProjectStore((s) => s.relationKinds) ?? [];
+  const cards = useProjectStore((s) => s.cards) ?? [];
   const upsertRelation = useProjectStore((s) => s.upsertRelation);
 
   const availableKinds = useMemo(
     () =>
       relationKinds.filter(
-        (k) => k.from_types.length === 0 || k.from_types.includes(fromTypeId),
+        (k) =>
+          k.from_types.length === 0 || k.from_types.includes(fromTypeId)
       ),
-    [relationKinds, fromTypeId],
+    [relationKinds, fromTypeId]
   );
 
   const [kindId, setKindId] = useState<string>("");
@@ -34,7 +37,7 @@ export function RelationForm({ fromCardId, fromTypeId, onDone }: Props) {
     return cards.filter(
       (c) =>
         c.id !== fromCardId &&
-        (kind.to_types.length === 0 || kind.to_types.includes(c.type_id)),
+        (kind.to_types.length === 0 || kind.to_types.includes(c.type_id))
     );
   }, [cards, kind, fromCardId]);
 
@@ -47,15 +50,14 @@ export function RelationForm({ fromCardId, fromTypeId, onDone }: Props) {
       alert("请选择目标卡牌");
       return;
     }
-    const now = Date.now();
     const relation: Relation = {
-      id: crypto.randomUUID(),
+      id: newId(),
       from: fromCardId,
       to: toId,
       kind: kind.id,
       label: null,
       meta,
-      created_at: now,
+      created_at: nowMs(),
     };
     try {
       await ipc.upsertRelation(relation);
@@ -72,24 +74,33 @@ export function RelationForm({ fromCardId, fromTypeId, onDone }: Props) {
         display: "flex",
         flexDirection: "column",
         gap: 8,
-        padding: 8,
-        border: "1px dashed #ccc",
-        borderRadius: 4,
-        background: "#fdfdfd",
+        padding: 10,
+        border: "1px dashed var(--border-strong)",
+        borderRadius: "var(--radius-md)",
+        background: "var(--bg-surface)",
+        marginBottom: 8,
       }}
     >
       <div>
-        <div style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>
+        <div
+          style={{
+            fontSize: 11,
+            color: "var(--fg-muted)",
+            marginBottom: 4,
+            textTransform: "uppercase",
+            letterSpacing: 0.5,
+          }}
+        >
           关系类型
         </div>
         <select
+          className="select"
           value={kindId}
           onChange={(e) => {
             setKindId(e.target.value);
             setToId("");
             setMeta({});
           }}
-          style={{ width: "100%", padding: "4px 6px" }}
         >
           <option value="">— 选择 —</option>
           {availableKinds.map((k) => (
@@ -103,13 +114,21 @@ export function RelationForm({ fromCardId, fromTypeId, onDone }: Props) {
       {kind && (
         <>
           <div>
-            <div style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>
+            <div
+              style={{
+                fontSize: 11,
+                color: "var(--fg-muted)",
+                marginBottom: 4,
+                textTransform: "uppercase",
+                letterSpacing: 0.5,
+              }}
+            >
               目标卡牌
             </div>
             <select
+              className="select"
               value={toId}
               onChange={(e) => setToId(e.target.value)}
-              style={{ width: "100%", padding: "4px 6px" }}
             >
               <option value="">— 选择 —</option>
               {targetCards.map((c) => (
@@ -134,8 +153,12 @@ export function RelationForm({ fromCardId, fromTypeId, onDone }: Props) {
       )}
 
       <div style={{ display: "flex", gap: 8 }}>
-        <button onClick={handleSave}>保存关系</button>
-        <button onClick={onDone}>取消</button>
+        <button className="btn btn-primary" onClick={handleSave}>
+          保存关系
+        </button>
+        <button className="btn" onClick={onDone}>
+          取消
+        </button>
       </div>
     </div>
   );

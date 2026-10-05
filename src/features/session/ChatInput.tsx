@@ -35,7 +35,6 @@ export function ChatInput({ authors, defaultAuthorId, onSend }: Props) {
     const content = text.trim();
     if (!content) return;
 
-    // /roll 快捷命令
     if (content.startsWith("/roll ")) {
       const expr = content.slice(6).trim();
       const r = quickRoll(expr);
@@ -68,32 +67,32 @@ export function ChatInput({ authors, defaultAuthorId, onSend }: Props) {
     });
   }
 
-  const inputStyle: React.CSSProperties = {
-    padding: "6px 8px",
-    fontSize: 13,
-    border: "1px solid #ddd",
-    borderRadius: 4,
-    boxSizing: "border-box",
-  };
-
   return (
     <>
       <div
         style={{
-          borderTop: "1px solid #eee",
+          borderTop: "1px solid var(--border-subtle)",
           padding: 8,
           display: "flex",
           flexDirection: "column",
           gap: 6,
-          background: "#fafafa",
+          background: "var(--bg-panel)",
           flexShrink: 0,
         }}
       >
-        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+        <div
+          style={{
+            display: "flex",
+            gap: 6,
+            alignItems: "center",
+            flexWrap: "wrap",
+          }}
+        >
           <select
+            className="select"
             value={authorId ?? ""}
             onChange={(e) => setAuthorId(e.target.value || null)}
-            style={{ ...inputStyle, minWidth: 120 }}
+            style={{ minWidth: 120, width: "auto" }}
           >
             {authors.length === 0 && <option value="">KP</option>}
             {authors.map((a) => (
@@ -103,41 +102,54 @@ export function ChatInput({ authors, defaultAuthorId, onSend }: Props) {
             ))}
           </select>
 
-          <div style={{ display: "flex", gap: 4 }}>
-            {KIND_LABELS.map((k) => (
-              <button
-                key={k.kind}
-                onClick={() => {
-                  if (k.kind === "chat.roll") {
-                    setRollOpen(true);
-                  } else {
-                    setKind(k.kind);
-                  }
-                }}
-                style={{
-                  fontSize: 12,
-                  padding: "4px 8px",
-                  borderRadius: 4,
-                  border: "1px solid #ddd",
-                  background:
-                    kind === k.kind && k.kind !== "chat.roll"
-                      ? "#e0e0e0"
-                      : "#fff",
-                  cursor: "pointer",
-                }}
-                title={k.label}
-              >
-                {k.label}
-              </button>
-            ))}
+          <div style={{ display: "flex", gap: 3 }}>
+            {KIND_LABELS.map((k) => {
+              const active = kind === k.kind && k.kind !== "chat.roll";
+              return (
+                <button
+                  key={k.kind}
+                  className="btn"
+                  onClick={() => {
+                    if (k.kind === "chat.roll") {
+                      setRollOpen(true);
+                    } else {
+                      setKind(k.kind);
+                    }
+                  }}
+                  style={{
+                    padding: "4px 8px",
+                    fontSize: 12,
+                    background: active
+                      ? "var(--bg-raised)"
+                      : "var(--bg-surface)",
+                    borderColor: active
+                      ? "var(--accent-gold)"
+                      : "var(--border-default)",
+                    color: active ? "var(--fg-primary)" : "var(--fg-secondary)",
+                    fontWeight: active ? 600 : 400,
+                  }}
+                  title={k.label}
+                >
+                  {k.label}
+                </button>
+              );
+            })}
           </div>
 
-          <span style={{ marginLeft: "auto", fontSize: 11, color: "#aaa" }}>
+          <span
+            style={{
+              marginLeft: "auto",
+              fontSize: 11,
+              color: "var(--fg-muted)",
+              fontFamily: "var(--font-mono)",
+            }}
+          >
             /roll 1d20
           </span>
         </div>
 
         <textarea
+          className="textarea"
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
@@ -151,16 +163,15 @@ export function ChatInput({ authors, defaultAuthorId, onSend }: Props) {
               ? "描述场景……（Shift+Enter 换行）"
               : "输入消息……（Enter 发送，Shift+Enter 换行）"
           }
-          style={{
-            ...inputStyle,
-            minHeight: 60,
-            resize: "vertical",
-            fontFamily: "inherit",
-          }}
+          style={{ minHeight: 60, resize: "vertical" }}
         />
 
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 6 }}>
-          <button onClick={send} disabled={!text.trim()}>
+          <button
+            className="btn btn-primary"
+            onClick={send}
+            disabled={!text.trim()}
+          >
             发送
           </button>
         </div>

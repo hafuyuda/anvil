@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Background,
   Controls,
@@ -15,21 +15,22 @@ import "@xyflow/react/dist/style.css";
 import { ipc, type Card, type Relation, type Scenario } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
 import { EdgeEditorDialog } from "./EdgeEditorDialog";
+import { newId } from "../../lib/id";
+import { nowMs } from "../../lib/time";
 
 interface Props {
   scenario: Scenario;
 }
 
 export function StoryGraphView({ scenario }: Props) {
-  const cards = useProjectStore((s) => s.cards);
-  const relations = useProjectStore((s) => s.relations);
-  const relationKinds = useProjectStore((s) => s.relationKinds);
-  const cardTypes = useProjectStore((s) => s.cardTypes);
+  const cards = useProjectStore((s) => s.cards) ?? [];
+  const relations = useProjectStore((s) => s.relations) ?? [];
+  const relationKinds = useProjectStore((s) => s.relationKinds) ?? [];
+  const cardTypes = useProjectStore((s) => s.cardTypes) ?? [];
   const upsertScenario = useProjectStore((s) => s.upsertScenario);
   const upsertRelation = useProjectStore((s) => s.upsertRelation);
   const removeRelation = useProjectStore((s) => s.removeRelation);
   const selectCard = useProjectStore((s) => s.selectCard);
-  const [editingEdgeId, setEditingEdgeId] = useState<string | null>(null);
 
   const scenarioNodes = useMemo(
     () =>
@@ -71,13 +72,13 @@ export function StoryGraphView({ scenario }: Props) {
         data: { label: c.name },
         style: {
           padding: 8,
-          borderRadius: 6,
+          borderRadius: 4,
           border: `2px solid ${color}`,
           background: `${color}22`,
           fontSize: 12,
           width: 140,
           textAlign: "center" as const,
-          color: "#222",
+          color: "var(--fg-primary)",
         },
       };
     });
@@ -97,23 +98,27 @@ export function StoryGraphView({ scenario }: Props) {
         data: { condition, kind: r.kind, label: r.label ?? null },
         style: { stroke: color },
         labelStyle: { fontSize: 10, fill: color },
-        labelBgStyle: { fill: "#ffffffcc" },
+        labelBgStyle: { fill: "var(--bg-panel)" },
+        labelBgPadding: [4, 2] as [number, number],
+        labelBgBorderRadius: 2,
       };
     });
   }, [scenarioEdges, relationKinds]);
 
   const [nodes, setNodes] = useState<Node[]>(initialNodes);
   const [edges, setEdges] = useState<Edge[]>(initialEdges);
-  useEffect(() => {
-    setEdges(initialEdges);
-  }, [initialEdges]);
   const [lastScenarioId, setLastScenarioId] = useState(scenario.id);
+  const [editingEdgeId, setEditingEdgeId] = useState<string | null>(null);
 
   if (lastScenarioId !== scenario.id) {
     setLastScenarioId(scenario.id);
     setNodes(initialNodes);
     setEdges(initialEdges);
   }
+
+  useEffect(() => {
+    setEdges(initialEdges);
+  }, [initialEdges]);
 
   function onNodesChange(changes: NodeChange<Node>[]) {
     setNodes((ns) => applyNodeChanges(changes, ns));
@@ -126,7 +131,7 @@ export function StoryGraphView({ scenario }: Props) {
     for (const n of allNodes) {
       map[n.id] = [n.position.x, n.position.y];
     }
-    const next = { ...scenario, node_positions: map, updated_at: Date.now() };
+    const next = { ...scenario, node_positions: map, updated_at: nowMs() };
     await ipc.upsertScenario(next);
     upsertScenario(next);
   }
@@ -141,9 +146,9 @@ export function StoryGraphView({ scenario }: Props) {
       alert("请先在剧情设置里选一个允许的关系类型");
       return;
     }
-    const now = Date.now();
+    const now = nowMs();
     const relation: Relation = {
-      id: crypto.randomUUID(),
+      id: newId(),
       from: conn.source,
       to: conn.target,
       kind,
@@ -153,21 +158,6 @@ export function StoryGraphView({ scenario }: Props) {
     };
     await ipc.upsertRelation(relation);
     upsertRelation(relation);
-    const kindObj = relationKinds.find((k) => k.id === kind);
-    setEdges((es) =>
-      addEdge(
-        {
-          ...conn,
-          id: relation.id,
-          label: kindObj?.name ?? "",
-          data: { condition: "", kind, label: null },
-          style: { stroke: kindObj?.color ?? "#999" },
-          labelStyle: { fontSize: 10, fill: kindObj?.color ?? "#666" },
-          labelBgStyle: { fill: "#ffffffcc" },
-        },
-        es,
-      ),
-    );
   }
 
   function onEdgeClick(_: unknown, edge: Edge) {
@@ -181,25 +171,39 @@ export function StoryGraphView({ scenario }: Props) {
       await ipc.deleteRelation(relation.from, relation.id);
       removeRelation(relation.id);
     }
-    setEdges((es) => es.filter((e) => !deleted.some((d) => d.id === e.id)));
   }
+
+  const editingRelation = editingEdgeId
+    ? (relations.find((r) => r.id === editingEdgeId) ?? null)
+    : null;
 
   if (scenario.node_ids.length === 0) {
     return (
-      <div style={{ color: "#888", padding: 24 }}>
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "var(--fg-muted)",
+          fontSize: 13,
+        }}
+      >
         还没有节点。去「设置」里勾选要放进剧情的卡牌。
       </div>
     );
   }
 
   return (
-    <div 
-    style={{ 
-      flex: 1, 
-      minHeight: 0, 
-      minWidth: 0, 
-      position: "relative",
-       }}>
+    <div
+      style={{
+        flex: 1,
+        minHeight: 0,
+        minWidth: 0,
+        position: "relative",
+        background: "var(--bg-app)",
+      }}
+    >
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -213,22 +217,34 @@ export function StoryGraphView({ scenario }: Props) {
         fitViewOptions={{ padding: 0.15 }}
         proOptions={{ hideAttribution: true }}
       >
-        <Background />
-        <Controls />
-        <MiniMap pannable zoomable />
+        <Background color="var(--border-subtle)" gap={20} />
+        <Controls
+          style={{
+            background: "var(--bg-panel)",
+            border: "1px solid var(--border-default)",
+            borderRadius: "var(--radius-md)",
+          }}
+        />
+        <MiniMap
+          pannable
+          zoomable
+          style={{
+            background: "var(--bg-panel)",
+            border: "1px solid var(--border-default)",
+            borderRadius: "var(--radius-md)",
+          }}
+          maskColor="rgba(0,0,0,0.5)"
+          nodeColor={() => "var(--bg-raised)"}
+        />
       </ReactFlow>
-      {editingEdgeId &&
-        (() => {
-          const rel = relations.find((r) => r.id === editingEdgeId);
-          if (!rel) return null;
-          return (
-            <EdgeEditorDialog
-              scenario={scenario}
-              relation={rel}
-              onClose={() => setEditingEdgeId(null)}
-            />
-          );
-        })()}
+
+      {editingRelation && (
+        <EdgeEditorDialog
+          scenario={scenario}
+          relation={editingRelation}
+          onClose={() => setEditingEdgeId(null)}
+        />
+      )}
     </div>
   );
 }

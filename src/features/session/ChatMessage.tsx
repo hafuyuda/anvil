@@ -15,12 +15,12 @@ export function ChatMessage({ event, cards, cardTypes }: Props) {
   const payload = event.payload as ChatPayload;
   const authorName = payload.author_name ?? "未知";
   const authorCard = payload.author_card_id
-    ? (cards.find((c) => c.id === payload.author_card_id) ?? null)
+    ? cards.find((c) => c.id === payload.author_card_id) ?? null
     : null;
   const authorType = authorCard
-    ? (cardTypes.find((t) => t.id === authorCard.type_id) ?? null)
+    ? cardTypes.find((t) => t.id === authorCard.type_id) ?? null
     : null;
-  const color = authorType?.color ?? "#888888";
+  const color = authorType?.color ?? "var(--fg-secondary)";
 
   switch (event.kind) {
     case "chat.say":
@@ -44,7 +44,7 @@ export function ChatMessage({ event, cards, cardTypes }: Props) {
               style={{
                 fontSize: 13,
                 fontStyle: "italic",
-                color: "#555",
+                color: "var(--chat-action-text)",
                 padding: "4px 0",
               }}
             >
@@ -64,23 +64,35 @@ export function ChatMessage({ event, cards, cardTypes }: Props) {
             <div
               style={{
                 fontSize: 12,
-                fontFamily: "monospace",
-                background: "#f4f4f4",
-                borderRadius: 4,
+                fontFamily: "var(--font-mono)",
+                background: "var(--chat-roll-bg)",
+                borderRadius: "var(--radius-md)",
                 padding: "6px 8px",
-                border: "1px solid #e0e0e0",
+                border: "1px solid var(--chat-roll-border)",
+                color: "var(--fg-primary)",
               }}
             >
               <div>
                 {payload.content}{" "}
                 {roll && (
-                  <span style={{ color: "#369", fontWeight: 600 }}>
+                  <span
+                    style={{
+                      color: "var(--chat-roll-accent)",
+                      fontWeight: 600,
+                    }}
+                  >
                     = {roll.result}
                   </span>
                 )}
               </div>
               {roll && (
-                <div style={{ color: "#888", fontSize: 11, marginTop: 2 }}>
+                <div
+                  style={{
+                    color: "var(--fg-muted)",
+                    fontSize: 11,
+                    marginTop: 2,
+                  }}
+                >
                   {roll.expr} → [{roll.detail.join(", ")}]
                 </div>
               )}
@@ -96,12 +108,14 @@ export function ChatMessage({ event, cards, cardTypes }: Props) {
           style={{
             margin: "12px 0",
             padding: "8px 12px",
-            background: "#f9f6ef",
-            borderLeft: "3px solid #c9a961",
+            background: "var(--chat-narration-bg)",
+            borderLeft: "3px solid var(--chat-narration-border)",
             fontSize: 13,
             fontStyle: "italic",
-            color: "#5a4a2f",
+            color: "var(--chat-narration-text)",
             whiteSpace: "pre-wrap",
+            fontFamily: "var(--font-title)",
+            borderRadius: "0 var(--radius-md) var(--radius-md) 0",
           }}
         >
           {payload.content}
@@ -114,13 +128,13 @@ export function ChatMessage({ event, cards, cardTypes }: Props) {
           style={{
             margin: "8px 0",
             padding: "4px 8px",
-            background: "#f0f0f0",
-            borderRadius: 4,
+            background: "var(--chat-ooc-bg)",
+            borderRadius: "var(--radius-md)",
             fontSize: 12,
-            color: "#666",
+            color: "var(--chat-ooc-text)",
           }}
         >
-          <span style={{ color: "#999", marginRight: 6 }}>[场外]</span>
+          <span style={{ opacity: 0.7, marginRight: 6 }}>[场外]</span>
           {authorName}：{payload.content}
         </div>
       );
@@ -131,14 +145,14 @@ export function ChatMessage({ event, cards, cardTypes }: Props) {
           style={{
             margin: "8px 0",
             padding: "4px 8px",
-            background: "#f7f0fa",
-            border: "1px dashed #c8a8d8",
-            borderRadius: 4,
+            background: "var(--chat-whisper-bg)",
+            border: "1px dashed var(--chat-whisper-border)",
+            borderRadius: "var(--radius-md)",
             fontSize: 12,
-            color: "#6a4a7a",
+            color: "var(--chat-whisper-text)",
           }}
         >
-          <span style={{ color: "#a88", marginRight: 6 }}>[私聊]</span>
+          <span style={{ opacity: 0.7, marginRight: 6 }}>[私聊]</span>
           {authorName} → {payload.content}
         </div>
       );
@@ -163,7 +177,7 @@ function Avatar({ name, color }: { name: string; color: string }) {
         justifyContent: "center",
         fontSize: 14,
         fontWeight: 600,
-        color: "#333",
+        color: "var(--fg-primary)",
         flexShrink: 0,
       }}
       title={name}
@@ -193,12 +207,12 @@ function Bubble({ children }: { children: React.ReactNode }) {
     <div
       style={{
         padding: "6px 10px",
-        background: "#fff",
-        border: "1px solid #e5e5e5",
-        borderRadius: 6,
+        background: "var(--chat-bubble-bg)",
+        border: "1px solid var(--chat-bubble-border)",
+        borderRadius: "var(--radius-md)",
         fontSize: 13,
         lineHeight: 1.5,
-        color: "#222",
+        color: "var(--chat-bubble-text)",
         whiteSpace: "pre-wrap",
         wordBreak: "break-word",
       }}
@@ -218,12 +232,12 @@ function SystemLine({ event }: { event: GameEvent }) {
         gap: 8,
         margin: "10px 0",
         fontSize: 11,
-        color: "#aaa",
+        color: "var(--chat-system-text)",
       }}
     >
-      <div style={{ flex: 1, height: 1, background: "#eee" }} />
+      <div style={{ flex: 1, height: 1, background: "var(--chat-system-line)" }} />
       <span>{text}</span>
-      <div style={{ flex: 1, height: 1, background: "#eee" }} />
+      <div style={{ flex: 1, height: 1, background: "var(--chat-system-line)" }} />
     </div>
   );
 }

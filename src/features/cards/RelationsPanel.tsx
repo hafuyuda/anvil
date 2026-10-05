@@ -14,8 +14,8 @@ interface Props {
 
 export function RelationsPanel({ card }: Props) {
   const relations = useProjectStore((s) => s.relations) ?? [];
-  const cards = useProjectStore((s) => s.cards);
-  const relationKinds = useProjectStore((s) => s.relationKinds);
+  const cards = useProjectStore((s) => s.cards) ?? [];
+  const relationKinds = useProjectStore((s) => s.relationKinds) ?? [];
   const removeRelation = useProjectStore((s) => s.removeRelation);
   const selectCard = useProjectStore((s) => s.selectCard);
 
@@ -52,12 +52,21 @@ export function RelationsPanel({ card }: Props) {
           }}
         >
           <div
-            style={{ fontSize: 11, color: "#888", textTransform: "uppercase" }}
+            style={{
+              fontSize: 10,
+              color: "var(--fg-muted)",
+              textTransform: "uppercase",
+              letterSpacing: 1,
+            }}
           >
             出边（{outgoing.length}）
           </div>
           {!adding && (
-            <button onClick={() => setAdding(true)} style={{ fontSize: 11 }}>
+            <button
+              className="btn btn-ghost"
+              onClick={() => setAdding(true)}
+              style={{ fontSize: 11, padding: "2px 6px" }}
+            >
               + 添加
             </button>
           )}
@@ -72,7 +81,7 @@ export function RelationsPanel({ card }: Props) {
         )}
 
         {outgoing.length === 0 && !adding && (
-          <div style={{ fontSize: 12, color: "#aaa" }}>无</div>
+          <div style={{ fontSize: 12, color: "var(--fg-muted)" }}>无</div>
         )}
 
         <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
@@ -89,26 +98,29 @@ export function RelationsPanel({ card }: Props) {
                   fontSize: 12,
                 }}
               >
-                <span style={{ color: k?.color ?? "#666" }}>
+                <span style={{ color: k?.color ?? "var(--fg-secondary)" }}>
                   {k?.name ?? r.kind}
                 </span>
                 <span
+                  onClick={() => selectCard(r.to)}
                   style={{
-                    color: "#369",
+                    color: "var(--accent-gold)",
                     cursor: "pointer",
                     textDecoration: "underline",
                   }}
-                  onClick={() => selectCard(r.to)}
                 >
                   {cardName(r.to)}
                 </span>
                 <button
+                  className="btn btn-ghost"
                   onClick={() => handleDelete(r)}
                   style={{
                     marginLeft: "auto",
                     fontSize: 11,
-                    color: "#c33",
+                    padding: "1px 6px",
+                    color: "var(--danger)",
                   }}
+                  title="删除关系"
                 >
                   ×
                 </button>
@@ -121,16 +133,17 @@ export function RelationsPanel({ card }: Props) {
       <div>
         <div
           style={{
-            fontSize: 11,
-            color: "#888",
+            fontSize: 10,
+            color: "var(--fg-muted)",
             textTransform: "uppercase",
+            letterSpacing: 1,
             marginBottom: 6,
           }}
         >
           入边（{incoming.length}）
         </div>
         {incoming.length === 0 && (
-          <div style={{ fontSize: 12, color: "#aaa" }}>无</div>
+          <div style={{ fontSize: 12, color: "var(--fg-muted)" }}>无</div>
         )}
         <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
           {incoming.map((r) => {
@@ -148,23 +161,28 @@ export function RelationsPanel({ card }: Props) {
                 }}
               >
                 <span
+                  onClick={() => selectCard(r.from)}
                   style={{
-                    color: "#369",
+                    color: "var(--accent-gold)",
                     cursor: "pointer",
                     textDecoration: "underline",
                   }}
-                  onClick={() => selectCard(r.from)}
                 >
                   {cardName(r.from)}
                 </span>
-                <span style={{ color: k?.color ?? "#666" }}>{label}</span>
+                <span style={{ color: k?.color ?? "var(--fg-secondary)" }}>
+                  {label}
+                </span>
                 <button
+                  className="btn btn-ghost"
                   onClick={() => handleDelete(r)}
                   style={{
                     marginLeft: "auto",
                     fontSize: 11,
-                    color: "#c33",
+                    padding: "1px 6px",
+                    color: "var(--danger)",
                   }}
+                  title="删除关系"
                 >
                   ×
                 </button>

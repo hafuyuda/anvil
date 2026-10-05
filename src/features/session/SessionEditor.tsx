@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ipc,
-  type Board,
   type ChatEventKind,
   type ChatPayload,
   type GameEvent,
@@ -49,7 +48,6 @@ export function SessionEditor({ session }: Props) {
       .catch(() => setEvents([]));
   }, [session.id]);
 
-  // 参与角色：token 对应的卡（去重）
   const authors = useMemo(() => {
     const seen = new Set<string>();
     const out: { card_id: string | null; name: string }[] = [];
@@ -117,7 +115,6 @@ export function SessionEditor({ session }: Props) {
 
   async function handleTokensChange(tokens: Token[]) {
     await savePatch({ tokens });
-    // token.move 不写日志，避免刷屏
   }
 
   async function handleSend(kind: ChatEventKind, payload: ChatPayload) {
@@ -131,16 +128,18 @@ export function SessionEditor({ session }: Props) {
         minHeight: 0,
         display: "flex",
         flexDirection: "column",
+        background: "var(--bg-app)",
       }}
     >
       {/* 顶栏 */}
       <div
         style={{
           display: "flex",
-          gap: 8,
+          gap: 10,
           alignItems: "center",
-          paddingBottom: 8,
-          borderBottom: "1px solid #eee",
+          padding: "8px 12px",
+          borderBottom: "1px solid var(--border-subtle)",
+          background: "var(--bg-panel)",
           flexShrink: 0,
         }}
       >
@@ -148,25 +147,27 @@ export function SessionEditor({ session }: Props) {
           value={session.name}
           onCommit={(name) => savePatch({ name })}
           style={{
-            padding: "4px 8px",
+            flex: 1,
             fontSize: 14,
             fontWeight: 600,
-            flex: 1,
+            fontFamily: "var(--font-title)",
           }}
         />
         <label
           style={{
             fontSize: 12,
             display: "flex",
-            gap: 4,
+            gap: 6,
             alignItems: "center",
+            color: "var(--fg-secondary)",
           }}
         >
           战场棋盘
           <select
+            className="select"
             value={session.board_id ?? ""}
             onChange={(e) => handleSelectBoard(e.target.value)}
-            style={{ padding: "4px 6px" }}
+            style={{ minWidth: 140, width: "auto" }}
           >
             <option value="">— 无 —</option>
             {boards.map((b) => (
@@ -198,7 +199,7 @@ export function SessionEditor({ session }: Props) {
                 alignItems: "center",
                 justifyContent: "center",
                 height: "100%",
-                color: "#888",
+                color: "var(--fg-muted)",
                 fontSize: 12,
               }}
             >
@@ -218,26 +219,30 @@ export function SessionEditor({ session }: Props) {
       {/* 底部：对话流 + 输入 */}
       <div
         style={{
-          height: 320,
-          borderTop: "1px solid #eee",
+          height: 340,
+          borderTop: "1px solid var(--border-subtle)",
           display: "flex",
           flexDirection: "column",
           flexShrink: 0,
-          background: "#fff",
+          background: "var(--bg-panel)",
         }}
       >
         <div
           style={{
             padding: "6px 12px",
-            borderBottom: "1px solid #f0f0f0",
+            borderBottom: "1px solid var(--border-subtle)",
             fontSize: 11,
-            color: "#888",
+            color: "var(--fg-muted)",
             display: "flex",
             justifyContent: "space-between",
+            textTransform: "uppercase",
+            letterSpacing: 1,
           }}
         >
           <span>对话记录</span>
-          <span>{events.length} 条</span>
+          <span style={{ fontFamily: "var(--font-mono)" }}>
+            {events.length} 条
+          </span>
         </div>
 
         <ChatLog events={events} cards={cards} cardTypes={cardTypes} />

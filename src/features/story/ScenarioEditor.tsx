@@ -41,7 +41,12 @@ export function ScenarioEditor({ scenario }: Props) {
       await ipc.upsertScenario(next);
       upsertScenario(next);
     },
-    { undoLabel: "编辑剧情" },
+    {
+      undoLabel: "编辑剧情",
+      onDraftChange: (d) => {
+        upsertScenario({ ...d, updated_at: nowMs() });
+      },
+    },
   );
 
   const [tab, setTab] = useState<"settings" | "graph" | "play">("settings");
@@ -72,37 +77,33 @@ export function ScenarioEditor({ scenario }: Props) {
       style={{
         display: "flex",
         flexDirection: "column",
-        gap: 12,
         flex: 1,
         minHeight: 0,
-        padding: 12,
-        overflow: "hidden",
+        background: "var(--bg-app)",
       }}
     >
       <div
         style={{
-          borderBottom: "1px solid #eee",
-          paddingBottom: 4,
+          borderBottom: "1px solid var(--border-subtle)",
+          padding: "6px 12px",
           flexShrink: 0,
+          background: "var(--bg-panel)",
+          display: "flex",
+          gap: 4,
         }}
       >
-        <button
+        <TabButton
+          active={tab === "settings"}
           onClick={() => setTab("settings")}
-          disabled={tab === "settings"}
-          style={{ marginRight: 8 }}
         >
           设置
-        </button>
-        <button
-          onClick={() => setTab("graph")}
-          disabled={tab === "graph"}
-          style={{ marginRight: 8 }}
-        >
+        </TabButton>
+        <TabButton active={tab === "graph"} onClick={() => setTab("graph")}>
           节点图
-        </button>
-        <button onClick={() => setTab("play")} disabled={tab === "play"}>
+        </TabButton>
+        <TabButton active={tab === "play"} onClick={() => setTab("play")}>
           运行
-        </button>
+        </TabButton>
       </div>
 
       {tab === "settings" && (
@@ -110,43 +111,50 @@ export function ScenarioEditor({ scenario }: Props) {
           style={{
             display: "flex",
             flexDirection: "column",
-            gap: 12,
+            gap: 14,
             overflow: "auto",
             flex: 1,
             minHeight: 0,
+            padding: 16,
           }}
         >
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <input
+              className="input"
               value={draft.name}
               onChange={(e) => update({ name: e.target.value })}
               style={{
                 flex: 1,
-                padding: "4px 8px",
-                fontSize: 14,
+                fontSize: 16,
+                fontFamily: "var(--font-title)",
                 fontWeight: 600,
               }}
             />
-            <button onClick={commit} disabled={!dirty}>
-              {dirty ? "保存中……" : "已保存"}
-            </button>
+            <span
+              style={{
+                fontSize: 11,
+                color: dirty ? "var(--warning)" : "var(--fg-muted)",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {dirty ? "保存中…" : "已保存"}
+            </span>
           </div>
 
-          <textarea
-            value={draft.description ?? ""}
-            onChange={(e) => update({ description: e.target.value })}
-            placeholder="剧情描述"
-            style={{ padding: "4px 8px", fontSize: 12, minHeight: 60 }}
-          />
+          <LabeledBlock label="描述">
+            <textarea
+              className="textarea"
+              value={draft.description ?? ""}
+              onChange={(e) => update({ description: e.target.value })}
+              style={{ minHeight: 60 }}
+            />
+          </LabeledBlock>
 
-          <div>
-            <div style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>
-              入口节点
-            </div>
+          <LabeledBlock label="入口节点">
             <select
+              className="select"
               value={draft.entry_node ?? ""}
               onChange={(e) => update({ entry_node: e.target.value || null })}
-              style={{ padding: "4px 6px", minWidth: 200 }}
             >
               <option value="">— 未设置 —</option>
               {draft.node_ids.map((id) => {
@@ -158,13 +166,15 @@ export function ScenarioEditor({ scenario }: Props) {
                 );
               })}
             </select>
-          </div>
+          </LabeledBlock>
 
-          <div>
-            <div style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>
-              允许的关系类型（留空表示不限制）
-            </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          <LabeledBlock label="允许的关系类型（留空表示不限制）">
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+              {relationKinds.length === 0 && (
+                <span style={{ fontSize: 12, color: "var(--fg-muted)" }}>
+                  还没有关系类型
+                </span>
+              )}
               {relationKinds.map((k) => (
                 <label
                   key={k.id}
@@ -173,6 +183,8 @@ export function ScenarioEditor({ scenario }: Props) {
                     alignItems: "center",
                     gap: 4,
                     fontSize: 12,
+                    color: "var(--fg-secondary)",
+                    cursor: "pointer",
                   }}
                 >
                   <input
@@ -188,30 +200,43 @@ export function ScenarioEditor({ scenario }: Props) {
                           ),
                         });
                     }}
+                    style={{ accentColor: "var(--accent-gold)" }}
                   />
                   {k.name}
                 </label>
               ))}
             </div>
-          </div>
+          </LabeledBlock>
 
-          <div>
-            <div style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>
-              节点（{draft.node_ids.length}）
-            </div>
+          <LabeledBlock label={`节点（${draft.node_ids.length}）`}>
             <div
               style={{
-                maxHeight: 200,
+                maxHeight: 220,
                 overflow: "auto",
-                border: "1px solid #eee",
+                border: "1px solid var(--border-subtle)",
                 padding: 6,
-                borderRadius: 4,
+                borderRadius: "var(--radius-md)",
+                background: "var(--bg-surface)",
               }}
             >
+              {cards.length === 0 && (
+                <div
+                  style={{ fontSize: 12, color: "var(--fg-muted)", padding: 4 }}
+                >
+                  还没有卡牌
+                </div>
+              )}
               {cards.map((c) => (
                 <label
                   key={c.id}
-                  style={{ display: "flex", gap: 4, fontSize: 12 }}
+                  style={{
+                    display: "flex",
+                    gap: 6,
+                    fontSize: 12,
+                    color: "var(--fg-secondary)",
+                    cursor: "pointer",
+                    padding: "2px 0",
+                  }}
                 >
                   <input
                     type="checkbox"
@@ -224,12 +249,13 @@ export function ScenarioEditor({ scenario }: Props) {
                           node_ids: draft.node_ids.filter((x) => x !== c.id),
                         });
                     }}
+                    style={{ accentColor: "var(--accent-gold)" }}
                   />
                   {c.name}
                 </label>
               ))}
             </div>
-          </div>
+          </LabeledBlock>
 
           <div>
             <div
@@ -237,23 +263,36 @@ export function ScenarioEditor({ scenario }: Props) {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                marginBottom: 6,
+                marginBottom: 8,
               }}
             >
-              <div style={{ fontSize: 11, color: "#888" }}>变量</div>
-              <button onClick={addVariable} style={{ fontSize: 11 }}>
+              <div
+                style={{
+                  fontSize: 10,
+                  color: "var(--fg-muted)",
+                  textTransform: "uppercase",
+                  letterSpacing: 1,
+                }}
+              >
+                变量
+              </div>
+              <button
+                className="btn"
+                onClick={addVariable}
+                style={{ fontSize: 11, padding: "2px 8px" }}
+              >
                 + 变量
               </button>
             </div>
             {draft.variables.length === 0 && (
-              <div style={{ fontSize: 12, color: "#aaa" }}>无</div>
+              <div style={{ fontSize: 12, color: "var(--fg-muted)" }}>无</div>
             )}
             {draft.variables.map((v, i) => (
               <div
                 key={i}
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "1fr 1fr 90px 1fr auto",
+                  gridTemplateColumns: "1fr 1fr 100px 1fr auto",
                   gap: 6,
                   alignItems: "center",
                   padding: "4px 0",
@@ -261,25 +300,26 @@ export function ScenarioEditor({ scenario }: Props) {
                 }}
               >
                 <input
+                  className="input"
                   value={v.label}
                   onChange={(e) => updateVariable(i, { label: e.target.value })}
                   placeholder="显示名"
-                  style={{ padding: "3px 6px" }}
                 />
                 <input
+                  className="input"
                   value={v.key}
                   onChange={(e) => updateVariable(i, { key: e.target.value })}
                   placeholder="key"
-                  style={{ padding: "3px 6px", fontFamily: "monospace" }}
+                  style={{ fontFamily: "var(--font-mono)" }}
                 />
                 <select
+                  className="select"
                   value={v.ty.kind}
                   onChange={(e) =>
                     updateVariable(i, {
                       ty: defaultVarType(e.target.value as FieldType["kind"]),
                     })
                   }
-                  style={{ padding: "3px 6px" }}
                 >
                   {VAR_KINDS.map((k) => (
                     <option key={k.kind} value={k.kind}>
@@ -292,9 +332,34 @@ export function ScenarioEditor({ scenario }: Props) {
                   value={v.default}
                   onChange={(value) => updateVariable(i, { default: value })}
                 />
-                <button onClick={() => removeVariable(i)}>×</button>
+                <button
+                  className="btn btn-ghost"
+                  onClick={() => removeVariable(i)}
+                  style={{
+                    color: "var(--danger)",
+                    padding: "1px 6px",
+                    fontSize: 12,
+                  }}
+                  title="删除变量"
+                >
+                  ×
+                </button>
               </div>
             ))}
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              paddingTop: 8,
+              borderTop: "1px solid var(--border-subtle)",
+            }}
+          >
+            <button className="btn" onClick={commit} disabled={!dirty}>
+              立即保存
+            </button>
           </div>
         </div>
       )}
@@ -314,6 +379,59 @@ export function ScenarioEditor({ scenario }: Props) {
   );
 }
 
+function TabButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      className="btn btn-ghost"
+      onClick={onClick}
+      style={{
+        fontWeight: active ? 600 : 400,
+        color: active ? "var(--fg-primary)" : "var(--fg-secondary)",
+        borderBottom: active
+          ? "2px solid var(--accent-gold)"
+          : "2px solid transparent",
+        borderRadius: 0,
+        padding: "4px 12px",
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function LabeledBlock({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <div
+        style={{
+          fontSize: 10,
+          color: "var(--fg-muted)",
+          textTransform: "uppercase",
+          letterSpacing: 1,
+          marginBottom: 4,
+        }}
+      >
+        {label}
+      </div>
+      {children}
+    </div>
+  );
+}
+
 function DefaultValueInput({
   ty,
   value,
@@ -323,44 +441,49 @@ function DefaultValueInput({
   value: unknown;
   onChange: (v: unknown) => void;
 }) {
-  const style = {
-    padding: "3px 6px",
-    width: "100%",
-    boxSizing: "border-box" as const,
-  };
-
-  switch (ty.kind) {
-    case "bool":
-      return (
-        <label style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          <input
-            type="checkbox"
-            checked={Boolean(value)}
-            onChange={(e) => onChange(e.target.checked)}
-          />
-          默认
-        </label>
-      );
-    case "number":
-      return (
+  if (ty.kind === "bool") {
+    return (
+      <label
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 4,
+          fontSize: 12,
+          color: "var(--fg-secondary)",
+          cursor: "pointer",
+        }}
+      >
         <input
-          type="number"
-          value={value === undefined || value === null ? "" : String(value)}
-          onChange={(e) =>
-            onChange(e.target.value === "" ? null : Number(e.target.value))
-          }
-          placeholder="默认值"
-          style={style}
+          type="checkbox"
+          checked={Boolean(value)}
+          onChange={(e) => onChange(e.target.checked)}
+          style={{ accentColor: "var(--accent-gold)" }}
         />
-      );
-    default:
-      return (
-        <input
-          value={(value as string) ?? ""}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="默认值"
-          style={style}
-        />
-      );
+        默认
+      </label>
+    );
   }
+
+  if (ty.kind === "number") {
+    return (
+      <input
+        className="input"
+        type="number"
+        value={value === undefined || value === null ? "" : String(value)}
+        onChange={(e) =>
+          onChange(e.target.value === "" ? null : Number(e.target.value))
+        }
+        placeholder="默认值"
+      />
+    );
+  }
+
+  return (
+    <input
+      className="input"
+      value={(value as string) ?? ""}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder="默认值"
+    />
+  );
 }

@@ -15,7 +15,7 @@ interface Props {
 }
 
 export function EdgeEditorDialog({ scenario, relation, onClose }: Props) {
-  const relationKinds = useProjectStore((s) => s.relationKinds);
+  const relationKinds = useProjectStore((s) => s.relationKinds) ?? [];
   const upsertRelation = useProjectStore((s) => s.upsertRelation);
 
   const availableKinds: RelationKind[] = scenario.edge_kinds.length
@@ -27,20 +27,17 @@ export function EdgeEditorDialog({ scenario, relation, onClose }: Props) {
   const [condition, setCondition] = useState(
     typeof relation.meta?.condition === "string" ? relation.meta.condition : "",
   );
-  const [dirty, setDirty] = useState(false);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
-  function update<T>(setter: (v: T) => void, v: T) {
-    setter(v);
-    setDirty(true);
-  }
+  const [testValues, setTestValues] = useState<Record<string, unknown>>(() => {
+    const init: Record<string, unknown> = {};
+    for (const v of scenario.variables) {
+      init[v.key] = v.default ?? null;
+    }
+    return init;
+  });
+  const [testResult, setTestResult] = useState<{
+    ok: boolean;
+    message: string;
+  } | null>(null);
 
   async function save() {
     const updated: Relation = {
@@ -51,22 +48,8 @@ export function EdgeEditorDialog({ scenario, relation, onClose }: Props) {
     };
     await ipc.upsertRelation(updated);
     upsertRelation(updated);
-    setDirty(false);
     onClose();
   }
-
-  const [testValues, setTestValues] = useState<Record<string, unknown>>(() => {
-    const init: Record<string, unknown> = {};
-    for (const v of scenario.variables) {
-      init[v.key] = v.default ?? null;
-    }
-    return init;
-  });
-
-  const [testResult, setTestResult] = useState<{
-    ok: boolean;
-    message: string;
-  } | null>(null);
 
   async function runTest() {
     try {
@@ -92,181 +75,199 @@ export function EdgeEditorDialog({ scenario, relation, onClose }: Props) {
       onClose={onClose}
       footer={
         <>
-          <button onClick={onClose}>取消</button>
-          <button onClick={save} disabled={!dirty}>
+          <button className="btn" onClick={onClose}>
+            取消
+          </button>
+          <button className="btn btn-primary" onClick={save}>
             保存
           </button>
         </>
       }
     >
-      <div
-        style={{
-          position: "fixed",
-          inset: 0,
-          background: "rgba(0,0,0,0.25)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          zIndex: 1000,
-        }}
-        onClick={onClose}
-      >
+      <LabeledBlock label="关系类型">
+        <select
+          className="select"
+          value={kind}
+          onChange={(e) => setKind(e.target.value)}
+        >
+          {availableKinds.map((k) => (
+            <option key={k.id} value={k.id}>
+              {k.name}
+            </option>
+          ))}
+        </select>
+      </LabeledBlock>
+
+      <LabeledBlock label="备注（可选）">
+        <input
+          className="input"
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          placeholder="例如：如果玩家帮过布洛克"
+        />
+      </LabeledBlock>
+
+      <LabeledBlock label="条件表达式">
+        <textarea
+          className="textarea"
+          value={condition}
+          onChange={(e) => setCondition(e.target.value)}
+          placeholder="例如：visited_anvil == true"
+          style={{ minHeight: 60, fontFamily: "var(--font-mono)" }}
+        />
         <div
-          onClick={(e) => e.stopPropagation()}
           style={{
-            width: 420,
-            background: "#fff",
-            borderRadius: 8,
-            padding: 16,
-            display: "flex",
-            flexDirection: "column",
-            gap: 12,
-            boxShadow: "0 4px 24px rgba(0,0,0,0.2)",
+            fontSize: 11,
+            color: "var(--fg-muted)",
+            marginTop: 4,
           }}
         >
-          <div style={{ fontSize: 14, fontWeight: 600 }}>编辑关系</div>
+          留空表示无条件。可用变量：
+          {scenario.variables.length === 0
+            ? "（尚未定义）"
+            : scenario.variables.map((v) => v.key).join(", ")}
+        </div>
+      </LabeledBlock>
 
-          <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <span style={{ fontSize: 11, color: "#888" }}>关系类型</span>
-            <select
-              value={kind}
-              onChange={(e) => update(setKind, e.target.value)}
-              style={{ padding: "4px 6px" }}
-            >
-              {availableKinds.map((k) => (
-                <option key={k.id} value={k.id}>
-                  {k.name}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <span style={{ fontSize: 11, color: "#888" }}>备注（可选）</span>
-            <input
-              value={label}
-              onChange={(e) => update(setLabel, e.target.value)}
-              placeholder="例如：如果玩家帮过布洛克"
-              style={{ padding: "4px 6px" }}
-            />
-          </label>
-
-          <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <span style={{ fontSize: 11, color: "#888" }}>条件表达式</span>
-            <textarea
-              value={condition}
-              onChange={(e) => update(setCondition, e.target.value)}
-              placeholder="例如：visited_anvil == true"
+      {scenario.variables.length > 0 && (
+        <div
+          style={{
+            borderTop: "1px solid var(--border-subtle)",
+            paddingTop: 10,
+            display: "flex",
+            flexDirection: "column",
+            gap: 8,
+          }}
+        >
+          <div
+            style={{
+              fontSize: 10,
+              color: "var(--fg-muted)",
+              textTransform: "uppercase",
+              letterSpacing: 1,
+            }}
+          >
+            试算
+          </div>
+          {scenario.variables.map((v) => (
+            <div
+              key={v.key}
               style={{
-                padding: "4px 6px",
-                minHeight: 60,
-                fontFamily: "monospace",
+                display: "grid",
+                gridTemplateColumns: "120px 1fr",
+                gap: 8,
+                alignItems: "center",
                 fontSize: 12,
               }}
-            />
-            <span style={{ fontSize: 11, color: "#aaa" }}>
-              留空表示无条件。可用变量：
-              {scenario.variables.length === 0
-                ? "（尚未定义）"
-                : scenario.variables.map((v) => v.key).join(", ")}
-            </span>
-          </label>
-          {scenario.variables.length > 0 && (
-            <div
-              style={{
-                borderTop: "1px solid #eee",
-                paddingTop: 8,
-                display: "flex",
-                flexDirection: "column",
-                gap: 6,
-              }}
             >
-              <div style={{ fontSize: 11, color: "#888" }}>试算</div>
-              {scenario.variables.map((v) => {
-                const val = testValues[v.key];
-                return (
-                  <div
-                    key={v.key}
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "100px 1fr",
-                      gap: 6,
-                      alignItems: "center",
-                      fontSize: 12,
-                    }}
-                  >
-                    <span style={{ color: "#666" }}>{v.key}</span>
-                    {v.ty.kind === "bool" ? (
-                      <input
-                        type="checkbox"
-                        checked={Boolean(val)}
-                        onChange={(e) =>
-                          setTestValues((s) => ({
-                            ...s,
-                            [v.key]: e.target.checked,
-                          }))
-                        }
-                      />
-                    ) : v.ty.kind === "number" ? (
-                      <input
-                        type="number"
-                        value={
-                          val === undefined || val === null ? "" : String(val)
-                        }
-                        onChange={(e) =>
-                          setTestValues((s) => ({
-                            ...s,
-                            [v.key]:
-                              e.target.value === ""
-                                ? null
-                                : Number(e.target.value),
-                          }))
-                        }
-                        style={{ padding: "3px 6px" }}
-                      />
-                    ) : (
-                      <input
-                        value={(val as string) ?? ""}
-                        onChange={(e) =>
-                          setTestValues((s) => ({
-                            ...s,
-                            [v.key]: e.target.value,
-                          }))
-                        }
-                        style={{ padding: "3px 6px" }}
-                      />
-                    )}
-                  </div>
-                );
-              })}
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <button onClick={validateNow} style={{ fontSize: 12 }}>
-                  校验语法
-                </button>
-                <button onClick={runTest} style={{ fontSize: 12 }}>
-                  试算
-                </button>
-                {testResult && (
-                  <span
-                    style={{
-                      fontSize: 12,
-                      color: testResult.ok ? "#286" : "#c33",
-                    }}
-                  >
-                    {testResult.message}
-                  </span>
-                )}
-              </div>
+              <span
+                style={{
+                  color: "var(--fg-secondary)",
+                  fontFamily: "var(--font-mono)",
+                }}
+              >
+                {v.key}
+              </span>
+              {v.ty.kind === "bool" ? (
+                <input
+                  type="checkbox"
+                  checked={Boolean(testValues[v.key])}
+                  onChange={(e) =>
+                    setTestValues((s) => ({
+                      ...s,
+                      [v.key]: e.target.checked,
+                    }))
+                  }
+                  style={{ accentColor: "var(--accent-gold)" }}
+                />
+              ) : v.ty.kind === "number" ? (
+                <input
+                  className="input"
+                  type="number"
+                  value={
+                    testValues[v.key] === undefined ||
+                    testValues[v.key] === null
+                      ? ""
+                      : String(testValues[v.key])
+                  }
+                  onChange={(e) =>
+                    setTestValues((s) => ({
+                      ...s,
+                      [v.key]:
+                        e.target.value === "" ? null : Number(e.target.value),
+                    }))
+                  }
+                />
+              ) : (
+                <input
+                  className="input"
+                  value={(testValues[v.key] as string) ?? ""}
+                  onChange={(e) =>
+                    setTestValues((s) => ({
+                      ...s,
+                      [v.key]: e.target.value,
+                    }))
+                  }
+                />
+              )}
             </div>
-          )}
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-            <button onClick={onClose}>取消</button>
-            <button onClick={save} disabled={!dirty}>
-              保存
+          ))}
+          <div
+            style={{
+              display: "flex",
+              gap: 8,
+              alignItems: "center",
+              flexWrap: "wrap",
+            }}
+          >
+            <button
+              className="btn"
+              onClick={validateNow}
+              style={{ fontSize: 12 }}
+            >
+              校验语法
             </button>
+            <button className="btn" onClick={runTest} style={{ fontSize: 12 }}>
+              试算
+            </button>
+            {testResult && (
+              <span
+                style={{
+                  fontSize: 12,
+                  color: testResult.ok ? "var(--success)" : "var(--danger)",
+                }}
+              >
+                {testResult.message}
+              </span>
+            )}
           </div>
         </div>
-      </div>
+      )}
     </Modal>
+  );
+}
+
+function LabeledBlock({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <div
+        style={{
+          fontSize: 10,
+          color: "var(--fg-muted)",
+          textTransform: "uppercase",
+          letterSpacing: 1,
+          marginBottom: 4,
+        }}
+      >
+        {label}
+      </div>
+      {children}
+    </div>
   );
 }

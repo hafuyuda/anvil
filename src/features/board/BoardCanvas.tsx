@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { GridConfig, Token } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
-import { DEFAULT_GRID } from "./constants";
 
 interface Props {
   width: number;
@@ -12,6 +11,14 @@ interface Props {
   selectedTokenId: string | null;
   onSelectToken: (id: string | null) => void;
 }
+
+const DEFAULT_GRID: GridConfig = {
+  size: 50,
+  offset_x: 0,
+  offset_y: 0,
+  visible: true,
+  snap: true,
+};
 
 export function BoardCanvas({
   width,
@@ -76,7 +83,7 @@ export function BoardCanvas({
     const x = e.clientX - rect.left - dragging.offsetX;
     const y = e.clientY - rect.top - dragging.offsetY;
     const next = tokensProp.map((t) =>
-      t.id === dragging.tokenId ? { ...t, x: snap(x), y: snap(y) } : t,
+      t.id === dragging.tokenId ? { ...t, x: snap(x), y: snap(y) } : t
     );
     setLocalTokens(next);
     if (!dragging.moved) setDragging({ ...dragging, moved: true });
@@ -122,8 +129,9 @@ export function BoardCanvas({
           y1={0}
           x2={x}
           y2={height}
-          stroke="#eeeeee"
-        />,
+          stroke="var(--border-subtle)"
+          strokeWidth={0.5}
+        />
       );
     }
     for (let y = 0; y <= height; y += step) {
@@ -134,8 +142,9 @@ export function BoardCanvas({
           y1={y}
           x2={width}
           y2={y}
-          stroke="#eeeeee"
-        />,
+          stroke="var(--border-subtle)"
+          strokeWidth={0.5}
+        />
       );
     }
   }
@@ -146,14 +155,21 @@ export function BoardCanvas({
         width: "100%",
         height: "100%",
         overflow: "auto",
-        background: "#f0f0f0",
+        background: "var(--bg-app)",
       }}
     >
       <svg
         ref={svgRef}
         width={width}
         height={height}
-        style={{ display: "block", background: "#fff", margin: 16 }}
+        style={{
+          display: "block",
+          background: "var(--bg-panel)",
+          margin: 16,
+          borderRadius: "var(--radius-md)",
+          border: "1px solid var(--border-subtle)",
+          boxShadow: "var(--shadow-sm)",
+        }}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerDown={onSvgPointerDown}
@@ -181,7 +197,7 @@ export function BoardCanvas({
                   cy={h / 2}
                   r={Math.min(w, h) / 2}
                   fill={`${color}33`}
-                  stroke={selected ? "#333" : color}
+                  stroke={selected ? "var(--accent-gold)" : color}
                   strokeWidth={selected ? 3 : 2}
                 />
                 <text
@@ -190,7 +206,7 @@ export function BoardCanvas({
                   textAnchor="middle"
                   dominantBaseline="middle"
                   fontSize={12}
-                  fill="#222"
+                  fill="var(--fg-primary)"
                   style={{ pointerEvents: "none", userSelect: "none" }}
                 >
                   {tokenLabel(t)}
