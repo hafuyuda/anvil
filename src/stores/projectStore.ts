@@ -22,6 +22,7 @@ export interface UndoEntry {
 
 interface ProjectState {
   projectPath: string | null;
+  selectedEdgeId: string | null;
   cards: Card[];
   cardTypes: CardType[];
   relationKinds: RelationKind[];
@@ -93,6 +94,7 @@ interface ProjectState {
   toggleInspector: () => void;
   removeCardType: (id: string) => void;
   removeRelationKind: (id: string) => void;
+  selectEdge: (id: string | null) => void;
 }
 
 export const useProjectStore = create<ProjectState>((set, get) => ({
@@ -115,6 +117,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   pendingSaves: 0,
   inspectorWidth: 320,
   inspectorCollapsed: false,
+  selectedEdgeId: null,
 
   setProject: (
     projectPath,
@@ -200,13 +203,24 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     })),
 
   removeCard: (id) =>
-    set((s) => ({
-      cards: (s.cards ?? []).filter((c) => c.id !== id),
-      relations: (s.relations ?? []).filter(
-        (r) => r.from !== id && r.to !== id,
-      ),
-      selectedCardId: s.selectedCardId === id ? null : s.selectedCardId,
-    })),
+    set((s) => {
+      const removedEdgeIds = new Set(
+        (s.relations ?? [])
+          .filter((r) => r.from === id || r.to === id)
+          .map((r) => r.id),
+      );
+      return {
+        cards: (s.cards ?? []).filter((c) => c.id !== id),
+        relations: (s.relations ?? []).filter(
+          (r) => r.from !== id && r.to !== id,
+        ),
+        selectedCardId: s.selectedCardId === id ? null : s.selectedCardId,
+        selectedEdgeId:
+          s.selectedEdgeId && removedEdgeIds.has(s.selectedEdgeId)
+            ? null
+            : s.selectedEdgeId,
+      };
+    }),
 
   setCardTypes: (cardTypes) => set({ cardTypes: cardTypes ?? [] }),
 
@@ -246,6 +260,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   removeRelation: (id) =>
     set((s) => ({
       relations: (s.relations ?? []).filter((r) => r.id !== id),
+      selectedEdgeId: s.selectedEdgeId === id ? null : s.selectedEdgeId,
     })),
 
   upsertScenario: (sc) =>
@@ -296,14 +311,12 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       sessions: (s.sessions ?? []).filter((x) => x.id !== id),
     })),
 
-  selectCard: (selectedCardId) =>
-    set({ selectedCardId, selectedTokenId: null }),
-
-  selectToken: (selectedTokenId) =>
-    set({ selectedTokenId, selectedCardId: null }),
-
   setCurrentBoard: (currentBoardId) =>
-    set({ currentBoardId, selectedTokenId: null }),
+    set({
+      currentBoardId,
+      selectedTokenId: null,
+      selectedEdgeId: null,
+    }),
 
   setActiveModule: (activeModule) => set({ activeModule }),
   setWorldSubView: (worldSubView) => set({ worldSubView }),
@@ -368,4 +381,12 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set((s) => ({
       relationKinds: (s.relationKinds ?? []).filter((k) => k.id !== id),
     })),
+  selectCard: (selectedCardId) =>
+    set({ selectedCardId, selectedTokenId: null, selectedEdgeId: null }),
+
+  selectToken: (selectedTokenId) =>
+    set({ selectedTokenId, selectedCardId: null, selectedEdgeId: null }),
+
+  selectEdge: (selectedEdgeId) =>
+    set({ selectedEdgeId, selectedCardId: null, selectedTokenId: null }),
 }));

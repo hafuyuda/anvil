@@ -35,16 +35,21 @@ export function GraphView() {
       .sort()
       .join(",");
     const relIds = relations
+      .filter((r) => !r.meta?.scenario_id)
       .map((r) => r.id)
       .sort()
       .join(",");
     return `${cardIds}|${relIds}`;
   }, [cards, relations]);
 
+  const selectEdge = useProjectStore((s) => s.selectEdge);
+
   useEffect(() => {
+    // ★ 世界观图只显示没有 scenario_id 的边
+    const worldRelations = relations.filter((r) => !r.meta?.scenario_id);
     const raw = buildGraph(
       cards,
-      relations,
+      worldRelations,
       (typeId) =>
         cardTypes.find((t) => t.id === typeId)?.name ?? typeId.slice(0, 8),
       (kindId) => relationKinds.find((k) => k.id === kindId)?.name ?? kindId,
@@ -250,6 +255,7 @@ export function GraphView() {
           edges={visibleEdges}
           onNodesChange={onNodesChange}
           onNodeClick={(_, node) => selectCard(node.id)}
+          onEdgeClick={(_, edge) => selectEdge(edge.id)}
           fitView
           fitViewOptions={{ padding: 0.15 }}
           proOptions={{ hideAttribution: true }}

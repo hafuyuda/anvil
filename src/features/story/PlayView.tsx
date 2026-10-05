@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { ipc, type Scenario, type VariableDef } from "../../core/ipc";
+import {
+  ipc,
+  type Card,
+  type Scenario,
+  type VariableDef,
+} from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
+import { applyEffects, parseEffects } from "./effects";
 
 interface Props {
   scenario: Scenario;
@@ -33,8 +39,14 @@ export function PlayView({ scenario }: Props) {
   );
 
   const outgoing = useMemo(
-    () => relations.filter((r) => r.from === currentId && nodeIds.has(r.to)),
-    [relations, currentId, nodeIds],
+    () =>
+      relations.filter(
+        (r) =>
+          r.from === currentId &&
+          nodeIds.has(r.to) &&
+          r.meta?.scenario_id === scenario.id,
+      ),
+    [relations, currentId, nodeIds, scenario.id],
   );
 
   useEffect(() => {
@@ -42,7 +54,10 @@ export function PlayView({ scenario }: Props) {
     async function run() {
       const states: Record<string, { ok: boolean; error?: string }> = {};
       const allEdges = relations.filter(
-        (r) => nodeIds.has(r.from) && nodeIds.has(r.to),
+        (r) =>
+          nodeIds.has(r.from) &&
+          nodeIds.has(r.to) &&
+          r.meta?.scenario_id === scenario.id,
       );
       for (const r of allEdges) {
         const expr =
@@ -66,8 +81,22 @@ export function PlayView({ scenario }: Props) {
     };
   }, [relations, nodeIds, values, scenario]);
 
-  function advance(toId: string) {
+  function advance(relationId: string, toId: string) {
     if (!currentId) return;
+
+    // 执行效果
+    const relation = relations.find((r) => r.id === relationId);
+    if (relation) {
+      const effects = parseEffects(relation.meta?.effects);
+      if (effects.length > 0) {
+        const result = applyEffects(values, effects, scenario.variables);
+        setValues(result.values);
+        if (result.errors.length > 0) {
+          console.warn("效果执行警告:", result.errors);
+        }
+      }
+    }
+
     setHistory((h) => [...h, currentId]);
     setCurrentId(toId);
   }
@@ -84,6 +113,11 @@ export function PlayView({ scenario }: Props) {
   function reset() {
     setHistory([]);
     setCurrentId(scenario.entry_node ?? scenario.node_ids[0] ?? null);
+    const init: Record<string, unknown> = {};
+    for (const v of scenario.variables) {
+      init[v.key] = v.default ?? null;
+    }
+    setValues(init);
   }
 
   function resetVars() {
@@ -94,10 +128,32 @@ export function PlayView({ scenario }: Props) {
     setValues(init);
   }
 
-  const cardName = (id: string) =>
-    cards.find((c) => c.id === id)?.name ?? id.slice(0, 8);
+  const currentCard: Card | null = currentId
+    ? (cards.find((c) => c.id === currentId) ?? null)
+    : null;
 
-  if (!currentId) {
+  const sceneTime = (currentCard?.values?.time as string) ?? null;
+  const sceneMood = (currentCard?.values?.mood as string) ?? null;
+  const sceneLocationId = (currentCard?.values?.location as string) ?? null;
+  const sceneLocation = sceneLocationId
+    ? (cards.find((c) => c.id === sceneLocationId) ?? null)
+    : null;
+
+  const participantIds: string[] = useMemo(() => {
+    const raw = currentCard?.values?.participants;
+    if (Array.isArray(raw)) return raw as string[];
+    if (typeof raw === "string" && raw) return [raw];
+    return [];
+  }, [currentCard]);
+
+  const participants = participantIds
+    .map((id) => cards.find((c) => c.id === id))
+    .filter(Boolean) as Card[];
+
+  const sceneDescription = (currentCard?.values?.description as string) ?? "";
+  const sceneDialogue = (currentCard?.values?.dialogue as string) ?? "";
+
+  if (!currentId || !currentCard) {
     return (
       <div
         style={{
@@ -112,14 +168,7 @@ export function PlayView({ scenario }: Props) {
   }
 
   return (
-    <div
-      style={{
-        flex: 1,
-        minHeight: 0,
-        display: "flex",
-        gap: 0,
-      }}
-    >
+    <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
       {/* 左：变量面板 + 历史 */}
       <div
         style={{
@@ -188,19 +237,25 @@ export function PlayView({ scenario }: Props) {
               fontSize: 12,
             }}
           >
-            {history.map((id, i) => (
-              <li
-                key={i}
-                style={{ color: "var(--fg-secondary)", padding: "2px 0" }}
-              >
-                {cardName(id)}
-              </li>
-            ))}
+            {history.map((id, i) => {
+              const c = cards.find((x) => x.id === id);
+              return (
+                <li
+                  key={i}
+                  style={{
+                    color: "var(--fg-secondary)",
+                    padding: "2px 0",
+                  }}
+                >
+                  {c?.name ?? id.slice(0, 8)}
+                </li>
+              );
+            })}
           </ul>
         </div>
       </div>
 
-      {/* 右：当前节点 + 可达边 */}
+      {/* 右：场景 + 分支 */}
       <div
         style={{
           flex: 1,
@@ -209,17 +264,25 @@ export function PlayView({ scenario }: Props) {
           overflow: "auto",
         }}
       >
-        <div style={{ marginBottom: 16 }}>
+        <div
+          style={{
+            border: "1px solid var(--border-default)",
+            borderRadius: "var(--radius-md)",
+            background: "var(--bg-panel)",
+            padding: 16,
+            marginBottom: 16,
+          }}
+        >
           <div
             style={{
               fontSize: 10,
               color: "var(--fg-muted)",
               textTransform: "uppercase",
               letterSpacing: 1,
-              marginBottom: 4,
+              marginBottom: 6,
             }}
           >
-            当前节点
+            当前场景
           </div>
           <div
             style={{
@@ -227,10 +290,109 @@ export function PlayView({ scenario }: Props) {
               fontFamily: "var(--font-title)",
               fontWeight: 600,
               color: "var(--accent-gold)",
+              marginBottom: 8,
             }}
           >
-            {cardName(currentId)}
+            {currentCard.name}
           </div>
+
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 12,
+              fontSize: 12,
+              color: "var(--fg-secondary)",
+              marginBottom: 10,
+            }}
+          >
+            {sceneLocation && (
+              <span>
+                <span style={{ color: "var(--fg-muted)" }}>地点</span>{" "}
+                {sceneLocation.name}
+              </span>
+            )}
+            {sceneTime && (
+              <span>
+                <span style={{ color: "var(--fg-muted)" }}>时间</span>{" "}
+                {sceneTime}
+              </span>
+            )}
+            {sceneMood && (
+              <span>
+                <span style={{ color: "var(--fg-muted)" }}>氛围</span>{" "}
+                {sceneMood}
+              </span>
+            )}
+          </div>
+
+          {participants.length > 0 && (
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 6,
+                marginBottom: 12,
+              }}
+            >
+              {participants.map((p) => (
+                <span
+                  key={p.id}
+                  style={{
+                    padding: "2px 8px",
+                    background: "var(--bg-surface)",
+                    border: "1px solid var(--border-subtle)",
+                    borderRadius: "var(--radius-sm)",
+                    fontSize: 11,
+                    color: "var(--fg-primary)",
+                  }}
+                >
+                  {p.name}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {sceneDescription && (
+            <div
+              style={{
+                fontSize: 13,
+                lineHeight: 1.6,
+                color: "var(--fg-primary)",
+                marginBottom: 12,
+                whiteSpace: "pre-wrap",
+              }}
+            >
+              {sceneDescription}
+            </div>
+          )}
+
+          {sceneDialogue && (
+            <details style={{ fontSize: 12 }}>
+              <summary
+                style={{
+                  color: "var(--fg-muted)",
+                  cursor: "pointer",
+                  marginBottom: 6,
+                }}
+              >
+                对白
+              </summary>
+              <div
+                style={{
+                  padding: "8px 12px",
+                  background: "var(--bg-surface)",
+                  border: "1px solid var(--border-subtle)",
+                  borderRadius: "var(--radius-md)",
+                  whiteSpace: "pre-wrap",
+                  lineHeight: 1.7,
+                  color: "var(--fg-primary)",
+                }}
+              >
+                {sceneDialogue}
+              </div>
+            </details>
+          )}
         </div>
 
         <div style={{ marginBottom: 12, display: "flex", gap: 8 }}>
@@ -268,16 +430,19 @@ export function PlayView({ scenario }: Props) {
             const kind = relationKinds.find((k) => k.id === r.kind);
             const reachable = state?.ok ?? false;
             const err = state?.error;
+            const target = cards.find((c) => c.id === r.to);
+            const label = r.label || kind?.name || "继续";
+
+            const effects = parseEffects(r.meta?.effects);
+            const effectsText = effects.map((e) => e.raw).join(" · ");
+
             return (
               <div
                 key={r.id}
-                onClick={() => reachable && advance(r.to)}
+                onClick={() => reachable && advance(r.id, r.to)}
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  padding: "8px 10px",
-                  marginBottom: 4,
+                  padding: "10px 12px",
+                  marginBottom: 6,
                   borderRadius: "var(--radius-md)",
                   background: reachable
                     ? "var(--bg-surface)"
@@ -287,30 +452,59 @@ export function PlayView({ scenario }: Props) {
                     : "1px solid var(--border-subtle)",
                   opacity: reachable ? 1 : 0.5,
                   cursor: reachable ? "pointer" : "not-allowed",
-                  transition: "border-color 0.12s",
                 }}
               >
-                <span
+                <div
                   style={{
-                    fontSize: 11,
-                    color: kind?.color ?? "var(--fg-secondary)",
-                    minWidth: 60,
-                    fontWeight: 600,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
                   }}
                 >
-                  {kind?.name ?? r.kind}
-                </span>
-                <span style={{ flex: 1, color: "var(--fg-primary)" }}>
-                  {cardName(r.to)}
-                </span>
-                <span
-                  style={{
-                    fontSize: 11,
-                    color: reachable ? "var(--success)" : "var(--danger)",
-                  }}
-                >
-                  {err ? "错误" : reachable ? "可达" : "不可达"}
-                </span>
+                  <span
+                    style={{
+                      fontSize: 13,
+                      color: reachable
+                        ? "var(--fg-primary)"
+                        : "var(--fg-secondary)",
+                      fontWeight: 600,
+                      flex: 1,
+                    }}
+                  >
+                    {label}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 12,
+                      color: "var(--fg-secondary)",
+                    }}
+                  >
+                    {target?.name ?? r.to.slice(0, 8)}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      color: reachable ? "var(--success)" : "var(--danger)",
+                      minWidth: 48,
+                      textAlign: "right",
+                    }}
+                  >
+                    {err ? "错误" : reachable ? "可达" : "不可达"}
+                  </span>
+                </div>
+
+                {effectsText && (
+                  <div
+                    style={{
+                      marginTop: 4,
+                      fontSize: 11,
+                      color: "var(--fg-muted)",
+                      fontFamily: "var(--font-mono)",
+                    }}
+                  >
+                    效果：{effectsText}
+                  </div>
+                )}
               </div>
             );
           })}
@@ -327,7 +521,7 @@ export function PlayView({ scenario }: Props) {
                 .filter((r) => edgeStates[r.id]?.error)
                 .map((r) => (
                   <div key={r.id}>
-                    {cardName(r.to)}: {edgeStates[r.id].error}
+                    {r.label ?? r.id.slice(0, 8)}: {edgeStates[r.id].error}
                   </div>
                 ))}
             </div>

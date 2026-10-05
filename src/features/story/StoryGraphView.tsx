@@ -14,7 +14,6 @@ import {
 import "@xyflow/react/dist/style.css";
 import { ipc, type Card, type Relation, type Scenario } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
-import { EdgeEditorDialog } from "./EdgeEditorDialog";
 import { newId } from "../../lib/id";
 import { nowMs } from "../../lib/time";
 
@@ -49,9 +48,10 @@ export function StoryGraphView({ scenario }: Props) {
       (r) =>
         ids.has(r.from) &&
         ids.has(r.to) &&
+        r.meta?.scenario_id === scenario.id &&
         (kindSet === null || kindSet.has(r.kind)),
     );
-  }, [relations, scenario.node_ids, scenario.edge_kinds]);
+  }, [relations, scenario.node_ids, scenario.edge_kinds, scenario.id]);
 
   const initialNodes: Node[] = useMemo(() => {
     const radius = Math.max(200, scenarioNodes.length * 30);
@@ -108,7 +108,6 @@ export function StoryGraphView({ scenario }: Props) {
   const [nodes, setNodes] = useState<Node[]>(initialNodes);
   const [edges, setEdges] = useState<Edge[]>(initialEdges);
   const [lastScenarioId, setLastScenarioId] = useState(scenario.id);
-  const [editingEdgeId, setEditingEdgeId] = useState<string | null>(null);
 
   if (lastScenarioId !== scenario.id) {
     setLastScenarioId(scenario.id);
@@ -153,17 +152,25 @@ export function StoryGraphView({ scenario }: Props) {
       to: conn.target,
       kind,
       label: null,
-      meta: { condition: "" },
+      meta: {
+        condition: "",
+        // ★ 关键：标记这条边属于当前剧情
+        scenario_id: scenario.id,
+      },
       created_at: now,
     };
     await ipc.upsertRelation(relation);
     upsertRelation(relation);
   }
 
+  const selectEdge = useProjectStore((s) => s.selectEdge);
+  
+  
   function onEdgeClick(_: unknown, edge: Edge) {
-    setEditingEdgeId(edge.id);
+    selectEdge(edge.id);
   }
-
+  
+  
   async function onEdgesDelete(deleted: Edge[]) {
     for (const e of deleted) {
       const relation = relations.find((r) => r.id === e.id);
@@ -172,10 +179,6 @@ export function StoryGraphView({ scenario }: Props) {
       removeRelation(relation.id);
     }
   }
-
-  const editingRelation = editingEdgeId
-    ? (relations.find((r) => r.id === editingEdgeId) ?? null)
-    : null;
 
   if (scenario.node_ids.length === 0) {
     return (
@@ -187,9 +190,13 @@ export function StoryGraphView({ scenario }: Props) {
           justifyContent: "center",
           color: "var(--fg-muted)",
           fontSize: 13,
+          textAlign: "center",
+          padding: 24,
         }}
       >
         还没有节点。去「设置」里勾选要放进剧情的卡牌。
+        <br />
+        剧情图只显示在本剧情中创建的关系。
       </div>
     );
   }
@@ -237,14 +244,6 @@ export function StoryGraphView({ scenario }: Props) {
           nodeColor={() => "var(--bg-raised)"}
         />
       </ReactFlow>
-
-      {editingRelation && (
-        <EdgeEditorDialog
-          scenario={scenario}
-          relation={editingRelation}
-          onClose={() => setEditingEdgeId(null)}
-        />
-      )}
     </div>
   );
 }

@@ -1,12 +1,14 @@
 import { useState } from "react";
 import {
   ipc,
+  type Relation,
   type Scenario,
   type VariableDef,
   type FieldType,
 } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
 import { useDraft } from "../../hooks/useDraft";
+import { newId } from "../../lib/id";
 import { nowMs } from "../../lib/time";
 import { StoryGraphView } from "./StoryGraphView";
 import { PlayView } from "./PlayView";
@@ -27,8 +29,11 @@ function defaultVarType(kind: FieldType["kind"]): FieldType {
 
 export function ScenarioEditor({ scenario }: Props) {
   const cards = useProjectStore((s) => s.cards) ?? [];
+  const cardTypes = useProjectStore((s) => s.cardTypes) ?? [];
   const relationKinds = useProjectStore((s) => s.relationKinds) ?? [];
+  const relations = useProjectStore((s) => s.relations) ?? [];
   const upsertScenario = useProjectStore((s) => s.upsertScenario);
+  const upsertRelation = useProjectStore((s) => s.upsertRelation);
 
   const { draft, dirty, update, commit } = useDraft(
     scenario,
@@ -71,6 +76,50 @@ export function ScenarioEditor({ scenario }: Props) {
   function removeVariable(i: number) {
     update({ variables: draft.variables.filter((_, idx) => idx !== i) });
   }
+
+  function countImportable(): number {
+    const ids = new Set(draft.node_ids);
+    return relations.filter(
+      (r) => !r.meta?.scenario_id && ids.has(r.from) && ids.has(r.to),
+    ).length;
+  }
+
+  async function importWorldRelations() {
+    const ids = new Set(draft.node_ids);
+    const candidates = relations.filter(
+      (r) => !r.meta?.scenario_id && ids.has(r.from) && ids.has(r.to),
+    );
+    if (candidates.length === 0) {
+      alert("节点之间没有可导入的世界观关系。");
+      return;
+    }
+    if (
+      !confirm(
+        `导入 ${candidates.length} 条世界观关系到本剧情？\n\n` +
+          `原关系保留不动，会复制一份到本剧情。\n` +
+          `复制后的关系只能在剧情图里看到和编辑。`,
+      )
+    ) {
+      return;
+    }
+
+    for (const r of candidates) {
+      const copied: Relation = {
+        ...r,
+        id: newId(),
+        meta: {
+          ...r.meta,
+          scenario_id: scenario.id,
+          condition: "",
+        },
+        created_at: nowMs(),
+      };
+      await ipc.upsertRelation(copied);
+      upsertRelation(copied);
+    }
+  }
+
+  const importableCount = countImportable();
 
   return (
     <div
@@ -211,6 +260,20 @@ export function ScenarioEditor({ scenario }: Props) {
           <LabeledBlock label={`节点（${draft.node_ids.length}）`}>
             <div
               style={{
+                fontSize: 11,
+                color: "var(--fg-muted)",
+                marginBottom: 6,
+                padding: "6px 8px",
+                background: "var(--bg-surface)",
+                border: "1px solid var(--border-subtle)",
+                borderRadius: "var(--radius-md)",
+              }}
+            >
+              建议：剧情图的节点用「场景」类型卡，而不是角色或地点。
+              场景卡的字段包括时间、地点、参与者、描述和对白，运行视图会显示这些信息。
+            </div>
+            <div
+              style={{
                 maxHeight: 220,
                 overflow: "auto",
                 border: "1px solid var(--border-subtle)",
@@ -226,34 +289,77 @@ export function ScenarioEditor({ scenario }: Props) {
                   还没有卡牌
                 </div>
               )}
-              {cards.map((c) => (
-                <label
-                  key={c.id}
-                  style={{
-                    display: "flex",
-                    gap: 6,
-                    fontSize: 12,
-                    color: "var(--fg-secondary)",
-                    cursor: "pointer",
-                    padding: "2px 0",
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={draft.node_ids.includes(c.id)}
-                    onChange={(e) => {
-                      if (e.target.checked)
-                        update({ node_ids: [...draft.node_ids, c.id] });
-                      else
-                        update({
-                          node_ids: draft.node_ids.filter((x) => x !== c.id),
-                        });
+              {cards.map((c) => {
+                const cardType = cardTypes.find((t) => t.id === c.type_id);
+                const isScene = cardType?.name === "场景";
+                return (
+                  <label
+                    key={c.id}
+                    style={{
+                      display: "flex",
+                      gap: 6,
+                      fontSize: 12,
+                      color: "var(--fg-secondary)",
+                      cursor: "pointer",
+                      padding: "2px 0",
+                      opacity: isScene ? 1 : 0.65,
                     }}
-                    style={{ accentColor: "var(--accent-gold)" }}
-                  />
-                  {c.name}
-                </label>
-              ))}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={draft.node_ids.includes(c.id)}
+                      onChange={(e) => {
+                        if (e.target.checked)
+                          update({ node_ids: [...draft.node_ids, c.id] });
+                        else
+                          update({
+                            node_ids: draft.node_ids.filter((x) => x !== c.id),
+                          });
+                      }}
+                      style={{ accentColor: "var(--accent-gold)" }}
+                    />
+                    <span
+                      style={{
+                        color: isScene ? "var(--fg-primary)" : undefined,
+                      }}
+                    >
+                      {c.name}
+                    </span>
+                    <span style={{ color: "var(--fg-muted)", fontSize: 11 }}>
+                      {cardType?.name ?? "?"}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          </LabeledBlock>
+
+          <LabeledBlock label="关系">
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                flexWrap: "wrap",
+              }}
+            >
+              <button
+                className="btn"
+                onClick={importWorldRelations}
+                disabled={importableCount === 0}
+                style={{ fontSize: 12 }}
+                title={
+                  importableCount === 0
+                    ? "节点之间没有世界观关系"
+                    : `将复制 ${importableCount} 条关系到本剧情`
+                }
+              >
+                从世界观关系导入
+                {importableCount > 0 && `（${importableCount}）`}
+              </button>
+              <span style={{ fontSize: 11, color: "var(--fg-muted)" }}>
+                剧情图只显示打了本剧情标记的关系
+              </span>
             </div>
           </LabeledBlock>
 

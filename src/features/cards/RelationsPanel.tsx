@@ -21,8 +21,9 @@ export function RelationsPanel({ card }: Props) {
 
   const [adding, setAdding] = useState(false);
 
-  const outgoing = relations.filter((r) => r.from === card.id);
-  const incoming = relations.filter((r) => r.to === card.id);
+  const worldRelations = relations.filter((r) => !r.meta?.scenario_id);
+  const outgoing = worldRelations.filter((r) => r.from === card.id);
+  const incoming = worldRelations.filter((r) => r.to === card.id);
 
   const cardName = (id: string) =>
     cards.find((c) => c.id === id)?.name ?? id.slice(0, 8);

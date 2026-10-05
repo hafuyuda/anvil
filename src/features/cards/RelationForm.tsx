@@ -49,15 +49,17 @@ export function RelationForm({ fromCardId, fromTypeId, onDone }: Props) {
       alert("请选择目标卡牌");
       return;
     }
+    
     const relation: Relation = {
       id: newId(),
       from: fromCardId,
       to: toId,
       kind: kind.id,
       label: null,
-      meta,
+      meta: { ...meta, scenario_id: undefined }, // 显式清除
       created_at: nowMs(),
     };
+
     try {
       await ipc.upsertRelation(relation);
       upsertRelation(relation);
