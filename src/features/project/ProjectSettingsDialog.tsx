@@ -2,12 +2,14 @@ import { useEffect, useState } from "react";
 import { ipc, type Manifest } from "../../core/ipc";
 import { Modal } from "../../components/Modal";
 import { nowMs } from "../../lib/time";
+import { ThemePanel } from "./ThemePanel";
 
 interface Props {
   onClose: () => void;
 }
 
 export function ProjectSettingsDialog({ onClose }: Props) {
+  const [tab, setTab] = useState<"general" | "theme">("general");
   const [manifest, setManifest] = useState<Manifest | null>(null);
   const [draft, setDraft] = useState<Manifest | null>(null);
   const [dirty, setDirty] = useState(false);
@@ -50,28 +52,91 @@ export function ProjectSettingsDialog({ onClose }: Props) {
     }
   }
 
+  async function saveThemeId(id: string | null) {
+    if (!draft) return;
+    const next: Manifest = {
+      ...draft,
+      theme_id: id,
+      updated_at: nowMs(),
+    };
+    setDraft(next);
+    try {
+      await ipc.saveManifest(next);
+      setManifest(next);
+    } catch (e) {
+      alert("保存失败: " + e);
+    }
+  }
+
   return (
     <Modal
       title="项目设置"
-      width={480}
+      width={tab === "theme" ? 700 : 480}
       onClose={onClose}
       footer={
         <>
           <button className="btn" onClick={onClose}>
             关闭
           </button>
-          <button className="btn btn-primary" onClick={save} disabled={!dirty}>
-            {dirty ? "保存" : "已保存"}
-          </button>
+          {tab === "general" && (
+            <button
+              className="btn btn-primary"
+              onClick={save}
+              disabled={!dirty}
+            >
+              {dirty ? "保存" : "已保存"}
+            </button>
+          )}
         </>
       }
     >
+      <div
+        style={{
+          display: "flex",
+          gap: 4,
+          borderBottom: "1px solid var(--border-subtle)",
+          paddingBottom: 6,
+        }}
+      >
+        <button
+          className="btn btn-ghost"
+          onClick={() => setTab("general")}
+          style={{
+            fontWeight: tab === "general" ? 600 : 400,
+            borderBottom:
+              tab === "general"
+                ? "2px solid var(--accent-gold)"
+                : "2px solid transparent",
+            borderRadius: 0,
+          }}
+        >
+          常规
+        </button>
+        <button
+          className="btn btn-ghost"
+          onClick={() => setTab("theme")}
+          style={{
+            fontWeight: tab === "theme" ? 600 : 400,
+            borderBottom:
+              tab === "theme"
+                ? "2px solid var(--accent-gold)"
+                : "2px solid transparent",
+            borderRadius: 0,
+          }}
+        >
+          主题
+        </button>
+      </div>
+
       {loading && (
-        <div style={{ color: "var(--fg-muted)", fontSize: 12 }}>读取中…</div>
+        <div style={{ color: "var(--fg-muted)", fontSize: 12 }}>
+          读取中…
+        </div>
       )}
 
-      {draft && (
+      {tab === "general" && draft && (
         <>
+          {/* 原来的常规内容 */}
           <LabeledBlock label="项目名">
             <input
               className="input"
@@ -107,7 +172,9 @@ export function ProjectSettingsDialog({ onClose }: Props) {
             <textarea
               className="textarea"
               value={draft.description ?? ""}
-              onChange={(e) => update({ description: e.target.value || null })}
+              onChange={(e) =>
+                update({ description: e.target.value || null })
+              }
               style={{ minHeight: 60 }}
             />
           </LabeledBlock>
@@ -131,16 +198,15 @@ export function ProjectSettingsDialog({ onClose }: Props) {
             <span style={{ fontFamily: "var(--font-mono)" }}>
               {manifest?.schema_version}
             </span>
-            <span>创建</span>
-            <span style={{ fontFamily: "var(--font-mono)" }}>
-              {manifest ? new Date(manifest.created_at).toLocaleString() : "—"}
-            </span>
-            <span>更新</span>
-            <span style={{ fontFamily: "var(--font-mono)" }}>
-              {manifest ? new Date(manifest.updated_at).toLocaleString() : "—"}
-            </span>
           </div>
         </>
+      )}
+
+      {tab === "theme" && draft && (
+        <ThemePanel
+          manifestThemeId={draft.theme_id ?? null}
+          onChangeThemeId={saveThemeId}
+        />
       )}
     </Modal>
   );

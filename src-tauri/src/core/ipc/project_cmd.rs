@@ -1,5 +1,6 @@
 use super::state::AppState;
 use crate::core::model::manifest::Manifest;
+use crate::core::model::theme::Theme;
 use crate::core::store::project::Project;
 use std::path::PathBuf;
 use tauri::State;
@@ -151,4 +152,54 @@ pub fn is_directory_empty(path: String) -> Result<bool, String> {
     }
     let mut entries = std::fs::read_dir(&root).map_err(|e| e.to_string())?;
     Ok(entries.next().is_none())
+}
+
+#[tauri::command]
+pub fn list_themes(state: State<AppState>) -> Result<Vec<Theme>, String> {
+    let guard = state.project.lock().unwrap();
+    let p = guard.as_ref().ok_or("no project open")?;
+    p.load_themes().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn upsert_theme(state: State<AppState>, theme: Theme) -> Result<(), String> {
+    let guard = state.project.lock().unwrap();
+    let p = guard.as_ref().ok_or("no project open")?;
+    p.save_theme(&theme).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn delete_theme(state: State<AppState>, id: String) -> Result<(), String> {
+    let guard = state.project.lock().unwrap();
+    let p = guard.as_ref().ok_or("no project open")?;
+    p.delete_theme(&id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn import_image(state: State<AppState>, src: String) -> Result<String, String> {
+    let guard = state.project.lock().unwrap();
+    let p = guard.as_ref().ok_or("no project open")?;
+    p.import_image(&PathBuf::from(src))
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn delete_image(state: State<AppState>, relative: String) -> Result<(), String> {
+    let guard = state.project.lock().unwrap();
+    let p = guard.as_ref().ok_or("no project open")?;
+    p.delete_image(&relative).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn list_images(state: State<AppState>) -> Result<Vec<String>, String> {
+    let guard = state.project.lock().unwrap();
+    let p = guard.as_ref().ok_or("no project open")?;
+    p.list_images().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn read_image_data_url(state: State<AppState>, relative: String) -> Result<String, String> {
+    let guard = state.project.lock().unwrap();
+    let p = guard.as_ref().ok_or("no project open")?;
+    p.read_image_data_url(&relative).map_err(|e| e.to_string())
 }

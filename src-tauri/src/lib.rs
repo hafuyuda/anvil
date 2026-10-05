@@ -27,6 +27,13 @@ pub fn run() {
             import_pack,
             create_project,
             is_directory_empty,
+            list_themes,
+            upsert_theme,
+            delete_theme,
+            import_image,
+            delete_image,
+            list_images,
+            read_image_data_url,
             // cards
             save_card,
             list_cards,

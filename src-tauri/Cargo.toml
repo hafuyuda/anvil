@@ -29,6 +29,7 @@ rusqlite = { version = "0.40.2", features = ["bundled"] }
 evalexpr = "13.1.0"
 zip = "8.6.0"
 walkdir = "2.5.0"
+base64 = "0.23.1"
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
 [profile.release]

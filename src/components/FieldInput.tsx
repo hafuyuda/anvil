@@ -1,4 +1,5 @@
 import type { FieldDef, FieldType } from "../core/ipc";
+import { ImageField } from "./ImageField";
 
 interface Props {
   field?: FieldDef;
@@ -23,9 +24,7 @@ export function FieldInput({
 
   if (!resolvedTy) {
     return (
-      <span style={{ color: "var(--danger)", fontSize: 11 }}>
-        缺少字段类型
-      </span>
+      <span style={{ color: "var(--danger)", fontSize: 11 }}>缺少字段类型</span>
     );
   }
 
@@ -58,7 +57,7 @@ export function FieldInput({
           className="input"
           value={(value as string) ?? ""}
           onChange={(e) => onChange(e.target.value)}
-        />
+        />,
       );
 
     case "rich_text":
@@ -68,7 +67,7 @@ export function FieldInput({
           style={{ minHeight: 100 }}
           value={(value as string) ?? ""}
           onChange={(e) => onChange(e.target.value)}
-        />
+        />,
       );
 
     case "number":
@@ -80,7 +79,7 @@ export function FieldInput({
           onChange={(e) =>
             onChange(e.target.value === "" ? null : Number(e.target.value))
           }
-        />
+        />,
       );
 
     case "bool":
@@ -102,7 +101,7 @@ export function FieldInput({
             style={{ accentColor: "var(--accent-gold)" }}
           />
           {Boolean(value) ? "是" : "否"}
-        </label>
+        </label>,
       );
 
     case "date":
@@ -112,7 +111,7 @@ export function FieldInput({
           type="date"
           value={(value as string) ?? ""}
           onChange={(e) => onChange(e.target.value)}
-        />
+        />,
       );
 
     case "color":
@@ -135,7 +134,7 @@ export function FieldInput({
             value={(value as string) ?? ""}
             onChange={(e) => onChange(e.target.value)}
           />
-        </div>
+        </div>,
       );
 
     case "enum":
@@ -151,7 +150,7 @@ export function FieldInput({
               {o}
             </option>
           ))}
-        </select>
+        </select>,
       );
 
     case "multi_enum": {
@@ -175,9 +174,7 @@ export function FieldInput({
                 checked={arr.includes(o)}
                 onChange={(e) => {
                   onChange(
-                    e.target.checked
-                      ? [...arr, o]
-                      : arr.filter((x) => x !== o)
+                    e.target.checked ? [...arr, o] : arr.filter((x) => x !== o),
                   );
                 }}
                 style={{ accentColor: "var(--accent-gold)" }}
@@ -185,7 +182,7 @@ export function FieldInput({
               {o}
             </label>
           ))}
-        </div>
+        </div>,
       );
     }
 
@@ -200,11 +197,11 @@ export function FieldInput({
               e.target.value
                 .split(",")
                 .map((s) => s.trim())
-                .filter(Boolean)
+                .filter(Boolean),
             )
           }
           placeholder="用逗号分隔"
-        />
+        />,
       );
     }
 
@@ -223,23 +220,30 @@ export function FieldInput({
               e.target.value
                 .split(",")
                 .map((s) => s.trim())
-                .filter(Boolean)
+                .filter(Boolean),
             )
           }
           placeholder="卡牌 ID，逗号分隔"
-        />
+        />,
       );
     }
 
     case "image":
+      return wrapped(
+        <ImageField
+          value={value as string | null | undefined}
+          onChange={onChange}
+        />,
+      );
+
     case "url":
       return wrapped(
         <input
           className="input"
           value={(value as string) ?? ""}
           onChange={(e) => onChange(e.target.value)}
-          placeholder={resolvedTy.kind === "image" ? "assets/..." : "https://..."}
-        />
+          placeholder="https://..."
+        />,
       );
 
     case "json":
@@ -255,7 +259,7 @@ export function FieldInput({
               // 忽略
             }
           }}
-        />
+        />,
       );
 
     default:

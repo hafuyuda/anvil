@@ -1,6 +1,7 @@
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { ipc } from "./ipc";
 import { useProjectStore } from "../stores/projectStore";
+import { applyProjectTheme } from "./applyProjectTheme";
 
 export function useOpenProject() {
   const setProject = useProjectStore((s) => s.setProject);
@@ -15,15 +16,23 @@ export function useOpenProject() {
 
     try {
       await ipc.openProject(selected);
-      const [cards, cardTypes, relationKinds, relations, scenarios, boards] =
-        await Promise.all([
-          ipc.listCards(),
-          ipc.listCardTypes(),
-          ipc.listRelationKinds(),
-          ipc.listAllRelations(),
-          ipc.listScenarios(),
-          ipc.listBoards(),
-        ]);
+      const [
+        cards,
+        cardTypes,
+        relationKinds,
+        relations,
+        scenarios,
+        boards,
+        sessions,
+      ] = await Promise.all([
+        ipc.listCards(),
+        ipc.listCardTypes(),
+        ipc.listRelationKinds(),
+        ipc.listAllRelations(),
+        ipc.listScenarios(),
+        ipc.listBoards(),
+        ipc.listSessions(),
+      ]);
       setProject(
         selected,
         cards,
@@ -32,7 +41,9 @@ export function useOpenProject() {
         relations,
         scenarios,
         boards,
+        sessions
       );
+      await applyProjectTheme();
     } catch (e) {
       alert("打开失败: " + e);
     }

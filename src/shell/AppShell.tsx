@@ -5,14 +5,35 @@ import { Workspace } from "./Workspace";
 import { Inspector } from "./Inspector";
 import { StatusBar } from "./StatusBar";
 import { useProjectStore } from "../stores/projectStore";
+import { useUIStore } from "../stores/uiStore";
 import { useKeyboard } from "../hooks/useKeyboard";
+import { useCommands } from "../hooks/useCommands";
+import { useGlobalCommands } from "../features/commands/useGlobalCommands";
+import { CommandPalette } from "../components/CommandPalette";
 import { ipc } from "../core/ipc";
 
 export function AppShell() {
   const projectPath = useProjectStore((s) => s.projectPath);
-  const setProject = useProjectStore((s) => s.setProject);
 
+  const paletteOpen = useUIStore((s) => s.paletteOpen);
+  const closePalette = useUIStore((s) => s.closePalette);
+  const togglePalette = useUIStore((s) => s.togglePalette);
+
+  const commands = useCommands();
+  useGlobalCommands();
   useKeyboard();
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const mod = e.ctrlKey || e.metaKey;
+      if (mod && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        togglePalette();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [togglePalette]);
 
   useEffect(() => {
     let timer: number | null = null;
@@ -20,18 +41,19 @@ export function AppShell() {
       if (timer !== null) window.clearTimeout(timer);
       timer = window.setTimeout(async () => {
         if (!projectPath) return;
+        // ★ 有未保存修改时跳过，避免旧磁盘数据覆盖内存
+        if ((useProjectStore.getState().pendingSaves ?? 0) > 0) return;
         try {
           const snap = await ipc.reloadProject();
-          setProject(
-            projectPath,
-            snap.cards,
-            snap.card_types,
-            snap.relation_kinds,
-            snap.relations,
-            snap.scenarios,
-            snap.boards,
-            snap.sessions
-          );
+          useProjectStore.getState().refreshProject({
+            cards: snap.cards,
+            cardTypes: snap.card_types,
+            relationKinds: snap.relation_kinds,
+            relations: snap.relations,
+            scenarios: snap.scenarios,
+            boards: snap.boards,
+            sessions: snap.sessions,
+          });
         } catch {
           // 忽略
         }
@@ -42,7 +64,7 @@ export function AppShell() {
       window.removeEventListener("focus", onFocus);
       if (timer !== null) window.clearTimeout(timer);
     };
-  }, [projectPath, setProject]);
+  }, [projectPath]);
 
   return (
     <div
@@ -62,6 +84,10 @@ export function AppShell() {
         <Inspector />
       </div>
       <StatusBar />
+
+      {paletteOpen && (
+        <CommandPalette commands={commands} onClose={closePalette} />
+      )}
     </div>
   );
 }

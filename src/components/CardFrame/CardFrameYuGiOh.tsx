@@ -1,6 +1,7 @@
 import type { Card, CardType } from "../../core/ipc";
 import { SIZE_MAP, type CardFrameSize } from "./types";
 import { mapCard } from "./yugioh";
+import { useImageUrl } from "../../hooks/useImageUrl";
 
 interface Props {
   card: Card;
@@ -23,6 +24,7 @@ export function CardFrameYuGiOh({
 
   const displayBody = m.body.length > 0 ? m.body : (cardType.description ?? "");
   const stars = m.level ? "★".repeat(Math.min(m.level, 12)) : "";
+  const imageUrl = useImageUrl(m.image);
 
   return (
     <div
@@ -113,33 +115,21 @@ export function CardFrameYuGiOh({
           </div>
         )}
 
-        {/* 图像区 */}
-        <div
-          style={{
-            flex: "0 0 auto",
-            height: spec.h * 0.38,
-            background: `${accent}33`,
-            border: `1px solid ${darken(accent, 0.2)}`,
-            borderRadius: 3,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            position: "relative",
-            overflow: "hidden",
-          }}
-        >
-          <div
-            style={{
-              fontSize: spec.h * 0.22,
-              fontWeight: 700,
-              color: "#fff",
-              textShadow: `0 2px 4px ${darken(accent, 0.3)}`,
-              opacity: 0.85,
-              fontFamily: "var(--font-title)",
-            }}
-          >
-            {m.title.slice(0, 2)}
-          </div>
+        <div style={{/* 图像区容器样式 */}}>
+          {imageUrl ? (
+            <img
+              src={imageUrl}
+              alt=""
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                display: "block",
+              }}
+            />
+          ) : (
+            <div style={{/* 色块 + 首字 */}}>{m.title.slice(0, 2)}</div>
+          )}
         </div>
 
         {/* 等级星 */}

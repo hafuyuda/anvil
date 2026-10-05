@@ -165,6 +165,7 @@ export interface Manifest {
   description?: string | null;
   created_at: number;
   updated_at: number;
+  theme_id?: string | null;
 }
 
 // ============ 跑团消息 ============
@@ -193,6 +194,15 @@ export interface ChatPayload {
   author_name?: string;
   content: string;
   roll?: RollInfo;
+}
+
+export interface Theme {
+  id: string;
+  name: string;
+  description?: string | null;
+  variables: Record<string, string>;
+  created_at: number;
+  updated_at: number;
 }
 
 export function isChatKind(kind: string): kind is ChatEventKind {
@@ -269,4 +279,12 @@ export const ipc = {
     invoke<void>("create_project", { path, name }),
   isDirectoryEmpty: (path: string) =>
     invoke<boolean>("is_directory_empty", { path }),
+  listThemes: () => invoke<Theme[]>("list_themes"),
+  upsertTheme: (theme: Theme) => invoke<void>("upsert_theme", { theme }),
+  deleteTheme: (id: string) => invoke<void>("delete_theme", { id }),
+  importImage: (src: string) => invoke<string>("import_image", { src }),
+  deleteImage: (relative: string) => invoke<void>("delete_image", { relative }),
+  listImages: () => invoke<string[]>("list_images"),
+  readImageDataUrl: (relative: string) =>
+    invoke<string>("read_image_data_url", { relative }),
 };

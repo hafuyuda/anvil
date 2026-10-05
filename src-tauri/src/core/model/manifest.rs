@@ -17,6 +17,8 @@ pub struct Manifest {
     #[serde(default)]
     pub description: Option<String>,
     #[serde(default)]
+    pub theme_id: Option<String>,
+    #[serde(default)]
     pub created_at: i64,
     #[serde(default)]
     pub updated_at: i64,
@@ -44,6 +46,7 @@ impl Manifest {
             version: "0.1.0".into(),
             author: None,
             description: None,
+            theme_id: None,
             created_at: now,
             updated_at: now,
         }

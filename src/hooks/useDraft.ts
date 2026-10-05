@@ -10,7 +10,6 @@ interface Options<T> {
   autoSave?: boolean;
   autoSaveDelay?: number;
   undoLabel?: string;
-  /** draft 变化时立即调用，用于同步 store 让 UI 立刻一致 */
   onDraftChange?: (draft: T) => void;
 }
 
@@ -29,35 +28,48 @@ export function useDraft<T extends HasId>(
 
   const saveRef = useRef(save);
   saveRef.current = save;
+
   const onDraftChangeRef = useRef(onDraftChange);
   onDraftChangeRef.current = onDraftChange;
 
   const draftRef = useRef<T>(draft);
   draftRef.current = draft;
+
   const baselineRef = useRef<T>(source);
 
   const pushUndo = useProjectStore((s) => s.pushUndo);
   const incPendingSaves = useProjectStore((s) => s.incPendingSaves);
   const decPendingSaves = useProjectStore((s) => s.decPendingSaves);
 
+  // 切换 source（不同 id）时重置
   if (draft.id !== source.id) {
     setDraft(source);
     setDirty(false);
     baselineRef.current = source;
+    draftRef.current = source;
   }
 
+  // ── 关键：draft 变化后，在 effect 里通知 onDraftChange ──
+  const lastNotifiedRef = useRef<T | null>(null);
+  useEffect(() => {
+    if (lastNotifiedRef.current === draft) return;
+    const changed =
+      lastNotifiedRef.current === null ||
+      JSON.stringify(lastNotifiedRef.current) !== JSON.stringify(draft);
+    lastNotifiedRef.current = draft;
+    if (changed) {
+      onDraftChangeRef.current?.(draft);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft]);
+
   function update(patch: Partial<T>) {
-    setDraft((d) => {
-      const next = { ...d, ...patch };
-      onDraftChangeRef.current?.(next);
-      return next;
-    });
+    setDraft((d) => ({ ...d, ...patch }));
     setDirty(true);
   }
 
   function set(next: T) {
     setDraft(next);
-    onDraftChangeRef.current?.(next);
     setDirty(true);
   }
 
@@ -86,13 +98,11 @@ export function useDraft<T extends HasId>(
         undo: async () => {
           baselineRef.current = before;
           setDraft(before);
-          onDraftChangeRef.current?.(before);
           await saveRef.current(before);
         },
         redo: async () => {
           baselineRef.current = after;
           setDraft(after);
-          onDraftChangeRef.current?.(after);
           await saveRef.current(after);
         },
       });

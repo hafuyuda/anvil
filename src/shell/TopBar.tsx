@@ -6,6 +6,8 @@ import { useCreateProject } from "../core/useCreateProject";
 import { useExportPack } from "../core/useExportPack";
 import { useImportPack } from "../core/useImportPack";
 import { ProjectSettingsDialog } from "../features/project/ProjectSettingsDialog";
+import { useUIStore } from "../stores/uiStore";
+import { resetTheme } from "../lib/theme";
 
 export function TopBar() {
   const projectPath = useProjectStore((s) => s.projectPath);
@@ -20,7 +22,9 @@ export function TopBar() {
   const createProject = useCreateProject();
   const exportPack = useExportPack();
   const importPack = useImportPack();
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
+  const openPalette = useUIStore((s) => s.openPalette);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   async function handleClose() {
@@ -30,22 +34,24 @@ export function TopBar() {
       // 忽略
     }
     closeProject();
+    resetTheme();
   }
+
+  const refreshProject = useProjectStore((s) => s.refreshProject);
 
   async function handleRefresh() {
     if (!projectPath) return;
     try {
       const snap = await ipc.reloadProject();
-      setProject(
-        projectPath,
-        snap.cards,
-        snap.card_types,
-        snap.relation_kinds,
-        snap.relations,
-        snap.scenarios,
-        snap.boards,
-        snap.sessions
-      );
+      refreshProject({
+        cards: snap.cards,
+        cardTypes: snap.card_types,
+        relationKinds: snap.relation_kinds,
+        relations: snap.relations,
+        scenarios: snap.scenarios,
+        boards: snap.boards,
+        sessions: snap.sessions,
+      });
     } catch (e) {
       alert("刷新失败: " + e);
     }
@@ -129,9 +135,7 @@ export function TopBar() {
               style={{
                 fontSize: 11,
                 color:
-                  pendingSaves > 0
-                    ? "var(--accent-flame)"
-                    : "var(--fg-muted)",
+                  pendingSaves > 0 ? "var(--accent-flame)" : "var(--fg-muted)",
               }}
             >
               {statusText}
@@ -140,13 +144,27 @@ export function TopBar() {
         )}
 
         <div style={{ flex: 1 }} />
-
-        <input
+        <button
           className="input"
-          placeholder="搜索（Ctrl+K）"
-          disabled
-          style={{ width: 240, fontSize: 12 }}
-        />
+          onClick={openPalette}
+          style={{
+            width: 240,
+            fontSize: 12,
+            textAlign: "left",
+            cursor: "pointer",
+            color: "var(--fg-muted)",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            background: "var(--bg-surface)",
+          }}
+        >
+          <span>搜索或执行命令…</span>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: 10 }}>
+            Ctrl+K
+          </span>
+        </button>
+
         <button
           className="btn"
           onClick={() => setSettingsOpen(true)}

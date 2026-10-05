@@ -51,6 +51,17 @@ interface ProjectState {
     boards: Board[],
     sessions: Session[],
   ) => void;
+
+  refreshProject: (data: {
+    cards: Card[];
+    cardTypes: CardType[];
+    relationKinds: RelationKind[];
+    relations: Relation[];
+    scenarios: Scenario[];
+    boards: Board[];
+    sessions: Session[];
+  }) => void;
+
   closeProject: () => void;
   addCard: (card: Card) => void;
   updateCard: (card: Card) => void;
@@ -128,6 +139,40 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       undoStack: [],
       redoStack: [],
       pendingSaves: 0,
+    }),
+
+  refreshProject: (data) =>
+    set((s) => {
+      // 保留选中，但过滤掉已不存在的对象
+      const selectedCardId =
+        s.selectedCardId && data.cards.some((c) => c.id === s.selectedCardId)
+          ? s.selectedCardId
+          : null;
+      const currentBoardId =
+        s.currentBoardId && data.boards.some((b) => b.id === s.currentBoardId)
+          ? s.currentBoardId
+          : null;
+      const selectedTokenId =
+        s.selectedTokenId &&
+        data.boards.some((b) =>
+          (b.tokens ?? []).some((t) => t.id === s.selectedTokenId),
+        )
+          ? s.selectedTokenId
+          : null;
+
+      return {
+        cards: data.cards ?? [],
+        cardTypes: data.cardTypes ?? [],
+        relationKinds: data.relationKinds ?? [],
+        relations: data.relations ?? [],
+        scenarios: data.scenarios ?? [],
+        boards: data.boards ?? [],
+        sessions: data.sessions ?? [],
+        selectedCardId,
+        selectedTokenId,
+        currentBoardId,
+        // 不清 undo / redo，不清 activeModule
+      };
     }),
 
   closeProject: () =>

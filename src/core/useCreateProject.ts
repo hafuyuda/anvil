@@ -1,6 +1,7 @@
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { ipc } from "./ipc";
 import { useProjectStore } from "../stores/projectStore";
+import { applyProjectTheme } from "./applyProjectTheme";
 
 export function useCreateProject() {
   const setProject = useProjectStore((s) => s.setProject);
@@ -13,20 +14,18 @@ export function useCreateProject() {
     });
     if (!dest || Array.isArray(dest)) return;
 
-    // 先调 Rust 检查目录是否为空
     try {
       const empty = await ipc.isDirectoryEmpty(dest);
       if (!empty) {
         const proceed = confirm(
           `目录「${dest}」不是空的。\n\n` +
             `· 点击「确定」将尝试新建，但可能因已有文件而失败\n` +
-            `· 点击「取消」返回\n\n` +
-            `如果这是已有项目，请用「打开」而不是「新建」。`,
+            `· 点击「取消」返回`
         );
         if (!proceed) return;
       }
     } catch {
-      // 目录不存在，没问题，继续
+      // 目录不存在，没问题
     }
 
     const name = dest.split(/[\\/]/).pop() ?? "新项目";
@@ -65,8 +64,9 @@ export function useCreateProject() {
         relations,
         scenarios,
         boards,
-        sessions,
+        sessions
       );
+      await applyProjectTheme();
     } catch (e) {
       alert("打开新项目失败: " + e);
     }

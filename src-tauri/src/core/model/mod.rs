@@ -7,3 +7,4 @@ pub mod relation;
 pub mod relation_kind;
 pub mod scenario;
 pub mod session;
+pub mod theme;

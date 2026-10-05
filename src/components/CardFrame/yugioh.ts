@@ -8,12 +8,12 @@ export interface YugiohMapping {
   atk?: number;
   def?: number;
   body: string;
+  image?: string;
 }
 
 export function mapCard(card: Card, cardType: CardType): YugiohMapping {
   const cfg = cardType.card_frame;
 
-  // 显式配置存在时优先
   if (cfg) {
     const title =
       cfg.title && typeof card.values[cfg.title] === "string"
@@ -45,6 +45,12 @@ export function mapCard(card: Card, cardType: CardType): YugiohMapping {
         ? (card.values[cfg.type_line] as string)
         : cardType.name;
 
+    // ★ image：显式配置优先，否则扫描第一个有值的 image 类型字段
+    const image =
+      cfg.image && typeof card.values[cfg.image] === "string"
+        ? (card.values[cfg.image] as string)
+        : findImageField(card, cardType);
+
     const bodyParts: string[] = [];
     for (const key of cfg.body) {
       const v = card.values[key];
@@ -63,11 +69,24 @@ export function mapCard(card: Card, cardType: CardType): YugiohMapping {
       atk,
       def,
       body: bodyParts.join("\n"),
+      image,
     };
   }
 
-  // 回退到启发式
   return fallbackMap(card, cardType);
+}
+
+function findImageField(card: Card, cardType: CardType): string | undefined {
+  for (const f of cardType.fields) {
+    if (f.deprecated) continue;
+    if (f.ty.kind === "image") {
+      const v = card.values[f.key];
+      if (typeof v === "string" && v.trim()) {
+        return v;
+      }
+    }
+  }
+  return undefined;
 }
 
 function fallbackMap(card: Card, cardType: CardType): YugiohMapping {
@@ -78,12 +97,24 @@ function fallbackMap(card: Card, cardType: CardType): YugiohMapping {
   let level: number | undefined;
   let atk: number | undefined;
   let def: number | undefined;
+  let image: string | undefined;
   const bodyParts: string[] = [];
 
   for (const f of fields) {
     const v = card.values[f.key];
     const key = f.key.toLowerCase();
     const label = f.label.toLowerCase();
+
+    // image 类型字段
+    if (
+      image === undefined &&
+      f.ty.kind === "image" &&
+      typeof v === "string" &&
+      v.trim()
+    ) {
+      image = v;
+      continue;
+    }
 
     if (
       level === undefined &&
@@ -137,5 +168,6 @@ function fallbackMap(card: Card, cardType: CardType): YugiohMapping {
     atk,
     def,
     body: bodyParts.join("\n"),
+    image,
   };
 }

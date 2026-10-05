@@ -1,6 +1,7 @@
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { ipc } from "./ipc";
 import { useProjectStore } from "../stores/projectStore";
+import { applyProjectTheme } from "./applyProjectTheme";
 
 export function useImportPack() {
   const setProject = useProjectStore((s) => s.setProject);
@@ -20,7 +21,6 @@ export function useImportPack() {
     });
     if (!dest || Array.isArray(dest)) return;
 
-    // 检查目标是否为空
     try {
       await ipc.importPack(src, dest);
     } catch (e) {
@@ -28,7 +28,6 @@ export function useImportPack() {
       return;
     }
 
-    // 自动打开导入后的项目
     try {
       await ipc.openProject(dest);
       const [
@@ -56,8 +55,9 @@ export function useImportPack() {
         relations,
         scenarios,
         boards,
-        sessions,
+        sessions
       );
+      await applyProjectTheme();
       alert("导入成功");
     } catch (e) {
       alert("打开导入的项目失败: " + e);
