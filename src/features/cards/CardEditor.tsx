@@ -80,7 +80,7 @@ export function CardEditor({ card, cardType }: Props) {
       </div>
 
       {visibleFields.length === 0 && (
-        <p style={{ color: "#aaa", fontSize: 12 }}>
+        <p style={{ color: "var(--fg-muted)", fontSize: 12 }}>
           该类型还没有字段，去「类型」里添加
         </p>
       )}
@@ -129,7 +129,7 @@ export function CardEditor({ card, cardType }: Props) {
 
       <div
         style={{
-          borderTop: "1px solid #eee",
+          borderTop: "1px solid var(--border-subtle)",
           paddingTop: 12,
           marginTop: 12,
         }}
@@ -137,7 +137,7 @@ export function CardEditor({ card, cardType }: Props) {
         <RelationsPanel card={card} />
       </div>
 
-      <details style={{ fontSize: 11, color: "#aaa" }}>
+      <details style={{ fontSize: 11, color: "var(--fg-muted)" }}>
         <summary>原始数据</summary>
         <pre style={{ overflow: "auto", maxHeight: 200 }}>
           {JSON.stringify(draft, null, 2)}

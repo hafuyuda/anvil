@@ -8,8 +8,8 @@ import { useImportPack } from "../core/useImportPack";
 import { ProjectSettingsDialog } from "../features/project/ProjectSettingsDialog";
 import { useUIStore } from "../stores/uiStore";
 import { resetTheme } from "../lib/theme";
-import { clearImageCache } from "../lib/imageCache";
 import { setLastOpenPath } from "../lib/recentProjects";
+import { clearImageCache } from "../lib/imageCache";
 
 export function TopBar() {
   const projectPath = useProjectStore((s) => s.projectPath);
@@ -34,10 +34,13 @@ export function TopBar() {
   async function handleClose() {
     try {
       await ipc.closeProject();
-    } catch {}
+    } catch {
+      //ignore
+    }
     closeProject();
     resetTheme();
-    setLastOpenPath(null); // 主动关闭，下次不自动打开
+    clearImageCache();
+    setLastOpenPath(null);
   }
 
   const refreshProject = useProjectStore((s) => s.refreshProject);

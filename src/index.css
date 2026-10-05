@@ -245,3 +245,13 @@ h4 {
   font-weight: 600;
   letter-spacing: 0.3px;
 }
+
+.graph-handle {
+  opacity: 0.5;
+}
+.graph-handle:hover {
+  opacity: 1;
+  background: var(--accent-gold) !important;
+  border-color: var(--accent-gold) !important;
+  transform: scale(1.3);
+}

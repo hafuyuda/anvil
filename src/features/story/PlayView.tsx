@@ -49,6 +49,15 @@ export function PlayView({ scenario }: Props) {
     [relations, currentId, nodeIds, scenario.id],
   );
 
+  const [lastRolls, setLastRolls] = useState<
+    {
+      key: string;
+      raw: string;
+      resolved: number | boolean | string;
+      detail: number[];
+    }[]
+  >([]);
+
   useEffect(() => {
     let cancelled = false;
     async function run() {
@@ -84,7 +93,6 @@ export function PlayView({ scenario }: Props) {
   function advance(relationId: string, toId: string) {
     if (!currentId) return;
 
-    // 执行效果
     const relation = relations.find((r) => r.id === relationId);
     if (relation) {
       const effects = parseEffects(relation.meta?.effects);
@@ -94,6 +102,21 @@ export function PlayView({ scenario }: Props) {
         if (result.errors.length > 0) {
           console.warn("效果执行警告:", result.errors);
         }
+        const rolls = result.applied.filter((a) => a.isRoll);
+        if (rolls.length > 0) {
+          setLastRolls(
+            rolls.map((a) => ({
+              key: a.key,
+              raw: a.raw,
+              resolved: a.resolved,
+              detail: a.rollDetail ?? [],
+            })),
+          );
+        } else {
+          setLastRolls([]);
+        }
+      } else {
+        setLastRolls([]);
       }
     }
 
@@ -295,7 +318,33 @@ export function PlayView({ scenario }: Props) {
           >
             {currentCard.name}
           </div>
-
+          {lastRolls.length > 0 && (
+            <div
+              style={{
+                marginBottom: 12,
+                padding: "8px 10px",
+                background: "var(--bg-surface)",
+                border: "1px solid var(--border-accent)",
+                borderRadius: "var(--radius-md)",
+                fontFamily: "var(--font-mono)",
+                fontSize: 12,
+              }}
+            >
+              {lastRolls.map((r, i) => (
+                <div key={i} style={{ color: "var(--fg-primary)" }}>
+                  <span style={{ color: "var(--accent-gold)" }}>🎲</span>{" "}
+                  {r.raw}{" "}
+                  {r.detail.length > 0 && (
+                    <span style={{ color: "var(--fg-muted)" }}>
+                      [{r.detail.join(", ")}]
+                    </span>
+                  )}{" "}
+                  →{" "}
+                  <span style={{ fontWeight: 600 }}>{String(r.resolved)}</span>
+                </div>
+              ))}
+            </div>
+          )}
           <div
             style={{
               display: "flex",

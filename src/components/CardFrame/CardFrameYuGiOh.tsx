@@ -179,6 +179,7 @@ export function CardFrameYuGiOh({
 
         {/* 描述框 */}
         <div
+          title={displayBody}
           style={{
             flex: 1,
             minHeight: 0,
@@ -187,7 +188,7 @@ export function CardFrameYuGiOh({
             borderRadius: 3,
             padding: `${spec.padding}px ${spec.padding + 2}px`,
             fontSize: spec.bodySize,
-            lineHeight: 1.35,
+            lineHeight: 1.3,
             color: "var(--card-yugioh-text)",
             overflow: "hidden",
             whiteSpace: "pre-wrap",
@@ -206,7 +207,23 @@ export function CardFrameYuGiOh({
             {displayBody}
           </div>
 
-          {(m.atk !== undefined || m.def !== undefined) && (
+          {/* 底部渐隐：仅当内容溢出时视觉上更明显 */}
+          <div
+            style={{
+              position: "absolute",
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: 18,
+              background: `linear-gradient(180deg, transparent 0%, var(--card-yugioh-parchment) 100%)`,
+              pointerEvents: "none",
+            }}
+          />
+
+          {/* ATK/DEF */}
+          {(m.atk !== undefined ||
+            m.def !== undefined ||
+            m.hp !== undefined) && (
             <div
               style={{
                 position: "absolute",
@@ -219,6 +236,7 @@ export function CardFrameYuGiOh({
                 color: "var(--card-yugioh-text)",
                 background: "var(--card-yugioh-parchment)",
                 padding: "0 4px",
+                borderRadius: 2,
               }}
             >
               {m.atk !== undefined && (

@@ -166,12 +166,15 @@ export function useGlobalCommands() {
           } catch {
             // 忽略
           }
-          useProjectStore.getState().closeProject();
           const { resetTheme } = await import("../../lib/theme");
+          const { clearImageCache } = await import("../../lib/imageCache");
+          const { setLastOpenPath } = await import("../../lib/recentProjects");
+          useProjectStore.getState().closeProject();
           resetTheme();
+          clearImageCache();
+          setLastOpenPath(null);
         },
       });
-
       reg({
         id: "edit.undo",
         label: "撤销",

@@ -21,15 +21,36 @@ export function RelationsPanel({ card }: Props) {
 
   const [adding, setAdding] = useState(false);
 
-  const worldRelations = relations.filter((r) => !r.meta?.scenario_id);
-  const outgoing = worldRelations.filter((r) => r.from === card.id);
-  const incoming = worldRelations.filter((r) => r.to === card.id);
-
   const cardName = (id: string) =>
     cards.find((c) => c.id === id)?.name ?? id.slice(0, 8);
 
   const kindOf = (id: string): RelationKind | undefined =>
     relationKinds.find((k) => k.id === id);
+
+  const isUndirected = (kindId: string) => {
+    const k = kindOf(kindId);
+    return k ? !k.directed : false;
+  };
+
+  // 只处理世界观边
+  const worldRelations = relations.filter((r) => !r.meta?.scenario_id);
+
+  // 从本卡出发：
+  // - 有向边：r.from === card.id
+  // - 无向边：r.from 或 r.to 任一侧是 card.id 都算
+  const outgoing = worldRelations.filter((r) => {
+    if (r.from === card.id) return true;
+    if (r.to === card.id && isUndirected(r.kind)) return true;
+    return false;
+  });
+
+  // 指向本卡：
+  // - 有向边：r.to === card.id
+  // - 无向边不算（已归到 outgoing）
+  const incoming = worldRelations.filter((r) => {
+    if (r.to === card.id && !isUndirected(r.kind)) return true;
+    return false;
+  });
 
   async function handleDelete(r: Relation) {
     if (!confirm("确认删除这条关系？")) return;
@@ -41,8 +62,85 @@ export function RelationsPanel({ card }: Props) {
     }
   }
 
+  function renderRow(r: Relation, mode: "out" | "in") {
+    const k = kindOf(r.kind);
+    const undirected = k ? !k.directed : false;
+
+    // 显示对方卡
+    let otherId: string;
+    let arrow: string;
+
+    if (mode === "out") {
+      if (r.from === card.id) {
+        otherId = r.to;
+        arrow = undirected ? "⇄" : "→";
+      } else {
+        // 无向关系的反向（当前卡是 to）
+        otherId = r.from;
+        arrow = "⇄";
+      }
+    } else {
+      // in：有向入边
+      otherId = r.from;
+      arrow = "→";
+    }
+
+    return (
+      <li
+        key={r.id}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          padding: "4px 0",
+          fontSize: 12,
+        }}
+      >
+        <span style={{ color: k?.color ?? "var(--fg-secondary)" }}>
+          {k?.name ?? r.kind}
+        </span>
+        <span style={{ color: "var(--fg-muted)" }}>{arrow}</span>
+        <span
+          onClick={() => selectCard(otherId)}
+          style={{
+            color: "var(--accent-gold)",
+            cursor: "pointer",
+            textDecoration: "underline",
+          }}
+        >
+          {cardName(otherId)}
+        </span>
+        {r.label && (
+          <span
+            style={{
+              color: "var(--fg-muted)",
+              fontStyle: "italic",
+              fontSize: 11,
+            }}
+          >
+            （{r.label}）
+          </span>
+        )}
+        <button
+          className="btn btn-ghost"
+          onClick={() => handleDelete(r)}
+          style={{
+            marginLeft: "auto",
+            fontSize: 11,
+            padding: "1px 6px",
+            color: "var(--danger)",
+          }}
+          title="删除关系"
+        >
+          ×
+        </button>
+      </li>
+    );
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {/* 从本卡出发 */}
       <div>
         <div
           style={{
@@ -60,7 +158,7 @@ export function RelationsPanel({ card }: Props) {
               letterSpacing: 1,
             }}
           >
-            从本卡出发（{outgoing.length}）
+            本卡参与（{outgoing.length}）
           </div>
           {!adding && (
             <button
@@ -86,51 +184,11 @@ export function RelationsPanel({ card }: Props) {
         )}
 
         <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-          {outgoing.map((r) => {
-            const k = kindOf(r.kind);
-            return (
-              <li
-                key={r.id}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  padding: "4px 0",
-                  fontSize: 12,
-                }}
-              >
-                <span style={{ color: k?.color ?? "var(--fg-secondary)" }}>
-                  {k?.name ?? r.kind}
-                </span>
-                <span
-                  onClick={() => selectCard(r.to)}
-                  style={{
-                    color: "var(--accent-gold)",
-                    cursor: "pointer",
-                    textDecoration: "underline",
-                  }}
-                >
-                  {cardName(r.to)}
-                </span>
-                <button
-                  className="btn btn-ghost"
-                  onClick={() => handleDelete(r)}
-                  style={{
-                    marginLeft: "auto",
-                    fontSize: 11,
-                    padding: "1px 6px",
-                    color: "var(--danger)",
-                  }}
-                  title="删除关系"
-                >
-                  ×
-                </button>
-              </li>
-            );
-          })}
+          {outgoing.map((r) => renderRow(r, "out"))}
         </ul>
       </div>
 
+      {/* 指向本卡 */}
       <div>
         <div
           style={{
@@ -147,49 +205,7 @@ export function RelationsPanel({ card }: Props) {
           <div style={{ fontSize: 12, color: "var(--fg-muted)" }}>无</div>
         )}
         <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-          {incoming.map((r) => {
-            const k = kindOf(r.kind);
-            const label = k?.inverse_name || k?.name || r.kind;
-            return (
-              <li
-                key={r.id}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  padding: "4px 0",
-                  fontSize: 12,
-                }}
-              >
-                <span
-                  onClick={() => selectCard(r.from)}
-                  style={{
-                    color: "var(--accent-gold)",
-                    cursor: "pointer",
-                    textDecoration: "underline",
-                  }}
-                >
-                  {cardName(r.from)}
-                </span>
-                <span style={{ color: k?.color ?? "var(--fg-secondary)" }}>
-                  {label}
-                </span>
-                <button
-                  className="btn btn-ghost"
-                  onClick={() => handleDelete(r)}
-                  style={{
-                    marginLeft: "auto",
-                    fontSize: 11,
-                    padding: "1px 6px",
-                    color: "var(--danger)",
-                  }}
-                  title="删除关系"
-                >
-                  ×
-                </button>
-              </li>
-            );
-          })}
+          {incoming.map((r) => renderRow(r, "in"))}
         </ul>
       </div>
     </div>

@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
-import { ipc, type Board } from "../../core/ipc";
+import { ipc, type Board, Token } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
 import { BoardCanvas } from "./BoardCanvas";
 import { DEFAULT_GRID } from "./constants";
 import { nowMs } from "../../lib/time";
 import { PickerDialog } from "../../components/PickerDialog";
 import { invalidateImage } from "../../lib/imageCache";
+import { newId } from "../../lib/id";
 
 interface Props {
   board: Board;
@@ -16,6 +17,8 @@ export function BoardEditor({ board }: Props) {
   const upsertBoard = useProjectStore((s) => s.upsertBoard);
   const setCurrentBoard = useProjectStore((s) => s.setCurrentBoard);
   const pushUndo = useProjectStore((s) => s.pushUndo);
+
+  const [cardPickerOpen, setCardPickerOpen] = useState(false);
 
   const normalized: Board = {
     ...board,
@@ -59,7 +62,7 @@ export function BoardEditor({ board }: Props) {
       upsertBoard(after);
       if (undoLabel) {
         pushUndo({
-          id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          id: `${Date.now()}-${newId().slice(2, 8)}`,
           label: undoLabel,
           undo: async () => {
             await persist(before);
@@ -120,6 +123,38 @@ export function BoardEditor({ board }: Props) {
   }
 
   const grid = normalized.grid;
+
+  async function addCardToBoard(cardId: string) {
+    const tokens = normalized.tokens ?? [];
+    const count = tokens.length;
+    const gx = 100 + (count % 8) * 180;
+    const gy = 100 + Math.floor(count / 8) * 240;
+
+    const newToken: Token = {
+      id: Math.random().toString(36).slice(2) + Date.now().toString(36),
+      card_id: cardId,
+      name_override: null,
+      value_overrides: {},
+      x: gx,
+      y: gy,
+      w: 140,
+      h: 205,
+      rotation: 0,
+      layer: count,
+      visible: true,
+    };
+
+    const next: Board = {
+      ...normalized,
+      tokens: [...tokens, newToken],
+      updated_at: Date.now(),
+    };
+    await ipc.upsertBoard(next);
+    upsertBoard(next);
+  }
+
+  const cards = useProjectStore((s) => s.cards) ?? [];
+  const cardTypes = useProjectStore((s) => s.cardTypes) ?? [];
 
   return (
     <div
@@ -196,9 +231,61 @@ export function BoardEditor({ board }: Props) {
             style={{ width: 64 }}
           />
         </label>
-
+        <label
+          style={{
+            fontSize: 12,
+            display: "flex",
+            gap: 6,
+            alignItems: "center",
+            color: "var(--fg-secondary)",
+          }}
+        >
+          宽
+          <input
+            className="input"
+            type="number"
+            value={normalized.width}
+            onChange={(e) =>
+              savePatch(
+                { width: Number(e.target.value) || 1200 },
+                "修改棋盘宽度",
+              )
+            }
+            style={{ width: 72 }}
+          />
+        </label>
+        <label
+          style={{
+            fontSize: 12,
+            display: "flex",
+            gap: 6,
+            alignItems: "center",
+            color: "var(--fg-secondary)",
+          }}
+        >
+          高
+          <input
+            className="input"
+            type="number"
+            value={normalized.height}
+            onChange={(e) =>
+              savePatch(
+                { height: Number(e.target.value) || 800 },
+                "修改棋盘高度",
+              )
+            }
+            style={{ width: 72 }}
+          />
+        </label>
         <button className="btn" onClick={openBgPicker} style={{ fontSize: 12 }}>
           {normalized.background ? "更换背景" : "设置背景"}
+        </button>
+        <button
+          className="btn btn-primary"
+          onClick={() => setCardPickerOpen(true)}
+          style={{ fontSize: 12 }}
+        >
+          + 添加卡片
         </button>
         {normalized.background && (
           <button
@@ -284,6 +371,20 @@ export function BoardEditor({ board }: Props) {
           options={[{ value: "", label: "— 无背景 —" }, ...imageOptions]}
           onPick={(v) => savePatch({ background: v || null }, "设置棋盘背景")}
           onClose={() => setBgPickerOpen(false)}
+        />
+      )}
+
+      {cardPickerOpen && (
+        <PickerDialog
+          title="添加卡片到棋盘"
+          options={cards.map((c) => ({
+            value: c.id,
+            label: `${c.name} · ${cardTypes.find((t) => t.id === c.type_id)?.name ?? "?"}`,
+          }))}
+          onPick={(id) => {
+            void addCardToBoard(id);
+          }}
+          onClose={() => setCardPickerOpen(false)}
         />
       )}
     </div>

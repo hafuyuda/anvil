@@ -12,7 +12,10 @@ import {
 import "@xyflow/react/dist/style.css";
 import { useProjectStore } from "../../stores/projectStore";
 import { buildGraph } from "./graphLayout";
+import { GraphNode } from "./GraphNode";
 import { Toolbar, ToolbarSpacer } from "../../components/Toolbar";
+import { type Connection } from "@xyflow/react";
+import { GraphEdgeDialog } from "./GraphEdgeDialog";
 
 export function GraphView() {
   const cards = useProjectStore((s) => s.cards) ?? [];
@@ -20,32 +23,40 @@ export function GraphView() {
   const cardTypes = useProjectStore((s) => s.cardTypes) ?? [];
   const relationKinds = useProjectStore((s) => s.relationKinds) ?? [];
   const selectCard = useProjectStore((s) => s.selectCard);
+  const selectEdge = useProjectStore((s) => s.selectEdge);
 
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [kindFilter, setKindFilter] = useState("");
 
-  // 基础布局：只在卡牌 / 关系集合变化时重算
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
+
+  const [pendingConnection, setPendingConnection] = useState<{
+    fromId: string;
+    toId: string;
+  } | null>(null);
+
+  function onConnect(conn: Connection) {
+    if (!conn.source || !conn.target) return;
+    if (conn.source === conn.target) return;
+    setPendingConnection({ fromId: conn.source, toId: conn.target });
+  }
 
   const dataKey = useMemo(() => {
     const cardIds = cards
       .map((c) => c.id)
       .sort()
       .join(",");
-    const relIds = relations
-      .filter((r) => !r.meta?.scenario_id)
+    const worldRelations = relations.filter((r) => !r.meta?.scenario_id);
+    const relIds = worldRelations
       .map((r) => r.id)
       .sort()
       .join(",");
     return `${cardIds}|${relIds}`;
   }, [cards, relations]);
 
-  const selectEdge = useProjectStore((s) => s.selectEdge);
-
   useEffect(() => {
-    // ★ 世界观图只显示没有 scenario_id 的边
     const worldRelations = relations.filter((r) => !r.meta?.scenario_id);
     const raw = buildGraph(
       cards,
@@ -57,8 +68,9 @@ export function GraphView() {
     setNodes(
       raw.nodes.map((n) => ({
         id: n.id,
+        type: "card",
         position: n.position,
-        data: { label: n.data.label, typeId: n.data.typeId },
+        data: { dim: false },
       })),
     );
     setEdges(
@@ -72,10 +84,32 @@ export function GraphView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataKey]);
 
-  // 匹配状态
-  const matchMap = useMemo(() => {
+  // 计算变暗状态，更新节点 data
+  const styledNodes: Node[] = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const m = new Map<string, boolean>();
+    const hasFilter = Boolean(q || typeFilter);
+    return nodes.map((n) => {
+      const card = cards.find((c) => c.id === n.id);
+      let matched = true;
+      if (q && card) {
+        const inName = card.name.toLowerCase().includes(q);
+        const inValues = Object.values(card.values).some((v) =>
+          typeof v === "string" ? v.toLowerCase().includes(q) : false,
+        );
+        matched = inName || inValues;
+      }
+      if (typeFilter && card && card.type_id !== typeFilter) matched = false;
+      const dim = hasFilter && !matched;
+      return {
+        ...n,
+        data: { ...(n.data as object), dim },
+      };
+    });
+  }, [nodes, query, typeFilter, cards]);
+
+  const visibleEdges: Edge[] = useMemo(() => {
+    const matchMap = new Map<string, boolean>();
+    const q = query.trim().toLowerCase();
     for (const n of nodes) {
       const card = cards.find((c) => c.id === n.id);
       let ok = true;
@@ -87,41 +121,9 @@ export function GraphView() {
         ok = inName || inValues;
       }
       if (typeFilter && card && card.type_id !== typeFilter) ok = false;
-      m.set(n.id, ok);
+      matchMap.set(n.id, ok);
     }
-    return m;
-  }, [nodes, query, typeFilter, cards]);
 
-  // 渲染层节点（带样式 + 过滤）
-  const styledNodes: Node[] = useMemo(() => {
-    const q = query.trim();
-    const hasFilter = Boolean(q || typeFilter);
-    return nodes.map((n) => {
-      const typeId = (n.data as { typeId?: string }).typeId;
-      const cardType = cardTypes.find((t) => t.id === typeId);
-      const color = cardType?.color ?? "#888888";
-      const matched = matchMap.get(n.id) ?? true;
-      const dim = hasFilter && !matched;
-      return {
-        ...n,
-        style: {
-          padding: 8,
-          borderRadius: 4,
-          border: `2px solid ${color}`,
-          background: dim ? "var(--bg-surface)" : `${color}22`,
-          fontSize: 12,
-          whiteSpace: "pre-line" as const,
-          textAlign: "center" as const,
-          width: 140,
-          color: dim ? "var(--fg-muted)" : "var(--fg-primary)",
-          opacity: dim ? 0.35 : 1,
-          transition: "opacity 0.15s",
-        },
-      };
-    });
-  }, [nodes, cardTypes, matchMap, query, typeFilter]);
-
-  const visibleEdges: Edge[] = useMemo(() => {
     return edges.map((e) => {
       const raw = relations.find((r) => r.id === e.id);
       const kind = raw
@@ -134,7 +136,7 @@ export function GraphView() {
       let hide = false;
       if (kindFilter && raw && raw.kind !== kindFilter) hide = true;
       if (typeFilter && !(fromMatch && toMatch)) hide = true;
-      if (query.trim() && !(fromMatch || toMatch)) hide = true;
+      if (q && !(fromMatch || toMatch)) hide = true;
 
       return {
         ...e,
@@ -150,15 +152,18 @@ export function GraphView() {
     edges,
     relations,
     relationKinds,
-    matchMap,
-    kindFilter,
-    typeFilter,
+    nodes,
+    cards,
     query,
+    typeFilter,
+    kindFilter,
   ]);
 
   function onNodesChange(changes: NodeChange<Node>[]) {
     setNodes((ns) => applyNodeChanges(changes, ns));
   }
+
+  const nodeTypes = useMemo(() => ({ card: GraphNode }), []);
 
   const hasFilter = Boolean(query.trim() || typeFilter || kindFilter);
 
@@ -253,11 +258,13 @@ export function GraphView() {
         <ReactFlow
           nodes={styledNodes}
           edges={visibleEdges}
+          nodeTypes={nodeTypes}
           onNodesChange={onNodesChange}
           onNodeClick={(_, node) => selectCard(node.id)}
           onEdgeClick={(_, edge) => selectEdge(edge.id)}
+          onConnect={onConnect}
           fitView
-          fitViewOptions={{ padding: 0.15 }}
+          fitViewOptions={{ padding: 0.2 }}
           proOptions={{ hideAttribution: true }}
         >
           <Background color="var(--border-subtle)" gap={20} />
@@ -281,6 +288,20 @@ export function GraphView() {
           />
         </ReactFlow>
       </div>
+
+      {pendingConnection &&
+        (() => {
+          const fromCard = cards.find((c) => c.id === pendingConnection.fromId);
+          const toCard = cards.find((c) => c.id === pendingConnection.toId);
+          if (!fromCard || !toCard) return null;
+          return (
+            <GraphEdgeDialog
+              from={fromCard}
+              to={toCard}
+              onClose={() => setPendingConnection(null)}
+            />
+          );
+        })()}
     </div>
   );
 }

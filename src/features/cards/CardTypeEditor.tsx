@@ -1,4 +1,21 @@
 import { useState } from "react";
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { useProjectStore } from "../../stores/projectStore";
 import {
   ipc,
@@ -84,6 +101,15 @@ export function CardTypeEditor({ cardType }: Props) {
 
   const [tab, setTab] = useState<"fields" | "frame">("fields");
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 4 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
+
   function updateField(index: number, patch: Partial<FieldDef>) {
     const fields = draft.fields.map((f, i) =>
       i === index ? { ...f, ...patch } : f,
@@ -113,6 +139,28 @@ export function CardTypeEditor({ cardType }: Props) {
     });
   }
 
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = Number(active.id);
+    const newIndex = Number(over.id);
+    if (Number.isNaN(oldIndex) || Number.isNaN(newIndex)) return;
+
+    const visible = draft.fields.filter((f) => !f.deprecated);
+    const deprecated = draft.fields.filter((f) => f.deprecated);
+    if (oldIndex < 0 || oldIndex >= visible.length) return;
+    if (newIndex < 0 || newIndex >= visible.length) return;
+
+    const reordered = arrayMove(visible, oldIndex, newIndex);
+    const merged = [...reordered, ...deprecated].map((f, idx) => ({
+      ...f,
+      order: idx,
+    }));
+
+    update({ fields: merged });
+  }
+
   const visibleFields = draft.fields.filter((f) => !f.deprecated);
   const hasFrame = Boolean(draft.card_frame);
 
@@ -125,7 +173,7 @@ export function CardTypeEditor({ cardType }: Props) {
         flexDirection: "column",
       }}
     >
-      {/* 顶部：名称 + 保存状态 */}
+      {/* 顶部 */}
       <div
         style={{
           padding: 12,
@@ -191,7 +239,7 @@ export function CardTypeEditor({ cardType }: Props) {
         </TabButton>
       </div>
 
-      {/* tab 内容 */}
+      {/* 内容 */}
       <div style={{ flex: 1, minHeight: 0, overflow: "auto", padding: 16 }}>
         {tab === "fields" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -223,51 +271,60 @@ export function CardTypeEditor({ cardType }: Props) {
                   textTransform: "uppercase",
                   letterSpacing: 1,
                   marginBottom: 6,
+                  display: "flex",
+                  justifyContent: "space-between",
                 }}
               >
-                字段
+                <span>字段</span>
+                <span
+                  style={{
+                    textTransform: "none",
+                    letterSpacing: 0,
+                    fontSize: 10,
+                  }}
+                >
+                  拖动左侧 ⋮⋮ 排序
+                </span>
               </div>
 
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 8,
-                }}
-              >
-                {visibleFields.length === 0 && (
-                  <p style={{ color: "var(--fg-muted)", fontSize: 12 }}>
-                    还没有字段
-                  </p>
-                )}
-                {draft.fields.map((field, i) =>
-                  field.deprecated ? null : (
-                    <FieldRow
-                      key={field.key}
-                      field={field}
-                      onChange={(patch) => updateField(i, patch)}
-                      onRemove={() => removeField(i)}
-                      onMoveUp={
-                        i > 0
-                          ? () => {
-                              const fields = [...draft.fields];
-                              [fields[i - 1], fields[i]] = [
-                                fields[i],
-                                fields[i - 1],
-                              ];
-                              update({
-                                fields: fields.map((f, idx) => ({
-                                  ...f,
-                                  order: idx,
-                                })),
-                              });
-                            }
-                          : undefined
-                      }
-                    />
-                  ),
-                )}
-              </div>
+              {visibleFields.length === 0 ? (
+                <p style={{ color: "var(--fg-muted)", fontSize: 12 }}>
+                  还没有字段
+                </p>
+              ) : (
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext
+                    items={visibleFields.map((_, idx) => String(idx))}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 8,
+                      }}
+                    >
+                      {visibleFields.map((field, visibleIdx) => {
+                        // 找到 field 在 draft.fields 里的真实索引（用于 update/remove）
+                        const realIdx = draft.fields.indexOf(field);
+                        return (
+                          <SortableFieldRow
+                            key={visibleIdx}
+                            sortableId={String(visibleIdx)}
+                            field={field}
+                            onChange={(patch) => updateField(realIdx, patch)}
+                            onRemove={() => removeField(realIdx)}
+                          />
+                        );
+                      })}
+                    </div>
+                  </SortableContext>
+                </DndContext>
+              )}
 
               <button
                 className="btn"
@@ -333,16 +390,68 @@ function TabButton({
   );
 }
 
+// ============ 可排序字段行 ============
+
+interface SortableFieldRowProps {
+  sortableId: string;
+  field: FieldDef;
+  onChange: (patch: Partial<FieldDef>) => void;
+  onRemove: () => void;
+}
+
+function SortableFieldRow({
+  sortableId,
+  field,
+  onChange,
+  onRemove,
+}: SortableFieldRowProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: sortableId });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    position: "relative",
+    zIndex: isDragging ? 10 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <FieldRow
+        field={field}
+        handleProps={{ ...attributes, ...listeners }}
+        onChange={onChange}
+        onRemove={onRemove}
+        isDragging={isDragging}
+      />
+    </div>
+  );
+}
+
 // ============ 字段行 ============
 
 interface FieldRowProps {
   field: FieldDef;
+  handleProps: Record<string, unknown>;
   onChange: (patch: Partial<FieldDef>) => void;
   onRemove: () => void;
-  onMoveUp?: () => void;
+  isDragging?: boolean;
 }
 
-function FieldRow({ field, onChange, onRemove, onMoveUp }: FieldRowProps) {
+function FieldRow({
+  field,
+  handleProps,
+  onChange,
+  onRemove,
+  isDragging,
+}: FieldRowProps) {
   const cardTypes = useProjectStore((s) => s.cardTypes) ?? [];
 
   const needsOptions =
@@ -353,116 +462,140 @@ function FieldRow({ field, onChange, onRemove, onMoveUp }: FieldRowProps) {
     <div
       style={{
         display: "flex",
-        flexDirection: "column",
         gap: 6,
         padding: 8,
         border: "1px solid var(--border-subtle)",
         borderRadius: "var(--radius-md)",
         background: "var(--bg-surface)",
-        fontSize: 12,
+        boxShadow: isDragging ? "0 4px 12px rgba(0,0,0,0.4)" : "none",
+        transition: "box-shadow 0.12s",
       }}
     >
+      {/* 拖拽手柄：只在这里挂 dnd-kit 的 listeners */}
       <div
+        {...handleProps}
+        title="拖动排序"
         style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr 140px auto auto auto",
-          gap: 6,
+          cursor: isDragging ? "grabbing" : "grab",
+          color: "var(--fg-muted)",
+          userSelect: "none",
+          display: "flex",
           alignItems: "center",
+          justifyContent: "center",
+          padding: "0 4px",
+          fontSize: 13,
+          letterSpacing: -2,
+          flexShrink: 0,
+          touchAction: "none",
         }}
       >
-        <input
-          className="input"
-          value={field.label}
-          onChange={(e) => onChange({ label: e.target.value })}
-          placeholder="显示名"
-        />
-        <input
-          className="input"
-          value={field.key}
-          onChange={(e) => onChange({ key: e.target.value })}
-          placeholder="key"
-          style={{ fontFamily: "var(--font-mono)" }}
-        />
-        <select
-          className="select"
-          value={field.ty.kind}
-          onChange={(e) =>
-            onChange({
-              ty: defaultFieldType(e.target.value as FieldType["kind"]),
-            })
-          }
-        >
-          {FIELD_KINDS.map((k) => (
-            <option key={k.kind} value={k.kind}>
-              {k.label}
-            </option>
-          ))}
-        </select>
-        <label
+        ⋮⋮
+      </div>
+
+      {/* 内容 */}
+      <div
+        style={{
+          flex: 1,
+          minWidth: 0,
+          display: "flex",
+          flexDirection: "column",
+          gap: 6,
+          fontSize: 12,
+        }}
+      >
+        <div
           style={{
-            display: "flex",
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr 140px auto auto",
+            gap: 6,
             alignItems: "center",
-            gap: 4,
-            color: "var(--fg-secondary)",
-            cursor: "pointer",
-            whiteSpace: "nowrap",
           }}
         >
           <input
-            type="checkbox"
-            checked={field.required}
-            onChange={(e) => onChange({ required: e.target.checked })}
-            style={{ accentColor: "var(--accent-gold)" }}
+            className="input"
+            value={field.label}
+            onChange={(e) => onChange({ label: e.target.value })}
+            placeholder="显示名"
           />
-          必填
-        </label>
-        <button
-          className="btn btn-ghost"
-          onClick={onMoveUp}
-          disabled={!onMoveUp}
-          title="上移"
-          style={{ padding: "2px 8px" }}
-        >
-          ↑
-        </button>
-        <button
-          className="btn btn-ghost"
-          onClick={onRemove}
-          title="删除"
-          style={{ padding: "2px 8px", color: "var(--danger)" }}
-        >
-          ×
-        </button>
+          <input
+            className="input"
+            value={field.key}
+            onChange={(e) => onChange({ key: e.target.value })}
+            placeholder="key"
+            style={{ fontFamily: "var(--font-mono)" }}
+          />
+          <select
+            className="select"
+            value={field.ty.kind}
+            onChange={(e) =>
+              onChange({
+                ty: defaultFieldType(e.target.value as FieldType["kind"]),
+              })
+            }
+          >
+            {FIELD_KINDS.map((k) => (
+              <option key={k.kind} value={k.kind}>
+                {k.label}
+              </option>
+            ))}
+          </select>
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+              color: "var(--fg-secondary)",
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={field.required}
+              onChange={(e) => onChange({ required: e.target.checked })}
+              style={{ accentColor: "var(--accent-gold)" }}
+            />
+            必填
+          </label>
+          <button
+            className="btn btn-ghost"
+            onClick={onRemove}
+            title="删除"
+            style={{ padding: "2px 8px", color: "var(--danger)" }}
+          >
+            ×
+          </button>
+        </div>
+
+        {needsOptions && (
+          <OptionsEditor
+            options={
+              field.ty.kind === "enum" || field.ty.kind === "multi_enum"
+                ? field.ty.options
+                : []
+            }
+            onChange={(options) =>
+              onChange({
+                ty:
+                  field.ty.kind === "enum"
+                    ? { kind: "enum", options }
+                    : { kind: "multi_enum", options },
+              })
+            }
+          />
+        )}
+
+        {needsTargets && (
+          <TypeMultiSelect
+            label="可引用类型"
+            allTypes={cardTypes.map((t) => ({ id: t.id, name: t.name }))}
+            value={field.ty.kind === "ref" ? field.ty.target_types : []}
+            onChange={(target_types) =>
+              onChange({ ty: { kind: "ref", target_types } })
+            }
+          />
+        )}
       </div>
-
-      {needsOptions && (
-        <OptionsEditor
-          options={
-            field.ty.kind === "enum" || field.ty.kind === "multi_enum"
-              ? field.ty.options
-              : []
-          }
-          onChange={(options) =>
-            onChange({
-              ty:
-                field.ty.kind === "enum"
-                  ? { kind: "enum", options }
-                  : { kind: "multi_enum", options },
-            })
-          }
-        />
-      )}
-
-      {needsTargets && (
-        <TypeMultiSelect
-          label="可引用类型"
-          allTypes={cardTypes.map((t) => ({ id: t.id, name: t.name }))}
-          value={field.ty.kind === "ref" ? field.ty.target_types : []}
-          onChange={(target_types) =>
-            onChange({ ty: { kind: "ref", target_types } })
-          }
-        />
-      )}
     </div>
   );
 }
@@ -537,75 +670,6 @@ function CardFrameEditor({
     onChange({ ...cfg, [key]: value });
   }
 
-  function FieldSelect({
-    label,
-    value,
-    onChange,
-    filter,
-  }: {
-    label: string;
-    value: string | null | undefined;
-    onChange: (v: string | null) => void;
-    filter?: (f: FieldDef) => boolean;
-  }) {
-    const opts = filter ? fields.filter(filter) : fields;
-    return (
-      <label
-        style={{
-          fontSize: 12,
-          display: "flex",
-          flexDirection: "column",
-          gap: 2,
-        }}
-      >
-        <span style={{ color: "var(--fg-muted)" }}>{label}</span>
-        <select
-          className="select"
-          value={value ?? ""}
-          onChange={(e) => onChange(e.target.value || null)}
-        >
-          <option value="">— 未指定 —</option>
-          {opts.map((f) => (
-            <option key={f.key} value={f.key}>
-              {f.label}（{f.key}）
-            </option>
-          ))}
-        </select>
-      </label>
-    );
-  }
-
-  function LabeledInput({
-    label,
-    value,
-    onChange,
-    placeholder,
-  }: {
-    label: string;
-    value: string;
-    onChange: (v: string) => void;
-    placeholder?: string;
-  }) {
-    return (
-      <label
-        style={{
-          fontSize: 12,
-          display: "flex",
-          flexDirection: "column",
-          gap: 2,
-        }}
-      >
-        <span style={{ color: "var(--fg-muted)" }}>{label}</span>
-        <input
-          className="input"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-        />
-      </label>
-    );
-  }
-
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div
@@ -624,7 +688,6 @@ function CardFrameEditor({
         右侧检查器显示实时预览。
       </div>
 
-      {/* 基础字段 */}
       <div
         style={{
           display: "grid",
@@ -636,26 +699,28 @@ function CardFrameEditor({
           label="标题字段（留空用卡名）"
           value={cfg.title}
           onChange={(v) => set("title", v)}
+          options={fields}
         />
         <FieldSelect
           label="副标题"
           value={cfg.subtitle}
           onChange={(v) => set("subtitle", v)}
+          options={fields}
         />
         <FieldSelect
           label="类型行（留空用类型名）"
           value={cfg.type_line}
           onChange={(v) => set("type_line", v)}
+          options={fields}
         />
         <FieldSelect
           label="图像字段"
           value={cfg.image}
           onChange={(v) => set("image", v)}
-          filter={(f) => f.ty.kind === "image"}
+          options={fields.filter((f) => f.ty.kind === "image")}
         />
       </div>
 
-      {/* 等级 */}
       <div
         style={{
           display: "grid",
@@ -667,7 +732,7 @@ function CardFrameEditor({
           label="等级字段"
           value={cfg.level}
           onChange={(v) => set("level", v)}
-          filter={(f) => f.ty.kind === "number"}
+          options={fields.filter((f) => f.ty.kind === "number")}
         />
         <LabeledInput
           label="等级显示名（留空用星号）"
@@ -677,7 +742,6 @@ function CardFrameEditor({
         />
       </div>
 
-      {/* 攻击 */}
       <div
         style={{
           display: "grid",
@@ -689,7 +753,7 @@ function CardFrameEditor({
           label="攻击字段"
           value={cfg.atk}
           onChange={(v) => set("atk", v)}
-          filter={(f) => f.ty.kind === "number"}
+          options={fields.filter((f) => f.ty.kind === "number")}
         />
         <LabeledInput
           label="攻击显示名（默认 ATK）"
@@ -699,7 +763,6 @@ function CardFrameEditor({
         />
       </div>
 
-      {/* 防御 */}
       <div
         style={{
           display: "grid",
@@ -711,7 +774,7 @@ function CardFrameEditor({
           label="防御字段"
           value={cfg.def}
           onChange={(v) => set("def", v)}
-          filter={(f) => f.ty.kind === "number"}
+          options={fields.filter((f) => f.ty.kind === "number")}
         />
         <LabeledInput
           label="防御显示名（默认 DEF）"
@@ -721,7 +784,6 @@ function CardFrameEditor({
         />
       </div>
 
-      {/* HP */}
       <div
         style={{
           display: "grid",
@@ -733,7 +795,7 @@ function CardFrameEditor({
           label="HP 字段"
           value={cfg.hp}
           onChange={(v) => set("hp", v)}
-          filter={(f) => f.ty.kind === "number"}
+          options={fields.filter((f) => f.ty.kind === "number")}
         />
         <LabeledInput
           label="HP 显示名（默认 HP）"
@@ -743,7 +805,6 @@ function CardFrameEditor({
         />
       </div>
 
-      {/* 正文字段 */}
       <div>
         <div
           style={{
@@ -812,5 +873,74 @@ function CardFrameEditor({
         </button>
       </div>
     </div>
+  );
+}
+// ============ 卡框编辑用的小组件（模块级，避免重渲染时卸载） ============
+
+function FieldSelect({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string | null | undefined;
+  onChange: (v: string | null) => void;
+  options: FieldDef[];
+}) {
+  return (
+    <label
+      style={{
+        fontSize: 12,
+        display: "flex",
+        flexDirection: "column",
+        gap: 2,
+      }}
+    >
+      <span style={{ color: "var(--fg-muted)" }}>{label}</span>
+      <select
+        className="select"
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value || null)}
+      >
+        <option value="">— 未指定 —</option>
+        {options.map((f) => (
+          <option key={f.key} value={f.key}>
+            {f.label}（{f.key}）
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function LabeledInput({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <label
+      style={{
+        fontSize: 12,
+        display: "flex",
+        flexDirection: "column",
+        gap: 2,
+      }}
+    >
+      <span style={{ color: "var(--fg-muted)" }}>{label}</span>
+      <input
+        className="input"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+      />
+    </label>
   );
 }

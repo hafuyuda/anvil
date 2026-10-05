@@ -1,9 +1,9 @@
+import { useMemo } from "react";
 import { ipc, type RelationKind } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
 import { useDraft } from "../../hooks/useDraft";
 import { TypeMultiSelect } from "../../components/TypeMultiSelect";
 import { nowMs } from "../../lib/time";
-import { useMemo } from "react";
 
 interface Props {
   relationKind: RelationKind;
@@ -11,6 +11,7 @@ interface Props {
 
 export function RelationKindEditor({ relationKind }: Props) {
   const cardTypes = useProjectStore((s) => s.cardTypes) ?? [];
+  const relationKinds = useProjectStore((s) => s.relationKinds) ?? [];
   const upsertRelationKind = useProjectStore((s) => s.upsertRelationKind);
 
   const { draft, dirty, update, commit } = useDraft(
@@ -23,10 +24,13 @@ export function RelationKindEditor({ relationKind }: Props) {
       await ipc.upsertRelationKind(next);
       upsertRelationKind(next);
     },
-    { undoLabel: "编辑关系类型" },
+    {
+      undoLabel: "编辑关系类型",
+      onDraftChange: (d) => {
+        upsertRelationKind({ ...d, updated_at: nowMs() });
+      },
+    },
   );
-
-  const relationKinds = useProjectStore((s) => s.relationKinds) ?? [];
 
   const conflict = useMemo(() => {
     if (!draft.name.trim()) return null;
@@ -49,67 +53,75 @@ export function RelationKindEditor({ relationKind }: Props) {
   }, [draft.id, draft.name, draft.inverse_name, relationKinds]);
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 12,
-        padding: 12,
-        overflow: "auto",
-        flex: 1,
-        minHeight: 0,
-      }}
-    >
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
         <input
+          className="input"
           value={draft.name}
           onChange={(e) => update({ name: e.target.value })}
           placeholder="关系名（如：位于）"
           style={{
             flex: 1,
-            padding: "4px 8px",
             fontSize: 14,
             fontWeight: 600,
+            fontFamily: "var(--font-title)",
           }}
         />
-        <span style={{ fontSize: 11, color: dirty ? "#c80" : "#888" }}>
+        <span
+          style={{
+            fontSize: 11,
+            color: dirty ? "var(--warning)" : "var(--fg-muted)",
+            whiteSpace: "nowrap",
+          }}
+        >
           {dirty ? "保存中…" : "已保存"}
         </span>
       </div>
 
       <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
         <label style={{ flex: 1, fontSize: 12 }}>
-          <div style={{ color: "#888", marginBottom: 4 }}>
+          <div
+            style={{
+              color: "var(--fg-muted)",
+              marginBottom: 4,
+              fontSize: 11,
+              textTransform: "uppercase",
+              letterSpacing: 0.5,
+            }}
+          >
             反向名（如：包含）
           </div>
           <input
+            className="input"
             value={draft.inverse_name ?? ""}
             onChange={(e) => update({ inverse_name: e.target.value || null })}
-            style={{
-              width: "100%",
-              padding: "4px 6px",
-              boxSizing: "border-box",
-            }}
           />
-          <div
-            style={{
-              marginTop: 6,
-              fontSize: 11,
-              color: "var(--fg-muted)",
-              lineHeight: 1.5,
-            }}
-          >
-            提示：一个关系类型只需建一次。反向名用于在另一侧的卡牌上显示相反的说法。
-            例如「师父」的反向名是「徒弟」，建一条 A → B「师父」，B
-            的检查器会自动显示「A → 徒弟」。
-          </div>
         </label>
         <label style={{ fontSize: 12 }}>
-          <div style={{ color: "#888", marginBottom: 4 }}>颜色</div>
+          <div
+            style={{
+              color: "var(--fg-muted)",
+              marginBottom: 4,
+              fontSize: 11,
+              textTransform: "uppercase",
+              letterSpacing: 0.5,
+            }}
+          >
+            颜色
+          </div>
           <input
             type="color"
             value={draft.color ?? "#888888"}
             onChange={(e) => update({ color: e.target.value })}
+            style={{
+              width: 40,
+              height: 26,
+              padding: 0,
+              border: "1px solid var(--border-default)",
+              borderRadius: "var(--radius-md)",
+              background: "var(--bg-surface)",
+              cursor: "pointer",
+            }}
           />
         </label>
         <label
@@ -119,21 +131,36 @@ export function RelationKindEditor({ relationKind }: Props) {
             alignItems: "center",
             gap: 4,
             paddingBottom: 6,
+            color: "var(--fg-secondary)",
+            cursor: "pointer",
           }}
         >
           <input
             type="checkbox"
             checked={draft.directed}
             onChange={(e) => update({ directed: e.target.checked })}
+            style={{ accentColor: "var(--accent-gold)" }}
           />
           有向
         </label>
       </div>
 
+      <div
+        style={{
+          fontSize: 11,
+          color: "var(--fg-muted)",
+          lineHeight: 1.5,
+        }}
+      >
+        提示：一个关系类型只需建一次。反向名用于在另一侧的卡牌上显示相反的说法。
+        例如「师父」的反向名是「徒弟」，建一条 A → B「师父」，B
+        的检查器会自动显示「A → 徒弟」。
+      </div>
+
       {conflict && (
         <div
           style={{
-            marginTop: 8,
+            marginTop: 4,
             padding: 10,
             background: "var(--bg-surface)",
             border: "1px solid var(--warning)",
@@ -163,22 +190,6 @@ export function RelationKindEditor({ relationKind }: Props) {
               这是同一个关系的反向视角，不需要再建一个。
             </>
           )}
-          <div
-            style={{
-              marginTop: 6,
-              padding: "6px 8px",
-              background: "var(--bg-app)",
-              borderRadius: "var(--radius-sm)",
-              fontFamily: "var(--font-mono)",
-              fontSize: 11,
-              color: "var(--fg-muted)",
-            }}
-          >
-            正确用法：只建一个「{draft.name || "关系名"}」， 反向名填「
-            {draft.inverse_name || "反向名"}」。 建一条 A → B 的边，B
-            的检查器里会自动显示为「
-            {draft.inverse_name || "反向名"}」。
-          </div>
         </div>
       )}
 
@@ -196,13 +207,33 @@ export function RelationKindEditor({ relationKind }: Props) {
         onChange={(v) => update({ to_types: v })}
       />
 
-      <div style={{ fontSize: 11, color: "#aaa" }}>
-        提示：留空表示不限制类型。
+      <div style={{ fontSize: 11, color: "var(--fg-muted)" }}>
+        提示：起点 / 终点类型留空表示不限制。
       </div>
 
-      <details style={{ fontSize: 11, color: "#aaa" }}>
+      <div
+        style={{
+          display: "flex",
+          gap: 8,
+          alignItems: "center",
+          paddingTop: 8,
+          borderTop: "1px solid var(--border-subtle)",
+        }}
+      >
+        <button className="btn" onClick={commit} disabled={!dirty}>
+          立即保存
+        </button>
+      </div>
+
+      <details style={{ fontSize: 11, color: "var(--fg-muted)" }}>
         <summary>原始数据</summary>
-        <pre style={{ overflow: "auto", maxHeight: 200 }}>
+        <pre
+          style={{
+            overflow: "auto",
+            maxHeight: 200,
+            fontFamily: "var(--font-mono)",
+          }}
+        >
           {JSON.stringify(draft, null, 2)}
         </pre>
       </details>

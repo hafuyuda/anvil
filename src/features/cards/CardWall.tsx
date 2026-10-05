@@ -33,6 +33,8 @@ export function CardWall() {
   const [sortAsc, setSortAsc] = useState(false);
 
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [typePickerOpen, setTypePickerOpen] = useState(false);
+
   const [pendingCard, setPendingCard] = useState<Card | null>(null);
 
   useEffect(() => {
@@ -57,10 +59,18 @@ export function CardWall() {
       alert("请先创建一个卡牌类型");
       return;
     }
+    if (cardTypes.length === 1) {
+      await createCardOfType(cardTypes[0].id);
+      return;
+    }
+    setTypePickerOpen(true);
+  }
+
+  async function createCardOfType(typeId: string) {
     const now = nowMs();
     const card: Card = {
       id: newId(),
-      type_id: cardTypes[0].id,
+      type_id: typeId,
       name: "新卡",
       values: {},
       created_at: now,
@@ -411,6 +421,17 @@ export function CardWall() {
             setPickerOpen(false);
             setPendingCard(null);
           }}
+        />
+      )}
+
+      {typePickerOpen && (
+        <PickerDialog
+          title="选择卡牌类型"
+          options={cardTypes.map((t) => ({ value: t.id, label: t.name }))}
+          onPick={(id) => {
+            void createCardOfType(id);
+          }}
+          onClose={() => setTypePickerOpen(false)}
         />
       )}
     </div>

@@ -81,13 +81,12 @@ export function buildGraph(
       "link",
       forceLink<ForceNode, ForceLink>(links)
         .id((d) => d.id)
-        .distance(160)
+        .distance(220)
         .strength(0.5),
     )
-    .force("charge", forceManyBody().strength(-380))
+    .force("charge", forceManyBody().strength(-600))
     .force("center", forceCenter(0, 0))
-    .force("collide", forceCollide(90))
-    // ★ 向原点的拉力：孤立节点更强，把它们收拢到中心
+    .force("collide", forceCollide(150))
     .force(
       "x",
       forceX(0).strength((d) => ((d as ForceNode).isolated ? 0.12 : 0.02)),
