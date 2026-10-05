@@ -1,6 +1,8 @@
 import { ipc } from "../core/ipc";
 import { useProjectStore } from "../stores/projectStore";
 import { useOpenProject } from "../core/useOpenProject";
+import { useExportPack } from "../core/useExportPack";
+import { useImportPack } from "../core/useImportPack";
 
 export function TopBar() {
   const projectPath = useProjectStore((s) => s.projectPath);
@@ -12,6 +14,8 @@ export function TopBar() {
   const undo = useProjectStore((s) => s.undo);
   const redo = useProjectStore((s) => s.redo);
   const openProject = useOpenProject();
+  const exportPack = useExportPack();
+  const importPack = useImportPack();
 
   async function handleClose() {
     try {
@@ -34,7 +38,7 @@ export function TopBar() {
         snap.relations,
         snap.scenarios,
         snap.boards,
-        snap.sessions
+        snap.sessions,
       );
     } catch (e) {
       alert("刷新失败: " + e);
@@ -79,14 +83,22 @@ export function TopBar() {
       <button className="btn" onClick={openProject}>
         {projectPath ? "切换" : "打开"}
       </button>
+      {!projectPath && (
+        <button className="btn" onClick={importPack}>
+          导入包
+        </button>
+      )}
 
       {projectPath && (
         <>
           <button className="btn" onClick={handleRefresh}>
             刷新
           </button>
+          <button className="btn" onClick={exportPack}>
+            导出包
+          </button>
           <button
-            className="btn"
+            className="btn btn-icon"
             onClick={() => void undo()}
             disabled={undoStack.length === 0}
             title="撤销 Ctrl+Z"
@@ -94,7 +106,7 @@ export function TopBar() {
             ↶
           </button>
           <button
-            className="btn"
+            className="btn btn-icon"
             onClick={() => void redo()}
             disabled={redoStack.length === 0}
             title="重做 Ctrl+Shift+Z"
@@ -105,9 +117,7 @@ export function TopBar() {
             style={{
               fontSize: 11,
               color:
-                pendingSaves > 0
-                  ? "var(--accent-flame)"
-                  : "var(--fg-muted)",
+                pendingSaves > 0 ? "var(--accent-flame)" : "var(--fg-muted)",
             }}
           >
             {statusText}

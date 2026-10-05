@@ -156,6 +156,17 @@ export interface GameEvent {
   note?: string | null;
 }
 
+export interface Manifest {
+  kind: string;
+  schema_version: string;
+  name: string;
+  version: string;
+  author?: string | null;
+  description?: string | null;
+  created_at: number;
+  updated_at: number;
+}
+
 // ============ 跑团消息 ============
 
 export type ChatEventKind =
@@ -247,4 +258,11 @@ export const ipc = {
     payload: unknown,
     note?: string,
   ) => invoke<void>("append_event", { sessionId, kind, payload, note }),
+  loadManifest: () => invoke<Manifest>("load_manifest"),
+  saveManifest: (manifest: Manifest) =>
+    invoke<void>("save_manifest", { manifest }),
+  exportPack: (outputPath: string) =>
+    invoke<void>("export_pack", { outputPath }),
+  importPack: (src: string, dest: string) =>
+    invoke<void>("import_pack", { src, dest }),
 };

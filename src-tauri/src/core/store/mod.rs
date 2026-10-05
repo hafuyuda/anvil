@@ -1,2 +1,10 @@
 pub mod atomic;
+pub mod boards;
+pub mod cards;
+pub mod manifest;
+pub mod pack;
 pub mod project;
+pub mod relations;
+pub mod scenarios;
+pub mod seed;
+pub mod sessions;
