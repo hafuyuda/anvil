@@ -267,4 +267,6 @@ export const ipc = {
     invoke<void>("import_pack", { src, dest }),
   createProject: (path: string, name: string) =>
     invoke<void>("create_project", { path, name }),
+  isDirectoryEmpty: (path: string) =>
+    invoke<boolean>("is_directory_empty", { path }),
 };

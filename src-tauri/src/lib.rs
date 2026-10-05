@@ -26,6 +26,7 @@ pub fn run() {
             export_pack,
             import_pack,
             create_project,
+            is_directory_empty,
             // cards
             save_card,
             list_cards,

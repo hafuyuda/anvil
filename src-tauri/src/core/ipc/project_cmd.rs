@@ -89,25 +89,66 @@ pub fn import_pack(src: String, dest: String) -> Result<(), String> {
 #[tauri::command]
 pub fn create_project(path: String, name: String) -> Result<(), String> {
     let root = PathBuf::from(&path);
+
+    // 1. 目录存在性检查（在写任何东西之前）
     if root.exists() {
-        // 只允许写入空目录
+        if !root.is_dir() {
+            return Err("目标不是文件夹".into());
+        }
         let entries = std::fs::read_dir(&root).map_err(|e| e.to_string())?;
+        let mut names: Vec<String> = Vec::new();
         for entry in entries {
-            let _ = entry.map_err(|e| e.to_string())?;
-            return Err("目标目录不是空的".into());
+            let entry = entry.map_err(|e| e.to_string())?;
+            names.push(entry.file_name().to_string_lossy().into_owned());
+        }
+        if !names.is_empty() {
+            // 明确告诉用户目录里有什么
+            let preview: Vec<&str> = names.iter().take(5).map(|s| s.as_str()).collect();
+            let suffix = if names.len() > 5 {
+                format!(" 等 {} 项", names.len())
+            } else {
+                String::new()
+            };
+            return Err(format!(
+                "目标目录不是空的，包含：{}{}。请选择一个空文件夹，或使用「打开」",
+                preview.join("、"),
+                suffix
+            ));
         }
     } else {
         std::fs::create_dir_all(&root).map_err(|e| e.to_string())?;
     }
 
+    // 2. 到这里目录必然为空，开始创建
     let project = Project::open(&root).map_err(|e| e.to_string())?;
 
-    // 写 manifest，name 用用户提供的
+    // 3. 写 manifest
     let mut manifest = crate::core::model::manifest::Manifest::new(name);
     manifest.updated_at = crate::core::util::now_ms();
-    project
-        .save_manifest(&manifest)
-        .map_err(|e| e.to_string())?;
+    if let Err(e) = project.save_manifest(&manifest) {
+        // 出错时清理已经创建的目录结构
+        let _ = std::fs::remove_dir_all(root.join("cards"));
+        let _ = std::fs::remove_dir_all(root.join("types"));
+        let _ = std::fs::remove_dir_all(root.join("relations"));
+        let _ = std::fs::remove_dir_all(root.join("boards"));
+        let _ = std::fs::remove_dir_all(root.join("scenarios"));
+        let _ = std::fs::remove_dir_all(root.join("sessions"));
+        let _ = std::fs::remove_dir_all(root.join(".anvil"));
+        return Err(format!("写入 manifest 失败: {e}"));
+    }
 
     Ok(())
+}
+
+#[tauri::command]
+pub fn is_directory_empty(path: String) -> Result<bool, String> {
+    let root = PathBuf::from(&path);
+    if !root.exists() {
+        return Ok(true);
+    }
+    if !root.is_dir() {
+        return Err("不是文件夹".into());
+    }
+    let mut entries = std::fs::read_dir(&root).map_err(|e| e.to_string())?;
+    Ok(entries.next().is_none())
 }
