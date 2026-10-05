@@ -2,8 +2,8 @@ mod core;
 //mod features;
 
 use core::ipc::{
-    board_cmd::*, card_cmd::*, project_cmd::*, relation_cmd::*,
-    scenario_cmd::*, session_cmd::*, AppState,
+    board_cmd::*, card_cmd::*, project_cmd::*, relation_cmd::*, scenario_cmd::*, session_cmd::*,
+    AppState,
 };
 use std::sync::Mutex;
 
@@ -25,6 +25,7 @@ pub fn run() {
             save_manifest,
             export_pack,
             import_pack,
+            create_project,
             // cards
             save_card,
             list_cards,

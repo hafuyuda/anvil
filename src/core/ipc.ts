@@ -265,4 +265,6 @@ export const ipc = {
     invoke<void>("export_pack", { outputPath }),
   importPack: (src: string, dest: string) =>
     invoke<void>("import_pack", { src, dest }),
+  createProject: (path: string, name: string) =>
+    invoke<void>("create_project", { path, name }),
 };

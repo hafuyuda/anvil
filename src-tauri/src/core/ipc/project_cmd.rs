@@ -85,3 +85,29 @@ pub fn export_pack(state: State<AppState>, output_path: String) -> Result<(), St
 pub fn import_pack(src: String, dest: String) -> Result<(), String> {
     Project::import_pack_to(&PathBuf::from(src), &PathBuf::from(dest)).map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub fn create_project(path: String, name: String) -> Result<(), String> {
+    let root = PathBuf::from(&path);
+    if root.exists() {
+        // 只允许写入空目录
+        let entries = std::fs::read_dir(&root).map_err(|e| e.to_string())?;
+        for entry in entries {
+            let _ = entry.map_err(|e| e.to_string())?;
+            return Err("目标目录不是空的".into());
+        }
+    } else {
+        std::fs::create_dir_all(&root).map_err(|e| e.to_string())?;
+    }
+
+    let project = Project::open(&root).map_err(|e| e.to_string())?;
+
+    // 写 manifest，name 用用户提供的
+    let mut manifest = crate::core::model::manifest::Manifest::new(name);
+    manifest.updated_at = crate::core::util::now_ms();
+    project
+        .save_manifest(&manifest)
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
+}

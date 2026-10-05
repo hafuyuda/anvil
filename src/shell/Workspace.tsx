@@ -7,12 +7,14 @@ import { ScenarioList } from "../features/story/ScenarioList";
 import { BoardList } from "../features/board/BoardList";
 import { SessionList } from "../features/session/SessionList";
 import { ErrorBoundary } from "./ErrorBoundary";
+import { useCreateProject } from "../core/useCreateProject";
 
 export function Workspace() {
   const projectPath = useProjectStore((s) => s.projectPath);
   const activeModule = useProjectStore((s) => s.activeModule);
   const worldSubView = useProjectStore((s) => s.worldSubView);
   const openProject = useOpenProject();
+  const createProject = useCreateProject();
 
   if (!projectPath) {
     return (
@@ -36,17 +38,33 @@ export function Workspace() {
             letterSpacing: 2,
           }}
         >
-          未打开项目
+          Anvil
         </div>
-        <button
-          className="btn btn-primary"
-          onClick={openProject}
-          style={{ padding: "8px 24px", fontSize: 13 }}
-        >
-          打开项目
-        </button>
         <div style={{ fontSize: 12, color: "var(--fg-muted)" }}>
-          选择一个空文件夹，或已有的 .anvil 项目
+          铁砧。世界观、剧情、棋盘、跑团，都在一张卡上。
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            gap: 8,
+            marginTop: 8,
+          }}
+        >
+          <button
+            className="btn btn-primary"
+            onClick={createProject}
+            style={{ padding: "8px 20px", fontSize: 13 }}
+          >
+            新建项目
+          </button>
+          <button
+            className="btn"
+            onClick={openProject}
+            style={{ padding: "8px 20px", fontSize: 13 }}
+          >
+            打开已有项目
+          </button>
         </div>
       </div>
     );
