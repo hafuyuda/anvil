@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { ChatEventKind, ChatPayload, RollInfo } from "../../core/ipc";
+import type { ChatEventKind, ChatPayload, RollInfo } from "../../core/ipc/ipc";
 import { RollDialog } from "./RollDialog";
 
 interface AuthorOption {

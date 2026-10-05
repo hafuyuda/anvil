@@ -1,5 +1,5 @@
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
-import { ipc } from "./ipc";
+import { ipc } from "./ipc/ipc";
 import { useProjectStore } from "../stores/projectStore";
 import { applyProjectTheme } from "./applyProjectTheme";
 
@@ -55,7 +55,7 @@ export function useImportPack() {
         relations,
         scenarios,
         boards,
-        sessions
+        sessions,
       );
       await applyProjectTheme();
       alert("导入成功");

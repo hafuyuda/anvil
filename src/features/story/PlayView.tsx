@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ipc, type Scenario, type VariableDef } from "../../core/ipc";
+import { ipc, type Scenario, type VariableDef } from "../../core/ipc/ipc";
 import { useProjectStore } from "../../stores/projectStore";
 
 interface Props {
@@ -20,7 +20,7 @@ export function PlayView({ scenario }: Props) {
   });
 
   const [currentId, setCurrentId] = useState<string | null>(
-    scenario.entry_node ?? scenario.node_ids[0] ?? null
+    scenario.entry_node ?? scenario.node_ids[0] ?? null,
   );
   const [history, setHistory] = useState<string[]>([]);
   const [edgeStates, setEdgeStates] = useState<
@@ -29,12 +29,12 @@ export function PlayView({ scenario }: Props) {
 
   const nodeIds = useMemo(
     () => new Set(scenario.node_ids),
-    [scenario.node_ids]
+    [scenario.node_ids],
   );
 
   const outgoing = useMemo(
     () => relations.filter((r) => r.from === currentId && nodeIds.has(r.to)),
-    [relations, currentId, nodeIds]
+    [relations, currentId, nodeIds],
   );
 
   useEffect(() => {
@@ -42,7 +42,7 @@ export function PlayView({ scenario }: Props) {
     async function run() {
       const states: Record<string, { ok: boolean; error?: string }> = {};
       const allEdges = relations.filter(
-        (r) => nodeIds.has(r.from) && nodeIds.has(r.to)
+        (r) => nodeIds.has(r.from) && nodeIds.has(r.to),
       );
       for (const r of allEdges) {
         const expr =
@@ -154,9 +154,7 @@ export function PlayView({ scenario }: Props) {
               key={v.key}
               def={v}
               value={values[v.key]}
-              onChange={(val) =>
-                setValues((s) => ({ ...s, [v.key]: val }))
-              }
+              onChange={(val) => setValues((s) => ({ ...s, [v.key]: val }))}
             />
           ))}
           {scenario.variables.length > 0 && (
@@ -236,7 +234,11 @@ export function PlayView({ scenario }: Props) {
         </div>
 
         <div style={{ marginBottom: 12, display: "flex", gap: 8 }}>
-          <button className="btn" onClick={back} disabled={history.length === 0}>
+          <button
+            className="btn"
+            onClick={back}
+            disabled={history.length === 0}
+          >
             回退
           </button>
           <button className="btn" onClick={reset}>
@@ -304,9 +306,7 @@ export function PlayView({ scenario }: Props) {
                 <span
                   style={{
                     fontSize: 11,
-                    color: reachable
-                      ? "var(--success)"
-                      : "var(--danger)",
+                    color: reachable ? "var(--success)" : "var(--danger)",
                   }}
                 >
                   {err ? "错误" : reachable ? "可达" : "不可达"}

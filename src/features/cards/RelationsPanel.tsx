@@ -4,7 +4,7 @@ import {
   type Card,
   type Relation,
   type RelationKind,
-} from "../../core/ipc";
+} from "../../core/ipc/ipc";
 import { useProjectStore } from "../../stores/projectStore";
 import { RelationForm } from "./RelationForm";
 

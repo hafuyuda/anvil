@@ -1,4 +1,4 @@
-import type { GridConfig } from "../../core/ipc";
+import type { GridConfig } from "../../core/ipc/ipc";
 
 export const DEFAULT_GRID: GridConfig = {
   size: 50,

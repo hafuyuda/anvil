@@ -50,3 +50,16 @@ pub fn delete_relation(
     p.delete_relation(&from_id, &relation_id)
         .map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub fn delete_relation_kind(state: State<AppState>, id: String) -> Result<(), String> {
+    let guard = state.project.lock().unwrap();
+    let p = guard.as_ref().ok_or("no project open")?;
+    let mut kinds = p.load_relation_kinds().map_err(|e| e.to_string())?;
+    let before = kinds.len();
+    kinds.retain(|k| k.id != id);
+    if kinds.len() == before {
+        return Ok(());
+    }
+    p.save_relation_kinds(&kinds).map_err(|e| e.to_string())
+}

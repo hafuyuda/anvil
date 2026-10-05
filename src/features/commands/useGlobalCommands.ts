@@ -5,7 +5,7 @@ import { useOpenProject } from "../../core/useOpenProject";
 import { useCreateProject } from "../../core/useCreateProject";
 import { useExportPack } from "../../core/useExportPack";
 import { useImportPack } from "../../core/useImportPack";
-import { ipc } from "../../core/ipc";
+import { ipc } from "../../core/ipc/ipc";
 
 export function useGlobalCommands() {
   const openProjectHook = useOpenProject();

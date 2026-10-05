@@ -1,4 +1,4 @@
-import type { Card, CardType, Session } from "../../core/ipc";
+import type { Card, CardType, Session } from "../../core/ipc/ipc";
 import { CardFrame } from "../../components/CardFrame";
 
 interface Props {

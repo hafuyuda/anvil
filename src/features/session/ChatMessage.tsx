@@ -1,5 +1,10 @@
-import type { Card, CardType, GameEvent, ChatPayload } from "../../core/ipc";
-import { isChatKind } from "../../core/ipc";
+import type {
+  Card,
+  CardType,
+  GameEvent,
+  ChatPayload,
+} from "../../core/ipc/ipc";
+import { isChatKind } from "../../core/ipc/ipc";
 
 interface Props {
   event: GameEvent;
@@ -15,10 +20,10 @@ export function ChatMessage({ event, cards, cardTypes }: Props) {
   const payload = event.payload as ChatPayload;
   const authorName = payload.author_name ?? "未知";
   const authorCard = payload.author_card_id
-    ? cards.find((c) => c.id === payload.author_card_id) ?? null
+    ? (cards.find((c) => c.id === payload.author_card_id) ?? null)
     : null;
   const authorType = authorCard
-    ? cardTypes.find((t) => t.id === authorCard.type_id) ?? null
+    ? (cardTypes.find((t) => t.id === authorCard.type_id) ?? null)
     : null;
   const color = authorType?.color ?? "var(--fg-secondary)";
 
@@ -235,9 +240,13 @@ function SystemLine({ event }: { event: GameEvent }) {
         color: "var(--chat-system-text)",
       }}
     >
-      <div style={{ flex: 1, height: 1, background: "var(--chat-system-line)" }} />
+      <div
+        style={{ flex: 1, height: 1, background: "var(--chat-system-line)" }}
+      />
       <span>{text}</span>
-      <div style={{ flex: 1, height: 1, background: "var(--chat-system-line)" }} />
+      <div
+        style={{ flex: 1, height: 1, background: "var(--chat-system-line)" }}
+      />
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ipc } from "../core/ipc";
+import { ipc } from "../core/ipc/ipc";
 import { useProjectStore } from "../stores/projectStore";
 import { useOpenProject } from "../core/useOpenProject";
 import { useCreateProject } from "../core/useCreateProject";
@@ -8,6 +8,7 @@ import { useImportPack } from "../core/useImportPack";
 import { ProjectSettingsDialog } from "../features/project/ProjectSettingsDialog";
 import { useUIStore } from "../stores/uiStore";
 import { resetTheme } from "../lib/theme";
+import { clearImageCache } from "../lib/imageCache";
 
 export function TopBar() {
   const projectPath = useProjectStore((s) => s.projectPath);
@@ -30,10 +31,9 @@ export function TopBar() {
   async function handleClose() {
     try {
       await ipc.closeProject();
-    } catch {
-      // 忽略
-    }
+    } catch {}
     closeProject();
+    clearImageCache();
     resetTheme();
   }
 

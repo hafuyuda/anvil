@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ipc, type Manifest } from "../../core/ipc";
+import { ipc, type Manifest } from "../../core/ipc/ipc";
 import { Modal } from "../../components/Modal";
 import { nowMs } from "../../lib/time";
 import { ThemePanel } from "./ThemePanel";
@@ -129,9 +129,7 @@ export function ProjectSettingsDialog({ onClose }: Props) {
       </div>
 
       {loading && (
-        <div style={{ color: "var(--fg-muted)", fontSize: 12 }}>
-          读取中…
-        </div>
+        <div style={{ color: "var(--fg-muted)", fontSize: 12 }}>读取中…</div>
       )}
 
       {tab === "general" && draft && (
@@ -172,9 +170,7 @@ export function ProjectSettingsDialog({ onClose }: Props) {
             <textarea
               className="textarea"
               value={draft.description ?? ""}
-              onChange={(e) =>
-                update({ description: e.target.value || null })
-              }
+              onChange={(e) => update({ description: e.target.value || null })}
               style={{ minHeight: 60 }}
             />
           </LabeledBlock>

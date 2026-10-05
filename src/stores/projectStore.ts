@@ -7,7 +7,7 @@ import type {
   RelationKind,
   Scenario,
   Session,
-} from "../core/ipc";
+} from "../core/ipc/ipc";
 
 export type ModuleKey = "world" | "story" | "board" | "session" | "types";
 export type WorldSubView = "cards" | "graph";
@@ -91,6 +91,8 @@ interface ProjectState {
   decPendingSaves: () => void;
   setInspectorWidth: (w: number) => void;
   toggleInspector: () => void;
+  removeCardType: (id: string) => void;
+  removeRelationKind: (id: string) => void;
 }
 
 export const useProjectStore = create<ProjectState>((set, get) => ({
@@ -356,4 +358,14 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set({ inspectorWidth: Math.max(200, Math.min(700, w)) }),
   toggleInspector: () =>
     set((s) => ({ inspectorCollapsed: !s.inspectorCollapsed })),
+
+  removeCardType: (id) =>
+    set((s) => ({
+      cardTypes: (s.cardTypes ?? []).filter((t) => t.id !== id),
+    })),
+
+  removeRelationKind: (id) =>
+    set((s) => ({
+      relationKinds: (s.relationKinds ?? []).filter((k) => k.id !== id),
+    })),
 }));

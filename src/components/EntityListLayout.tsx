@@ -1,11 +1,10 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 interface Item {
   id: string;
 }
 
 interface Props<T extends Item> {
-  /** 左侧列表标题，空则不显示 */
   listLabel?: string;
   items: T[];
   selectedId: string | null;
@@ -14,8 +13,8 @@ interface Props<T extends Item> {
   createLabel: string;
   renderItem: (item: T) => ReactNode;
   renderEditor: (item: T) => ReactNode;
+  onDelete?: (item: T) => void;
   emptyHint: string;
-  /** 左栏宽度，默认 200 */
   listWidth?: number;
 }
 
@@ -28,22 +27,22 @@ export function EntityListLayout<T extends Item>({
   createLabel,
   renderItem,
   renderEditor,
+  onDelete,
   emptyHint,
   listWidth = 200,
 }: Props<T>) {
   const selected = items.find((i) => i.id === selectedId) ?? null;
+  const [hoverId, setHoverId] = useState<string | null>(null);
 
   return (
     <div
       style={{
         display: "flex",
-        gap: 0,
         flex: 1,
         minHeight: 0,
         minWidth: 0,
       }}
     >
-      {/* 左栏 */}
       <div
         style={{
           width: listWidth,
@@ -95,32 +94,67 @@ export function EntityListLayout<T extends Item>({
           )}
           {items.map((item) => {
             const active = item.id === selectedId;
+            const hover = item.id === hoverId;
             return (
               <div
                 key={item.id}
+                onMouseEnter={() => setHoverId(item.id)}
+                onMouseLeave={() => setHoverId(null)}
                 onClick={() => onSelect(item.id)}
                 style={{
-                  padding: "6px 10px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  padding: "6px 4px 6px 10px",
                   cursor: "pointer",
                   borderLeft: active
                     ? "2px solid var(--accent-gold)"
                     : "2px solid transparent",
                   background: active ? "var(--bg-raised)" : "transparent",
-                  color: active ? "var(--fg-primary)" : "var(--fg-secondary)",
+                  color: active
+                    ? "var(--fg-primary)"
+                    : "var(--fg-secondary)",
                   fontSize: 13,
                   fontWeight: active ? 600 : 400,
-                  borderRadius: 0,
                   userSelect: "none",
                 }}
               >
-                {renderItem(item)}
+                <span
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {renderItem(item)}
+                </span>
+
+                {onDelete && (hover || active) && (
+                  <button
+                    className="btn btn-ghost"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDelete(item);
+                    }}
+                    title="删除"
+                    style={{
+                      padding: "1px 6px",
+                      fontSize: 12,
+                      color: "var(--danger)",
+                      flexShrink: 0,
+                    }}
+                  >
+                    ×
+                  </button>
+                )}
               </div>
             );
           })}
         </div>
       </div>
 
-      {/* 右栏 */}
       <div
         style={{
           flex: 1,

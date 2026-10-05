@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ipc, type CardType } from "../../core/ipc";
+import { ipc, type CardType } from "../../core/ipc/ipc";
 import { useProjectStore } from "../../stores/projectStore";
 import { EntityListLayout } from "../../components/EntityListLayout";
 import { CardTypeEditor } from "./CardTypeEditor";
@@ -28,10 +28,7 @@ export function CardTypeList() {
           gap: 4,
         }}
       >
-        <TabButton
-          active={subTab === "card"}
-          onClick={() => setSubTab("card")}
-        >
+        <TabButton active={subTab === "card"} onClick={() => setSubTab("card")}>
           卡牌类型
         </TabButton>
         <TabButton
@@ -78,7 +75,9 @@ function TabButton({
 
 function CardTypeSection() {
   const cardTypes = useProjectStore((s) => s.cardTypes) ?? [];
+  const cards = useProjectStore((s) => s.cards) ?? [];
   const upsertCardType = useProjectStore((s) => s.upsertCardType);
+  const removeCardType = useProjectStore((s) => s.removeCardType);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   async function addType() {
@@ -97,6 +96,22 @@ function CardTypeSection() {
     setSelectedId(newType.id);
   }
 
+  async function handleDelete(t: CardType) {
+    const inUse = cards.filter((c) => c.type_id === t.id).length;
+    if (inUse > 0) {
+      alert(`还有 ${inUse} 张卡在使用这个类型，先删除或改类型。`);
+      return;
+    }
+    if (!confirm(`删除类型「${t.name}」？`)) return;
+    try {
+      await ipc.deleteCardType(t.id);
+      removeCardType(t.id);
+      if (selectedId === t.id) setSelectedId(null);
+    } catch (e) {
+      alert("删除失败: " + e);
+    }
+  }
+
   return (
     <EntityListLayout
       listLabel="卡牌类型"
@@ -104,6 +119,7 @@ function CardTypeSection() {
       selectedId={selectedId}
       onSelect={setSelectedId}
       onCreate={addType}
+      onDelete={handleDelete}
       createLabel="+ 新建卡牌类型"
       renderItem={(t) => t.name}
       renderEditor={(t) => <CardTypeEditor key={t.id} cardType={t} />}

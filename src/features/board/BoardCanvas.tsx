@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { GridConfig, Token } from "../../core/ipc";
+import type { GridConfig, Token } from "../../core/ipc/ipc";
 import { useProjectStore } from "../../stores/projectStore";
 
 interface Props {
@@ -83,7 +83,7 @@ export function BoardCanvas({
     const x = e.clientX - rect.left - dragging.offsetX;
     const y = e.clientY - rect.top - dragging.offsetY;
     const next = tokensProp.map((t) =>
-      t.id === dragging.tokenId ? { ...t, x: snap(x), y: snap(y) } : t
+      t.id === dragging.tokenId ? { ...t, x: snap(x), y: snap(y) } : t,
     );
     setLocalTokens(next);
     if (!dragging.moved) setDragging({ ...dragging, moved: true });
@@ -131,7 +131,7 @@ export function BoardCanvas({
           y2={height}
           stroke="var(--border-subtle)"
           strokeWidth={0.5}
-        />
+        />,
       );
     }
     for (let y = 0; y <= height; y += step) {
@@ -144,7 +144,7 @@ export function BoardCanvas({
           y2={y}
           stroke="var(--border-subtle)"
           strokeWidth={0.5}
-        />
+        />,
       );
     }
   }

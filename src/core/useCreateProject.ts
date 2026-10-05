@@ -1,5 +1,5 @@
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
-import { ipc } from "./ipc";
+import { ipc } from "./ipc/ipc";
 import { useProjectStore } from "../stores/projectStore";
 import { applyProjectTheme } from "./applyProjectTheme";
 
@@ -20,7 +20,7 @@ export function useCreateProject() {
         const proceed = confirm(
           `目录「${dest}」不是空的。\n\n` +
             `· 点击「确定」将尝试新建，但可能因已有文件而失败\n` +
-            `· 点击「取消」返回`
+            `· 点击「取消」返回`,
         );
         if (!proceed) return;
       }
@@ -64,7 +64,7 @@ export function useCreateProject() {
         relations,
         scenarios,
         boards,
-        sessions
+        sessions,
       );
       await applyProjectTheme();
     } catch (e) {

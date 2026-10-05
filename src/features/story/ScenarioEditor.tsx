@@ -4,7 +4,7 @@ import {
   type Scenario,
   type VariableDef,
   type FieldType,
-} from "../../core/ipc";
+} from "../../core/ipc/ipc";
 import { useProjectStore } from "../../stores/projectStore";
 import { useDraft } from "../../hooks/useDraft";
 import { nowMs } from "../../lib/time";

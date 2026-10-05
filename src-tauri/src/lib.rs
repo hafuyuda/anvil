@@ -41,12 +41,14 @@ pub fn run() {
             search_cards,
             list_card_types,
             upsert_card_type,
+            delete_card_type,
             // relations
             list_relation_kinds,
             upsert_relation_kind,
             list_all_relations,
             upsert_relation,
             delete_relation,
+            delete_relation_kind,
             // scenarios
             list_scenarios,
             upsert_scenario,

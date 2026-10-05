@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ipc, type Relation, type RelationKind } from "../../core/ipc";
+import { ipc, type Relation, type RelationKind } from "../../core/ipc/ipc";
 import { useProjectStore } from "../../stores/projectStore";
 import { FieldInput } from "../../components/FieldInput";
 import { newId } from "../../lib/id";
@@ -19,10 +19,9 @@ export function RelationForm({ fromCardId, fromTypeId, onDone }: Props) {
   const availableKinds = useMemo(
     () =>
       relationKinds.filter(
-        (k) =>
-          k.from_types.length === 0 || k.from_types.includes(fromTypeId)
+        (k) => k.from_types.length === 0 || k.from_types.includes(fromTypeId),
       ),
-    [relationKinds, fromTypeId]
+    [relationKinds, fromTypeId],
   );
 
   const [kindId, setKindId] = useState<string>("");
@@ -37,7 +36,7 @@ export function RelationForm({ fromCardId, fromTypeId, onDone }: Props) {
     return cards.filter(
       (c) =>
         c.id !== fromCardId &&
-        (kind.to_types.length === 0 || kind.to_types.includes(c.type_id))
+        (kind.to_types.length === 0 || kind.to_types.includes(c.type_id)),
     );
   }, [cards, kind, fromCardId]);
 

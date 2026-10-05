@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ipc, type RelationKind } from "../../core/ipc";
+import { ipc, type RelationKind } from "../../core/ipc/ipc";
 import { useProjectStore } from "../../stores/projectStore";
 import { EntityListLayout } from "../../components/EntityListLayout";
 import { RelationKindEditor } from "./RelationKindEditor";
@@ -8,7 +8,9 @@ import { nowMs } from "../../lib/time";
 
 export function RelationKindList() {
   const relationKinds = useProjectStore((s) => s.relationKinds) ?? [];
+  const relations = useProjectStore((s) => s.relations) ?? [];
   const upsertRelationKind = useProjectStore((s) => s.upsertRelationKind);
+  const removeRelationKind = useProjectStore((s) => s.removeRelationKind);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   async function addKind() {
@@ -30,6 +32,22 @@ export function RelationKindList() {
     setSelectedId(newKind.id);
   }
 
+  async function handleDelete(k: RelationKind) {
+    const inUse = relations.filter((r) => r.kind === k.id).length;
+    if (inUse > 0) {
+      alert(`还有 ${inUse} 条关系在使用这个类型。`);
+      return;
+    }
+    if (!confirm(`删除关系类型「${k.name}」？`)) return;
+    try {
+      await ipc.deleteRelationKind(k.id);
+      removeRelationKind(k.id);
+      if (selectedId === k.id) setSelectedId(null);
+    } catch (e) {
+      alert("删除失败: " + e);
+    }
+  }
+
   return (
     <EntityListLayout
       listLabel="关系类型"
@@ -37,6 +55,7 @@ export function RelationKindList() {
       selectedId={selectedId}
       onSelect={setSelectedId}
       onCreate={addKind}
+      onDelete={handleDelete}
       createLabel="+ 新建关系类型"
       renderItem={(k) => (
         <span style={{ display: "flex", alignItems: "center", gap: 6 }}>

@@ -54,3 +54,16 @@ pub fn upsert_card_type(state: State<AppState>, card_type: CardType) -> Result<(
     }
     p.save_card_types(&types).map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub fn delete_card_type(state: State<AppState>, id: String) -> Result<(), String> {
+    let guard = state.project.lock().unwrap();
+    let p = guard.as_ref().ok_or("no project open")?;
+    let mut types = p.load_card_types().map_err(|e| e.to_string())?;
+    let before = types.len();
+    types.retain(|t| t.id != id);
+    if types.len() == before {
+        return Ok(());
+    }
+    p.save_card_types(&types).map_err(|e| e.to_string())
+}

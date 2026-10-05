@@ -1,4 +1,4 @@
-import type { Card, CardType } from "../../core/ipc";
+import type { Card, CardType } from "../../core/ipc/ipc";
 import { SIZE_MAP, type CardFrameSize } from "./types";
 import { mapCard } from "./yugioh";
 import { useImageUrl } from "../../hooks/useImageUrl";

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
-import { ipc } from "../core/ipc";
+import { ipc } from "../core/ipc/ipc";
 
 interface Props {
   value: string | null | undefined;
@@ -11,7 +11,6 @@ export function ImageField({ value, onChange }: Props) {
   const [dataUrl, setDataUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    console.log("[ImageField] value =", value);
     if (!value) {
       setDataUrl(null);
       return;
@@ -21,12 +20,11 @@ export function ImageField({ value, onChange }: Props) {
       .readImageDataUrl(value)
       .then((u) => {
         if (cancelled) return;
-        console.log("[ImageField] loaded, len =", u.length);
+
         setDataUrl(u);
       })
       .catch((e) => {
         if (cancelled) return;
-        console.error("[ImageField] 读取失败:", e);
         setDataUrl(null);
       });
     return () => {
@@ -49,7 +47,6 @@ export function ImageField({ value, onChange }: Props) {
 
     try {
       const relative = await ipc.importImage(src);
-      console.log("[ImageField] imported:", relative);
       onChange(relative);
     } catch (e) {
       alert("导入图片失败: " + e);
