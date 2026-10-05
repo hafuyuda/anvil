@@ -3,6 +3,30 @@ use serde_json::Value;
 
 pub type TypeId = String;
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct CardFrameConfig {
+    #[serde(default)]
+    pub style: Option<String>,
+    #[serde(default)]
+    pub title: Option<String>,
+    #[serde(default)]
+    pub subtitle: Option<String>,
+    #[serde(default)]
+    pub image: Option<String>,
+    #[serde(default)]
+    pub level: Option<String>,
+    #[serde(default)]
+    pub type_line: Option<String>,
+    #[serde(default)]
+    pub body: Vec<String>,
+    #[serde(default)]
+    pub atk: Option<String>,
+    #[serde(default)]
+    pub def: Option<String>,
+    #[serde(default)]
+    pub hp: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum FieldType {
@@ -54,6 +78,8 @@ pub struct CardType {
     pub allowed_relation_kinds: Vec<String>,
     #[serde(default)]
     pub views: Vec<String>,
+    #[serde(default)]
+    pub card_frame: Option<CardFrameConfig>,
     pub created_at: i64,
     pub updated_at: i64,
 }

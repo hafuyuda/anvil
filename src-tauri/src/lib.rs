@@ -1,12 +1,12 @@
 mod core;
-mod features;
 
 use core::ipc::card_cmd::{
-    close_project, delete_board, delete_card, delete_relation, delete_scenario, eval_condition,
-    list_all_relations, list_boards, list_card_types, list_cards, list_relation_kinds,
-    list_scenarios, open_project, rebuild_index, reload_project, save_card, search_cards,
-    seed_example_world, upsert_board, upsert_card_type, upsert_relation, upsert_relation_kind,
-    upsert_scenario, validate_condition, AppState,
+    append_event, close_project, delete_board, delete_card, delete_relation, delete_scenario,
+    delete_session, eval_condition, list_all_relations, list_boards, list_card_types, list_cards,
+    list_events, list_relation_kinds, list_scenarios, list_sessions, open_project, rebuild_index,
+    reload_project, save_card, search_cards, seed_example_world, upsert_board, upsert_card_type,
+    upsert_relation, upsert_relation_kind, upsert_scenario, upsert_session, validate_condition,
+    AppState,
 };
 use std::sync::Mutex;
 
@@ -51,6 +51,11 @@ pub fn run() {
             // 条件求值
             validate_condition,
             eval_condition,
+            list_sessions,
+            upsert_session,
+            delete_session,
+            list_events,
+            append_event,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

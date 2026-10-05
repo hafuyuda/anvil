@@ -1,8 +1,9 @@
-import { useState } from "react";
 import { ipc, type Card, type CardType } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
-import { FieldInput } from "./FieldInput";
+import { useDraft } from "../../hooks/useDraft";
+import { FieldInput } from "../../components/FieldInput";
 import { RelationsPanel } from "./RelationsPanel";
+import { nowMs } from "../../lib/time";
 
 interface Props {
   card: Card;
@@ -11,38 +12,28 @@ interface Props {
 
 export function CardEditor({ card, cardType }: Props) {
   const updateCard = useProjectStore((s) => s.updateCard);
-  const removeCard = useProjectStore((s) => s.removeCard);
-  const [draft, setDraft] = useState<Card>(card);
-  const [dirty, setDirty] = useState(false);
 
-  if (draft.id !== card.id) {
-    setDraft(card);
-    setDirty(false);
-  }
-
-  function setValue(key: string, value: unknown) {
-    setDraft((d) => ({
-      ...d,
-      values: { ...d.values, [key]: value },
-      updated_at: Date.now(),
-    }));
-    setDirty(true);
-  }
-
-  async function save() {
-    await ipc.saveCard(draft);
-    updateCard(draft);
-    setDirty(false);
-  }
+  const { draft, dirty, update, commit } = useDraft(card, async (d) => {
+    const next: Card = { ...d, updated_at: nowMs() };
+    await ipc.saveCard(next);
+    updateCard(next);
+  });
 
   async function handleDelete() {
     if (!confirm(`确认删除卡牌「${card.name}」？此操作不可撤销。`)) return;
     try {
       await ipc.deleteCard(card.id);
-      removeCard(card.id);
+      useProjectStore.getState().removeCard(card.id);
     } catch (e) {
       alert("删除失败: " + e);
     }
+  }
+
+  function setValue(key: string, value: unknown) {
+    update({
+      values: { ...draft.values, [key]: value },
+      updated_at: nowMs(),
+    });
   }
 
   const visibleFields = cardType.fields
@@ -55,14 +46,7 @@ export function CardEditor({ card, cardType }: Props) {
         <div style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>名称</div>
         <input
           value={draft.name}
-          onChange={(e) => {
-            setDraft((d) => ({
-              ...d,
-              name: e.target.value,
-              updated_at: Date.now(),
-            }));
-            setDirty(true);
-          }}
+          onChange={(e) => update({ name: e.target.value, updated_at: nowMs() })}
           style={{
             width: "100%",
             boxSizing: "border-box",
@@ -91,7 +75,7 @@ export function CardEditor({ card, cardType }: Props) {
       ))}
 
       <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-        <button onClick={save} disabled={!dirty}>
+        <button onClick={commit} disabled={!dirty}>
           {dirty ? "保存" : "已保存"}
         </button>
         <button
@@ -111,7 +95,7 @@ export function CardEditor({ card, cardType }: Props) {
       >
         <RelationsPanel card={card} />
       </div>
-      
+
       <details style={{ fontSize: 11, color: "#aaa" }}>
         <summary>原始数据</summary>
         <pre style={{ overflow: "auto", maxHeight: 200 }}>

@@ -6,7 +6,21 @@ export function TopBar() {
   const projectPath = useProjectStore((s) => s.projectPath);
   const setProject = useProjectStore((s) => s.setProject);
   const closeProject = useProjectStore((s) => s.closeProject);
+  const pendingSaves = useProjectStore((s) => s.pendingSaves);
+  const undoStack = useProjectStore((s) => s.undoStack);
+  const redoStack = useProjectStore((s) => s.redoStack);
+  const undo = useProjectStore((s) => s.undo);
+  const redo = useProjectStore((s) => s.redo);
   const openProject = useOpenProject();
+
+  async function handleClose() {
+    try {
+      await ipc.closeProject();
+    } catch {
+      // 忽略
+    }
+    closeProject();
+  }
 
   async function handleRefresh() {
     if (!projectPath) return;
@@ -20,19 +34,18 @@ export function TopBar() {
         snap.relations,
         snap.scenarios,
         snap.boards,
+        snap.sessions
       );
     } catch (e) {
       alert("刷新失败: " + e);
     }
   }
 
-  // projectStore.ts 里不好直接调 ipc，改成 TopBar 里：
-  async function handleClose() {
-    try {
-      await ipc.closeProject();
-    } catch {}
-    closeProject();
-  }
+  const statusText = !projectPath
+    ? ""
+    : pendingSaves > 0
+      ? "保存中…"
+      : "已保存";
 
   return (
     <div
@@ -56,13 +69,35 @@ export function TopBar() {
         {projectPath ? "切换" : "打开"}
       </button>
       {projectPath && (
-        <button
-          onClick={handleRefresh}
-          style={{ fontSize: 12 }}
-          title="重新读取项目文件"
-        >
-          刷新
-        </button>
+        <>
+          <button onClick={handleRefresh} style={{ fontSize: 12 }}>
+            刷新
+          </button>
+          <button
+            onClick={() => void undo()}
+            disabled={undoStack.length === 0}
+            style={{ fontSize: 12 }}
+            title="撤销 Ctrl+Z"
+          >
+            ↶ 撤销
+          </button>
+          <button
+            onClick={() => void redo()}
+            disabled={redoStack.length === 0}
+            style={{ fontSize: 12 }}
+            title="重做 Ctrl+Shift+Z"
+          >
+            ↷ 重做
+          </button>
+          <span
+            style={{
+              fontSize: 11,
+              color: pendingSaves > 0 ? "#c80" : "#888",
+            }}
+          >
+            {statusText}
+          </span>
+        </>
       )}
 
       <div style={{ flex: 1 }} />

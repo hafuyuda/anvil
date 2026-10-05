@@ -1,25 +1,29 @@
 import { useEffect, useRef, useState } from "react";
-import type { Board, GridConfig, Token } from "../../core/ipc";
+import type { GridConfig, Token } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
+import { DEFAULT_GRID } from "./constants";
 
 interface Props {
-  board: Board;
-  onChange: (patch: Partial<Board>) => void;
+  width: number;
+  height: number;
+  grid: GridConfig;
+  tokens: Token[];
+  onTokensChange?: (tokens: Token[]) => void;
+  selectedTokenId: string | null;
+  onSelectToken: (id: string | null) => void;
 }
 
-const DEFAULT_GRID: GridConfig = {
-  size: 50,
-  offset_x: 0,
-  offset_y: 0,
-  visible: true,
-  snap: true,
-};
-
-export function BoardCanvas({ board, onChange }: Props) {
+export function BoardCanvas({
+  width,
+  height,
+  grid,
+  tokens: tokensProp,
+  onTokensChange,
+  selectedTokenId,
+  onSelectToken,
+}: Props) {
   const cards = useProjectStore((s) => s.cards) ?? [];
   const cardTypes = useProjectStore((s) => s.cardTypes) ?? [];
-  const selectedTokenId = useProjectStore((s) => s.selectedTokenId);
-  const selectToken = useProjectStore((s) => s.selectToken);
 
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [dragging, setDragging] = useState<{
@@ -30,24 +34,18 @@ export function BoardCanvas({ board, onChange }: Props) {
   } | null>(null);
   const [localTokens, setLocalTokens] = useState<Token[] | null>(null);
 
-  const grid = board.grid ?? DEFAULT_GRID;
-  const boardTokens = board.tokens ?? [];
-
-  // 外部 board.tokens 变化时同步（比如检查器改了 token）
   useEffect(() => {
     if (dragging || !localTokens) return;
     const same =
-      board.tokens.length === localTokens.length &&
-      board.tokens.every((t, i) => {
+      tokensProp.length === localTokens.length &&
+      tokensProp.every((t, i) => {
         const l = localTokens[i];
         return l && l.id === t.id && l.x === t.x && l.y === t.y;
       });
-    if (same) {
-      setLocalTokens(null);
-    }
-  }, [board.tokens, dragging, localTokens]);
+    if (same) setLocalTokens(null);
+  }, [tokensProp, dragging, localTokens]);
 
-  const tokens = localTokens ?? boardTokens;
+  const tokens = localTokens ?? tokensProp;
 
   function snap(v: number) {
     if (!grid.snap) return v;
@@ -67,7 +65,7 @@ export function BoardCanvas({ board, onChange }: Props) {
       offsetY: y - t.y,
       moved: false,
     });
-    selectToken(t.id);
+    onSelectToken(t.id);
     (e.target as Element).setPointerCapture(e.pointerId);
   }
 
@@ -77,28 +75,25 @@ export function BoardCanvas({ board, onChange }: Props) {
     if (!rect) return;
     const x = e.clientX - rect.left - dragging.offsetX;
     const y = e.clientY - rect.top - dragging.offsetY;
-    const next = boardTokens.map((t) =>
+    const next = tokensProp.map((t) =>
       t.id === dragging.tokenId ? { ...t, x: snap(x), y: snap(y) } : t,
     );
     setLocalTokens(next);
-    if (!dragging.moved) {
-      setDragging({ ...dragging, moved: true });
-    }
+    if (!dragging.moved) setDragging({ ...dragging, moved: true });
   }
 
   function onPointerUp() {
     if (!dragging) return;
     const wasDragging = dragging;
     setDragging(null);
-    if (wasDragging.moved && localTokens) {
-      onChange({ tokens: localTokens });
+    if (wasDragging.moved && localTokens && onTokensChange) {
+      onTokensChange(localTokens);
     }
   }
 
   function onSvgPointerDown(e: React.PointerEvent) {
-    // 点击空白区域取消选中
     if (e.target === svgRef.current) {
-      selectToken(null);
+      onSelectToken(null);
     }
   }
 
@@ -119,25 +114,25 @@ export function BoardCanvas({ board, onChange }: Props) {
   const gridLines: React.ReactNode[] = [];
   if (grid.visible && grid.size > 0) {
     const step = grid.size;
-    for (let x = 0; x <= board.width; x += step) {
+    for (let x = 0; x <= width; x += step) {
       gridLines.push(
         <line
           key={`vx${x}`}
           x1={x}
           y1={0}
           x2={x}
-          y2={board.height}
+          y2={height}
           stroke="#eeeeee"
         />,
       );
     }
-    for (let y = 0; y <= board.height; y += step) {
+    for (let y = 0; y <= height; y += step) {
       gridLines.push(
         <line
           key={`hy${y}`}
           x1={0}
           y1={y}
-          x2={board.width}
+          x2={width}
           y2={y}
           stroke="#eeeeee"
         />,
@@ -156,8 +151,8 @@ export function BoardCanvas({ board, onChange }: Props) {
     >
       <svg
         ref={svgRef}
-        width={board.width}
-        height={board.height}
+        width={width}
+        height={height}
         style={{ display: "block", background: "#fff", margin: 16 }}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}

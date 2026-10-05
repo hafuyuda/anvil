@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { ipc, type Board, type Card } from "../../core/ipc";
+import { ipc, type Board, type Card, type Token } from "../../core/ipc";
 import { useOpenProject } from "../../core/useOpenProject";
 import { useProjectStore } from "../../stores/projectStore";
+import { PickerDialog } from "../../components/PickerDialog";
+import { CardFrame } from "../../components/CardFrame";
+import { newId } from "../../lib/id";
+import { nowMs } from "../../lib/time";
 
 type SortKey = "name" | "updated_at" | "type";
 
@@ -10,10 +14,14 @@ export function CardWall() {
     projectPath,
     cards,
     cardTypes,
+    boards,
+    setProject,
     addCard,
     selectCard,
     selectedCardId,
-    setProject,
+    upsertBoard,
+    cardWallView,
+    setCardWallView,
   } = useProjectStore();
   const openProject = useOpenProject();
 
@@ -23,25 +31,19 @@ export function CardWall() {
   const [sortKey, setSortKey] = useState<SortKey>("updated_at");
   const [sortAsc, setSortAsc] = useState(false);
 
-  const boards = useProjectStore((s) => s.boards) ?? [];
-  const upsertBoard = useProjectStore((s) => s.upsertBoard);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pendingCard, setPendingCard] = useState<Card | null>(null);
 
-  // FTS 搜索：输入停止 150ms 后查询
+  // FTS 搜索：输入停止 150ms 后查询，短查询直接走内存
   useEffect(() => {
     const q = query.trim();
-    if (!q) {
-      setFtsIds(null);
-      return;
-    }
-    // 少于 3 个字符，trigram 匹配不到，直接走内存
-    if (q.length < 3) {
+    if (!q || q.length < 3) {
       setFtsIds(null);
       return;
     }
     const handle = setTimeout(async () => {
       try {
         const ids = await ipc.searchCards(q, 500);
-        // FTS 空结果也回退内存，避免 trigram 漏匹配
         setFtsIds(ids.length > 0 ? ids : null);
       } catch {
         setFtsIds(null);
@@ -55,9 +57,9 @@ export function CardWall() {
       alert("请先创建一个卡牌类型");
       return;
     }
-    const now = Date.now();
+    const now = nowMs();
     const card: Card = {
-      id: crypto.randomUUID(),
+      id: newId(),
       type_id: cardTypes[0].id,
       name: "新卡",
       values: {},
@@ -85,6 +87,7 @@ export function CardWall() {
         newRelations,
         newScenarios,
         newBoards,
+        newSessions,
       ] = await Promise.all([
         ipc.listCards(),
         ipc.listCardTypes(),
@@ -92,6 +95,7 @@ export function CardWall() {
         ipc.listAllRelations(),
         ipc.listScenarios(),
         ipc.listBoards(),
+        ipc.listSessions(),
       ]);
       setProject(
         projectPath,
@@ -101,10 +105,58 @@ export function CardWall() {
         newRelations,
         newScenarios,
         newBoards,
+        newSessions
       );
     } catch (e) {
       alert("载入示例失败: " + e);
     }
+  }
+
+  async function createTokenInBoard(board: Board, card: Card) {
+    const tokens = board.tokens ?? [];
+    const count = tokens.length;
+    const gx = 100 + (count % 8) * 100;
+    const gy = 100 + Math.floor(count / 8) * 100;
+
+    const newToken: Token = {
+      id: newId(),
+      card_id: card.id,
+      name_override: null,
+      value_overrides: {},
+      x: gx,
+      y: gy,
+      w: 80,
+      h: 80,
+      rotation: 0,
+      layer: 0,
+      visible: true,
+    };
+
+    const next: Board = {
+      ...board,
+      tokens: [...tokens, newToken],
+      updated_at: nowMs(),
+    };
+
+    try {
+      await ipc.upsertBoard(next);
+      upsertBoard(next);
+    } catch (e) {
+      alert("添加失败: " + e);
+    }
+  }
+
+  function handleAddToBoard(card: Card) {
+    if (boards.length === 0) {
+      alert("请先在「棋盘」里创建一个棋盘");
+      return;
+    }
+    if (boards.length === 1) {
+      createTokenInBoard(boards[0], card);
+      return;
+    }
+    setPendingCard(card);
+    setPickerOpen(true);
   }
 
   const typeName = (typeId: string) =>
@@ -122,7 +174,7 @@ export function CardWall() {
         list = list.filter((c) => {
           if (c.name.toLowerCase().includes(lower)) return true;
           return Object.values(c.values).some((v) =>
-            typeof v === "string" ? v.toLowerCase().includes(lower) : false,
+            typeof v === "string" ? v.toLowerCase().includes(lower) : false
           );
         });
       }
@@ -150,53 +202,6 @@ export function CardWall() {
 
   const isEmpty = cards.length === 0 && cardTypes.length === 0;
 
-  async function handleAddToBoard(card: Card) {
-    if (boards.length === 0) {
-      alert("请先在「棋盘」里创建一个棋盘");
-      return;
-    }
-    let targetBoard: Board | undefined;
-    if (boards.length === 1) {
-      targetBoard = boards[0];
-    } else {
-      const names = boards.map((b, i) => `${i + 1}. ${b.name}`).join("\n");
-      const input = prompt(`选择棋盘：\n${names}\n\n输入序号`);
-      if (!input) return;
-      const idx = Number(input) - 1;
-      targetBoard = boards[idx];
-      if (!targetBoard) {
-        alert("无效序号");
-        return;
-      }
-    }
-
-    const tokens = targetBoard.tokens ?? [];
-    const count = tokens.length;
-    const gx = 100 + (count % 8) * 100;
-    const gy = 100 + Math.floor(count / 8) * 100;
-
-    const newToken = {
-      id: crypto.randomUUID(),
-      card_id: card.id,
-      name_override: null,
-      value_overrides: {},
-      x: gx,
-      y: gy,
-      w: 80,
-      h: 80,
-      rotation: 0,
-      layer: 0,
-      visible: true,
-    };
-
-    const next: Board = {
-      ...targetBoard,
-      tokens: [...tokens, newToken],
-      updated_at: Date.now(),
-    };
-    await ipc.upsertBoard(next);
-    upsertBoard(next);
-  }
   return (
     <div>
       {projectPath && isEmpty && (
@@ -247,6 +252,34 @@ export function CardWall() {
             </option>
           ))}
         </select>
+
+        <div style={{ display: "flex", gap: 4 }}>
+          <button
+            onClick={() => setCardWallView("card")}
+            style={{
+              fontSize: 12,
+              fontWeight: cardWallView === "card" ? 600 : 400,
+              background: cardWallView === "card" ? "#e0e0e0" : "transparent",
+              border: "1px solid #ddd",
+            }}
+            title="卡牌视图"
+          >
+            ▦ 卡牌
+          </button>
+          <button
+            onClick={() => setCardWallView("list")}
+            style={{
+              fontSize: 12,
+              fontWeight: cardWallView === "list" ? 600 : 400,
+              background: cardWallView === "list" ? "#e0e0e0" : "transparent",
+              border: "1px solid #ddd",
+            }}
+            title="列表视图"
+          >
+            ☰ 列表
+          </button>
+        </div>
+
         <div style={{ display: "flex", gap: 4, marginLeft: "auto" }}>
           <button
             onClick={() => toggleSort("name")}
@@ -274,48 +307,185 @@ export function CardWall() {
 
       <div style={{ fontSize: 12, color: "#888", marginBottom: 8 }}>
         {visible.length} / {cards.length}
-        {query && ftsIds && <span style={{ marginLeft: 8 }}>FTS</span>}
+        {query && ftsIds && ftsIds.length > 0 && (
+          <span style={{ marginLeft: 8 }}>FTS</span>
+        )}
       </div>
 
       {visible.length === 0 ? (
         <p style={{ color: "#888" }}>没有匹配的卡牌</p>
+      ) : cardWallView === "card" ? (
+        <CardGridView
+          cards={visible}
+          cardTypes={cardTypes}
+          selectedCardId={selectedCardId}
+          onSelect={selectCard}
+          onAddToBoard={handleAddToBoard}
+        />
       ) : (
-        <ul style={{ listStyle: "none", padding: 0 }}>
-          {visible.map((c) => (
-            <li
-              key={c.id}
-              onClick={() => selectCard(c.id)}
-              style={{
-                cursor: "pointer",
-                padding: "6px 8px",
-                borderRadius: 4,
-                background: selectedCardId === c.id ? "#eef" : "transparent",
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-              }}
-            >
-              <span style={{ flex: 1 }}>
-                {c.name} ·{" "}
-                <span style={{ color: "#888" }}>{typeName(c.type_id)}</span> —{" "}
-                <span style={{ color: "#aaa", fontSize: 12 }}>
-                  {c.id.slice(0, 8)}
-                </span>
-              </span>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleAddToBoard(c);
-                }}
-                style={{ fontSize: 11 }}
-                title="添加到棋盘"
-              >
-                → 棋盘
-              </button>
-            </li>
-          ))}
-        </ul>
+        <CardListView
+          cards={visible}
+          typeName={typeName}
+          selectedCardId={selectedCardId}
+          onSelect={selectCard}
+          onAddToBoard={handleAddToBoard}
+        />
+      )}
+
+      {pickerOpen && pendingCard && (
+        <PickerDialog
+          title="选择棋盘"
+          options={boards.map((b) => ({ value: b.id, label: b.name }))}
+          onPick={(id) => {
+            const b = boards.find((x) => x.id === id);
+            if (b) createTokenInBoard(b, pendingCard);
+          }}
+          onClose={() => {
+            setPickerOpen(false);
+            setPendingCard(null);
+          }}
+        />
       )}
     </div>
+  );
+}
+
+// ============ 卡牌网格视图 ============
+
+function CardGridView({
+  cards,
+  cardTypes,
+  selectedCardId,
+  onSelect,
+  onAddToBoard,
+}: {
+  cards: Card[];
+  cardTypes: import("../../core/ipc").CardType[];
+  selectedCardId: string | null;
+  onSelect: (id: string) => void;
+  onAddToBoard: (c: Card) => void;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexWrap: "wrap",
+        gap: 16,
+        paddingTop: 4,
+      }}
+    >
+      {cards.map((c) => {
+        const ct = cardTypes.find((t) => t.id === c.type_id);
+        if (!ct) {
+          return (
+            <div
+              key={c.id}
+              onClick={() => onSelect(c.id)}
+              style={{
+                width: 190,
+                height: 280,
+                border: "1px dashed #c33",
+                borderRadius: 8,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 11,
+                color: "#c33",
+                cursor: "pointer",
+              }}
+            >
+              找不到类型
+            </div>
+          );
+        }
+
+        return (
+          <div key={c.id} style={{ position: "relative" }}>
+            <CardFrame
+              card={c}
+              cardType={ct}
+              size="medium"
+              selected={selectedCardId === c.id}
+              onClick={() => onSelect(c.id)}
+            />
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onAddToBoard(c);
+              }}
+              title="添加到棋盘"
+              style={{
+                position: "absolute",
+                right: 4,
+                top: 4,
+                fontSize: 11,
+                padding: "2px 6px",
+                borderRadius: 4,
+                border: "1px solid rgba(255,255,255,0.6)",
+                background: "rgba(0,0,0,0.4)",
+                color: "#fff",
+                cursor: "pointer",
+              }}
+            >
+              → 棋盘
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ============ 列表视图 ============
+
+function CardListView({
+  cards,
+  typeName,
+  selectedCardId,
+  onSelect,
+  onAddToBoard,
+}: {
+  cards: Card[];
+  typeName: (id: string) => string;
+  selectedCardId: string | null;
+  onSelect: (id: string) => void;
+  onAddToBoard: (c: Card) => void;
+}) {
+  return (
+    <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+      {cards.map((c) => (
+        <li
+          key={c.id}
+          onClick={() => onSelect(c.id)}
+          style={{
+            cursor: "pointer",
+            padding: "6px 8px",
+            borderRadius: 4,
+            background: selectedCardId === c.id ? "#eef" : "transparent",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+          }}
+        >
+          <span style={{ flex: 1 }}>
+            {c.name} ·{" "}
+            <span style={{ color: "#888" }}>{typeName(c.type_id)}</span> —{" "}
+            <span style={{ color: "#aaa", fontSize: 12 }}>
+              {c.id.slice(0, 8)}
+            </span>
+          </span>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddToBoard(c);
+            }}
+            style={{ fontSize: 11 }}
+            title="添加到棋盘"
+          >
+            → 棋盘
+          </button>
+        </li>
+      ))}
+    </ul>
   );
 }

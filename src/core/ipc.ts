@@ -35,6 +35,19 @@ export interface FieldDef {
   deprecated: boolean;
 }
 
+export interface CardFrameConfig {
+  style?: string | null;
+  title?: string | null;
+  subtitle?: string | null;
+  image?: string | null;
+  level?: string | null;
+  type_line?: string | null;
+  body: string[];
+  atk?: string | null;
+  def?: string | null;
+  hp?: string | null;
+}
+
 export interface CardType {
   id: string;
   name: string;
@@ -44,6 +57,7 @@ export interface CardType {
   fields: FieldDef[];
   allowed_relation_kinds: string[];
   views: string[];
+  card_frame?: CardFrameConfig | null;
   created_at: number;
   updated_at: number;
 }
@@ -124,6 +138,55 @@ export interface Board {
   updated_at: number;
 }
 
+export interface Session {
+  id: string;
+  name: string;
+  board_id?: string | null;
+  state: Record<string, unknown>;
+  tokens: Token[];
+  created_at: number;
+  updated_at: number;
+}
+
+export interface GameEvent {
+  seq: number;
+  at: number;
+  kind: string;
+  payload: unknown;
+  note?: string | null;
+}
+
+// ============ 跑团消息 ============
+
+export type ChatEventKind =
+  | "chat.say"
+  | "chat.action"
+  | "chat.roll"
+  | "chat.narration"
+  | "chat.ooc"
+  | "chat.whisper";
+
+export type SystemEventKind =
+  "session.start" | "session.end" | "token.move" | "state.set" | "note";
+
+export type AnyEventKind = ChatEventKind | SystemEventKind;
+
+export interface RollInfo {
+  expr: string;
+  result: number;
+  detail: number[];
+}
+
+export interface ChatPayload {
+  author_card_id?: string | null;
+  author_name?: string;
+  content: string;
+  roll?: RollInfo;
+}
+
+export function isChatKind(kind: string): kind is ChatEventKind {
+  return kind.startsWith("chat.");
+}
 export const ipc = {
   openProject: (path: string) => invoke<void>("open_project", { path }),
   saveCard: (card: Card) => invoke<void>("save_card", { card }),
@@ -148,6 +211,7 @@ export const ipc = {
       relations: Relation[];
       scenarios: Scenario[];
       boards: Board[];
+      sessions: Session[];
     }>("reload_project"),
   listAllRelations: () => invoke<Relation[]>("list_all_relations"),
   upsertRelation: (relation: Relation) =>
@@ -170,4 +234,17 @@ export const ipc = {
   listBoards: () => invoke<Board[]>("list_boards"),
   upsertBoard: (board: Board) => invoke<void>("upsert_board", { board }),
   deleteBoard: (id: string) => invoke<void>("delete_board", { id }),
+
+  listSessions: () => invoke<Session[]>("list_sessions"),
+  upsertSession: (session: Session) =>
+    invoke<void>("upsert_session", { session }),
+  deleteSession: (id: string) => invoke<void>("delete_session", { id }),
+  listEvents: (sessionId: string) =>
+    invoke<GameEvent[]>("list_events", { sessionId }),
+  appendEvent: (
+    sessionId: string,
+    kind: string,
+    payload: unknown,
+    note?: string,
+  ) => invoke<void>("append_event", { sessionId, kind, payload, note }),
 };

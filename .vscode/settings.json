@@ -1,14 +1,20 @@
 {
   "rust-analyzer.cargo.features": "all",
   "editor.formatOnSave": true,
-  "[rust]": { "editor.defaultFormatter": "rust-lang.rust-analyzer" },
-  "[typescript]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
-  "[typescriptreact]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[rust]": {
+    "editor.defaultFormatter": "rust-lang.rust-analyzer"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
   "files.exclude": {
     "**/target": true,
     "**/node_modules": true,
     "**/.anvil": true
   },
   "npm.packageManager": "pnpm",
-  "eslint.packageManager":"pnpm",
+  "eslint.packageManager": "pnpm",
 }

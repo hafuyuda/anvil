@@ -6,10 +6,19 @@ import type {
   Relation,
   RelationKind,
   Scenario,
+  Session,
 } from "../core/ipc";
 
-export type ModuleKey = "world" | "story" | "board" | "types";
+export type ModuleKey = "world" | "story" | "board" | "session" | "types";
 export type WorldSubView = "cards" | "graph";
+export type CardWallView = "card" | "list";
+
+export interface UndoEntry {
+  id: string;
+  label: string;
+  undo: () => Promise<void>;
+  redo: () => Promise<void>;
+}
 
 interface ProjectState {
   projectPath: string | null;
@@ -19,11 +28,16 @@ interface ProjectState {
   relations: Relation[];
   scenarios: Scenario[];
   boards: Board[];
+  sessions: Session[];
   selectedCardId: string | null;
   selectedTokenId: string | null;
   currentBoardId: string | null;
   activeModule: ModuleKey;
   worldSubView: WorldSubView;
+  cardWallView: CardWallView;
+  undoStack: UndoEntry[];
+  redoStack: UndoEntry[];
+  pendingSaves: number;
 
   setProject: (
     path: string,
@@ -33,6 +47,7 @@ interface ProjectState {
     relations: Relation[],
     scenarios: Scenario[],
     boards: Board[],
+    sessions: Session[],
   ) => void;
   closeProject: () => void;
   addCard: (card: Card) => void;
@@ -47,14 +62,23 @@ interface ProjectState {
   removeScenario: (id: string) => void;
   upsertBoard: (b: Board) => void;
   removeBoard: (id: string) => void;
+  upsertSession: (s: Session) => void;
+  removeSession: (id: string) => void;
   selectCard: (id: string | null) => void;
   selectToken: (id: string | null) => void;
   setCurrentBoard: (id: string | null) => void;
   setActiveModule: (m: ModuleKey) => void;
   setWorldSubView: (v: WorldSubView) => void;
+  setCardWallView: (v: CardWallView) => void;
+  pushUndo: (entry: UndoEntry) => void;
+  undo: () => Promise<void>;
+  redo: () => Promise<void>;
+  clearHistory: () => void;
+  incPendingSaves: () => void;
+  decPendingSaves: () => void;
 }
 
-export const useProjectStore = create<ProjectState>((set) => ({
+export const useProjectStore = create<ProjectState>((set, get) => ({
   projectPath: null,
   cards: [],
   cardTypes: [],
@@ -62,11 +86,16 @@ export const useProjectStore = create<ProjectState>((set) => ({
   relations: [],
   scenarios: [],
   boards: [],
+  sessions: [],
   selectedCardId: null,
   selectedTokenId: null,
   currentBoardId: null,
   activeModule: "world",
   worldSubView: "cards",
+  cardWallView: "card",
+  undoStack: [],
+  redoStack: [],
+  pendingSaves: 0,
 
   setProject: (
     projectPath,
@@ -76,6 +105,7 @@ export const useProjectStore = create<ProjectState>((set) => ({
     relations,
     scenarios,
     boards,
+    sessions,
   ) =>
     set({
       projectPath,
@@ -85,9 +115,13 @@ export const useProjectStore = create<ProjectState>((set) => ({
       relations: relations ?? [],
       scenarios: scenarios ?? [],
       boards: boards ?? [],
+      sessions: sessions ?? [],
       selectedCardId: null,
       selectedTokenId: null,
       currentBoardId: null,
+      undoStack: [],
+      redoStack: [],
+      pendingSaves: 0,
     }),
 
   closeProject: () =>
@@ -99,6 +133,7 @@ export const useProjectStore = create<ProjectState>((set) => ({
       relations: [],
       scenarios: [],
       boards: [],
+      sessions: [],
       selectedCardId: null,
       selectedTokenId: null,
       currentBoardId: null,
@@ -192,6 +227,22 @@ export const useProjectStore = create<ProjectState>((set) => ({
       boards: (s.boards ?? []).filter((b) => b.id !== id),
     })),
 
+  upsertSession: (sc) =>
+    set((s) => {
+      const list = s.sessions ?? [];
+      const exists = list.some((x) => x.id === sc.id);
+      return {
+        sessions: exists
+          ? list.map((x) => (x.id === sc.id ? sc : x))
+          : [...list, sc],
+      };
+    }),
+
+  removeSession: (id) =>
+    set((s) => ({
+      sessions: (s.sessions ?? []).filter((x) => x.id !== id),
+    })),
+
   selectCard: (selectedCardId) =>
     set({ selectedCardId, selectedTokenId: null }),
 
@@ -203,4 +254,50 @@ export const useProjectStore = create<ProjectState>((set) => ({
 
   setActiveModule: (activeModule) => set({ activeModule }),
   setWorldSubView: (worldSubView) => set({ worldSubView }),
+  setCardWallView: (cardWallView) => set({ cardWallView }),
+
+  pushUndo: (entry) =>
+    set((s) => ({
+      undoStack: [...(s.undoStack ?? []), entry].slice(-100),
+      redoStack: [],
+    })),
+
+  undo: async () => {
+    const s = get();
+    const stack = s.undoStack ?? [];
+    if (stack.length === 0) return;
+    const entry = stack[stack.length - 1];
+    set({ undoStack: stack.slice(0, -1) });
+    try {
+      await entry.undo();
+      set((st) => ({ redoStack: [...(st.redoStack ?? []), entry] }));
+    } catch (e) {
+      alert("撤销失败: " + e);
+      set((st) => ({ undoStack: [...(st.undoStack ?? []), entry] }));
+    }
+  },
+
+  redo: async () => {
+    const s = get();
+    const stack = s.redoStack ?? [];
+    if (stack.length === 0) return;
+    const entry = stack[stack.length - 1];
+    set({ redoStack: stack.slice(0, -1) });
+    try {
+      await entry.redo();
+      set((st) => ({ undoStack: [...(st.undoStack ?? []), entry] }));
+    } catch (e) {
+      alert("重做失败: " + e);
+      set((st) => ({ redoStack: [...(st.redoStack ?? []), entry] }));
+    }
+  },
+
+  clearHistory: () => set({ undoStack: [], redoStack: [] }),
+
+  incPendingSaves: () =>
+    set((s) => ({ pendingSaves: (s.pendingSaves ?? 0) + 1 })),
+  decPendingSaves: () =>
+    set((s) => ({
+      pendingSaves: Math.max(0, (s.pendingSaves ?? 0) - 1),
+    })),
 }));

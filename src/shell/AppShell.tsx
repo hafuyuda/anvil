@@ -5,11 +5,14 @@ import { Workspace } from "./Workspace";
 import { Inspector } from "./Inspector";
 import { StatusBar } from "./StatusBar";
 import { useProjectStore } from "../stores/projectStore";
+import { useKeyboard } from "../hooks/useKeyboard";
 import { ipc } from "../core/ipc";
 
 export function AppShell() {
   const projectPath = useProjectStore((s) => s.projectPath);
   const setProject = useProjectStore((s) => s.setProject);
+
+  useKeyboard();
 
   useEffect(() => {
     let timer: number | null = null;
@@ -27,9 +30,10 @@ export function AppShell() {
             snap.relations,
             snap.scenarios,
             snap.boards,
+            snap.sessions
           );
         } catch {
-          // 项目可能被移动或删除，忽略
+          // 忽略
         }
       }, 500);
     }

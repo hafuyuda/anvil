@@ -6,6 +6,8 @@ import {
   type FieldType,
 } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
+import { useDraft } from "../../hooks/useDraft";
+import { nowMs } from "../../lib/time";
 import { StoryGraphView } from "./StoryGraphView";
 import { PlayView } from "./PlayView";
 
@@ -24,27 +26,34 @@ function defaultVarType(kind: FieldType["kind"]): FieldType {
 }
 
 export function ScenarioEditor({ scenario }: Props) {
-  const cards = useProjectStore((s) => s.cards);
-  const relationKinds = useProjectStore((s) => s.relationKinds);
+  const cards = useProjectStore((s) => s.cards) ?? [];
+  const relationKinds = useProjectStore((s) => s.relationKinds) ?? [];
   const upsertScenario = useProjectStore((s) => s.upsertScenario);
 
-  const [draft, setDraft] = useState<Scenario>(scenario);
-  const [dirty, setDirty] = useState(false);
+  const { draft, dirty, update, commit } = useDraft(
+    scenario,
+    async (d): Promise<void | boolean> => {
+      if (!d.name.trim()) {
+        alert("剧情名不能为空");
+        return false;
+      }
+      const keys = d.variables.map((v) => v.key);
+      const dup = keys.find((k, i) => keys.indexOf(k) !== i);
+      if (dup) {
+        alert(`变量 key 重复：${dup}`);
+        return false;
+      }
+      const next: Scenario = { ...d, updated_at: nowMs() };
+      await ipc.upsertScenario(next);
+      upsertScenario(next);
+    }
+  );
+
   const [tab, setTab] = useState<"settings" | "graph" | "play">("settings");
-
-  if (draft.id !== scenario.id) {
-    setDraft(scenario);
-    setDirty(false);
-  }
-
-  function update(patch: Partial<Scenario>) {
-    setDraft((d) => ({ ...d, ...patch, updated_at: Date.now() }));
-    setDirty(true);
-  }
 
   function addVariable() {
     const v: VariableDef = {
-      key: `var_${Date.now().toString(36)}`,
+      key: `var_${nowMs().toString(36)}`,
       label: "新变量",
       ty: { kind: "text" },
       default: "",
@@ -54,29 +63,13 @@ export function ScenarioEditor({ scenario }: Props) {
 
   function updateVariable(i: number, patch: Partial<VariableDef>) {
     const variables = draft.variables.map((v, idx) =>
-      idx === i ? { ...v, ...patch } : v,
+      idx === i ? { ...v, ...patch } : v
     );
     update({ variables });
   }
 
   function removeVariable(i: number) {
     update({ variables: draft.variables.filter((_, idx) => idx !== i) });
-  }
-
-  async function save() {
-    if (!draft.name.trim()) {
-      alert("剧情名不能为空");
-      return;
-    }
-    const keys = draft.variables.map((v) => v.key);
-    const dup = keys.find((k, i) => keys.indexOf(k) !== i);
-    if (dup) {
-      alert(`变量 key 重复：${dup}`);
-      return;
-    }
-    await ipc.upsertScenario(draft);
-    upsertScenario(draft);
-    setDirty(false);
   }
 
   return (
@@ -89,7 +82,7 @@ export function ScenarioEditor({ scenario }: Props) {
         minHeight: 0,
       }}
     >
-      <div style={{ borderBottom: "1px solid #eee", paddingBottom: 4 }}>
+      <div style={{ borderBottom: "1px solid #eee", paddingBottom: 4, flexShrink: 0 }}>
         <button
           onClick={() => setTab("settings")}
           disabled={tab === "settings"}
@@ -97,7 +90,11 @@ export function ScenarioEditor({ scenario }: Props) {
         >
           设置
         </button>
-        <button onClick={() => setTab("graph")} disabled={tab === "graph"}>
+        <button
+          onClick={() => setTab("graph")}
+          disabled={tab === "graph"}
+          style={{ marginRight: 8 }}
+        >
           节点图
         </button>
         <button onClick={() => setTab("play")} disabled={tab === "play"}>
@@ -127,7 +124,7 @@ export function ScenarioEditor({ scenario }: Props) {
                 fontWeight: 600,
               }}
             />
-            <button onClick={save} disabled={!dirty}>
+            <button onClick={commit} disabled={!dirty}>
               {dirty ? "保存" : "已保存"}
             </button>
           </div>
@@ -145,7 +142,9 @@ export function ScenarioEditor({ scenario }: Props) {
             </div>
             <select
               value={draft.entry_node ?? ""}
-              onChange={(e) => update({ entry_node: e.target.value || null })}
+              onChange={(e) =>
+                update({ entry_node: e.target.value || null })
+              }
               style={{ padding: "4px 6px", minWidth: 200 }}
             >
               <option value="">— 未设置 —</option>
@@ -184,7 +183,7 @@ export function ScenarioEditor({ scenario }: Props) {
                       else
                         update({
                           edge_kinds: draft.edge_kinds.filter(
-                            (x) => x !== k.id,
+                            (x) => x !== k.id
                           ),
                         });
                     }}
@@ -253,7 +252,7 @@ export function ScenarioEditor({ scenario }: Props) {
                 key={i}
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "1fr 1fr 100px auto",
+                  gridTemplateColumns: "1fr 1fr 90px 1fr auto",
                   gap: 6,
                   alignItems: "center",
                   padding: "4px 0",
@@ -262,7 +261,9 @@ export function ScenarioEditor({ scenario }: Props) {
               >
                 <input
                   value={v.label}
-                  onChange={(e) => updateVariable(i, { label: e.target.value })}
+                  onChange={(e) =>
+                    updateVariable(i, { label: e.target.value })
+                  }
                   placeholder="显示名"
                   style={{ padding: "3px 6px" }}
                 />
@@ -276,7 +277,9 @@ export function ScenarioEditor({ scenario }: Props) {
                   value={v.ty.kind}
                   onChange={(e) =>
                     updateVariable(i, {
-                      ty: defaultVarType(e.target.value as FieldType["kind"]),
+                      ty: defaultVarType(
+                        e.target.value as FieldType["kind"]
+                      ),
                     })
                   }
                   style={{ padding: "3px 6px" }}
@@ -290,7 +293,9 @@ export function ScenarioEditor({ scenario }: Props) {
                 <DefaultValueInput
                   ty={v.ty}
                   value={v.default}
-                  onChange={(value) => updateVariable(i, { default: value })}
+                  onChange={(value) =>
+                    updateVariable(i, { default: value })
+                  }
                 />
                 <button onClick={() => removeVariable(i)}>×</button>
               </div>
@@ -304,6 +309,7 @@ export function ScenarioEditor({ scenario }: Props) {
           <StoryGraphView scenario={scenario} />
         </div>
       )}
+
       {tab === "play" && (
         <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
           <PlayView scenario={scenario} />

@@ -1,32 +1,34 @@
-import type { FieldDef, FieldType } from "../../core/ipc";
+import type { FieldDef, FieldType } from "../core/ipc";
 
 interface Props {
-  field: FieldDef;
+  /** 旧调用方式：直接传 FieldDef */
+  field?: FieldDef;
+  /** 新调用方式：显式传类型。field 存在时可省略 */
+  ty?: FieldType;
   value: unknown;
-  onChange: (value: unknown) => void;
+  onChange: (v: unknown) => void;
+  /** 覆盖显示名 */
+  label?: string;
+  /** 覆盖必填标记 */
+  required?: boolean;
 }
 
-export function FieldInput({ field, value, onChange }: Props) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-      <label style={{ fontSize: 11, color: "#888" }}>
-        {field.label}
-        {field.required && <span style={{ color: "#c33" }}> *</span>}
-      </label>
-      <Control ty={field.ty} value={value} onChange={onChange} />
-    </div>
-  );
-}
-
-function Control({
+export function FieldInput({
+  field,
   ty,
   value,
   onChange,
-}: {
-  ty: FieldType;
-  value: unknown;
-  onChange: (v: unknown) => void;
-}) {
+  label,
+  required,
+}: Props) {
+  const resolvedTy = ty ?? field?.ty;
+  const resolvedLabel = label ?? field?.label;
+  const resolvedRequired = required ?? field?.required ?? false;
+
+  if (!resolvedTy) {
+    return <span style={{ color: "#c33", fontSize: 11 }}>缺少字段类型</span>;
+  }
+
   const inputStyle: React.CSSProperties = {
     padding: "4px 6px",
     fontSize: 12,
@@ -36,28 +38,40 @@ function Control({
     boxSizing: "border-box",
   };
 
-  switch (ty.kind) {
+  const wrapped = (node: React.ReactNode) => {
+    if (!resolvedLabel) return node;
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <label style={{ fontSize: 11, color: "#888" }}>
+          {resolvedLabel}
+          {resolvedRequired && <span style={{ color: "#c33" }}> *</span>}
+        </label>
+        {node}
+      </div>
+    );
+  };
+
+  switch (resolvedTy.kind) {
     case "text":
-      return (
+      return wrapped(
         <input
           style={inputStyle}
           value={(value as string) ?? ""}
           onChange={(e) => onChange(e.target.value)}
-        />
+        />,
       );
 
     case "rich_text":
-      return (
+      return wrapped(
         <textarea
           style={{ ...inputStyle, minHeight: 100, fontFamily: "inherit" }}
           value={(value as string) ?? ""}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="支持 Markdown"
-        />
+        />,
       );
 
     case "number":
-      return (
+      return wrapped(
         <input
           type="number"
           style={inputStyle}
@@ -65,30 +79,30 @@ function Control({
           onChange={(e) =>
             onChange(e.target.value === "" ? null : Number(e.target.value))
           }
-        />
+        />,
       );
 
     case "bool":
-      return (
+      return wrapped(
         <input
           type="checkbox"
           checked={Boolean(value)}
           onChange={(e) => onChange(e.target.checked)}
-        />
+        />,
       );
 
     case "date":
-      return (
+      return wrapped(
         <input
           type="date"
           style={inputStyle}
           value={(value as string) ?? ""}
           onChange={(e) => onChange(e.target.value)}
-        />
+        />,
       );
 
     case "color":
-      return (
+      return wrapped(
         <div style={{ display: "flex", gap: 6 }}>
           <input
             type="color"
@@ -100,50 +114,50 @@ function Control({
             value={(value as string) ?? ""}
             onChange={(e) => onChange(e.target.value)}
           />
-        </div>
+        </div>,
       );
 
     case "enum":
-      return (
+      return wrapped(
         <select
           style={inputStyle}
           value={(value as string) ?? ""}
           onChange={(e) => onChange(e.target.value || null)}
         >
           <option value="">—</option>
-          {ty.options.map((o) => (
+          {resolvedTy.options.map((o) => (
             <option key={o} value={o}>
               {o}
             </option>
           ))}
-        </select>
+        </select>,
       );
 
     case "multi_enum": {
       const arr = Array.isArray(value) ? (value as string[]) : [];
-      return (
+      return wrapped(
         <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          {ty.options.map((o) => (
+          {resolvedTy.options.map((o) => (
             <label key={o} style={{ fontSize: 12, display: "flex", gap: 4 }}>
               <input
                 type="checkbox"
                 checked={arr.includes(o)}
                 onChange={(e) => {
                   onChange(
-                    e.target.checked ? [...arr, o] : arr.filter((x) => x !== o)
+                    e.target.checked ? [...arr, o] : arr.filter((x) => x !== o),
                   );
                 }}
               />
               {o}
             </label>
           ))}
-        </div>
+        </div>,
       );
     }
 
     case "tags": {
       const arr = Array.isArray(value) ? (value as string[]) : [];
-      return (
+      return wrapped(
         <input
           style={inputStyle}
           value={arr.join(", ")}
@@ -152,11 +166,11 @@ function Control({
               e.target.value
                 .split(",")
                 .map((s) => s.trim())
-                .filter(Boolean)
+                .filter(Boolean),
             )
           }
           placeholder="用逗号分隔"
-        />
+        />,
       );
     }
 
@@ -166,7 +180,7 @@ function Control({
         : value
           ? [value as string]
           : [];
-      return (
+      return wrapped(
         <input
           style={inputStyle}
           value={arr.join(", ")}
@@ -175,27 +189,29 @@ function Control({
               e.target.value
                 .split(",")
                 .map((s) => s.trim())
-                .filter(Boolean)
+                .filter(Boolean),
             )
           }
           placeholder="卡牌 ID，逗号分隔"
-        />
+        />,
       );
     }
 
     case "image":
     case "url":
-      return (
+      return wrapped(
         <input
           style={inputStyle}
           value={(value as string) ?? ""}
           onChange={(e) => onChange(e.target.value)}
-          placeholder={ty.kind === "image" ? "assets/..." : "https://..."}
-        />
+          placeholder={
+            resolvedTy.kind === "image" ? "assets/..." : "https://..."
+          }
+        />,
       );
 
     case "json":
-      return (
+      return wrapped(
         <textarea
           style={{ ...inputStyle, minHeight: 80, fontFamily: "monospace" }}
           value={value === undefined ? "" : JSON.stringify(value, null, 2)}
@@ -203,10 +219,10 @@ function Control({
             try {
               onChange(e.target.value ? JSON.parse(e.target.value) : null);
             } catch {
-              // 暂不处理解析错误
+              // 忽略解析错误
             }
           }}
-        />
+        />,
       );
 
     default:

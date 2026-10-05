@@ -1,9 +1,11 @@
 use crate::core::index as idx;
 use crate::core::model::card::Card;
-use crate::core::model::card_type::{CardType, FieldDef, FieldType};
+use crate::core::model::card_type::{CardType, FieldType};
+use crate::core::model::helpers::{fdef, values};
 use crate::core::model::relation::Relation;
 use crate::core::model::relation_kind::RelationKind;
 use crate::core::store::atomic::write_atomic;
+use crate::core::util::now_ms;
 use rusqlite::Connection;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -23,6 +25,7 @@ impl Project {
         std::fs::create_dir_all(root.join(".anvil"))?;
         std::fs::create_dir_all(root.join("scenarios"))?;
         std::fs::create_dir_all(root.join("boards"))?;
+        std::fs::create_dir_all(root.join("sessions"))?;
 
         let db_path = root.join(".anvil").join("index.db");
         let conn = crate::core::index::open_or_create(&db_path)?;
@@ -156,6 +159,7 @@ impl Project {
         Vec<Relation>,
         Vec<crate::core::model::scenario::Scenario>,
         Vec<crate::core::model::board::Board>,
+        Vec<crate::core::model::session::Session>,
     )> {
         let cards = self.load_all_cards()?;
         let card_types = self.load_card_types()?;
@@ -163,6 +167,7 @@ impl Project {
         let relations = self.list_all_relations()?;
         let scenarios = self.load_scenarios()?;
         let boards = self.load_boards()?;
+        let sessions = self.load_sessions()?;
         {
             let mut conn = self.index.lock().unwrap();
             idx::rebuild(&mut conn, &cards, &relations)?;
@@ -174,6 +179,7 @@ impl Project {
             relations,
             scenarios,
             boards,
+            sessions,
         ))
     }
 
@@ -201,6 +207,7 @@ impl Project {
             ],
             allowed_relation_kinds: vec![],
             views: vec![],
+            card_frame: None,
             created_at: now,
             updated_at: now,
         };
@@ -226,6 +233,7 @@ impl Project {
             ],
             allowed_relation_kinds: vec![],
             views: vec![],
+            card_frame: None,
             created_at: now,
             updated_at: now,
         };
@@ -244,6 +252,18 @@ impl Project {
             ],
             allowed_relation_kinds: vec![],
             views: vec![],
+            card_frame: Some(crate::core::model::card_type::CardFrameConfig {
+                style: Some("yugioh".into()),
+                title: None,
+                subtitle: Some("material".into()),
+                image: None,
+                level: None,
+                type_line: None,
+                body: vec!["description".into(), "tags".into()],
+                atk: Some("value".into()),
+                def: None,
+                hp: None,
+            }),
             created_at: now,
             updated_at: now,
         };
@@ -687,33 +707,114 @@ impl Project {
         }
         Ok(())
     }
-}
 
-fn now_ms() -> i64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_millis() as i64)
-        .unwrap_or(0)
-}
-
-fn fdef(key: &str, label: &str, ty: FieldType, order: i32, required: bool) -> FieldDef {
-    FieldDef {
-        key: key.into(),
-        label: label.into(),
-        ty,
-        required,
-        default: None,
-        group: None,
-        order,
-        deprecated: false,
+    pub fn sessions_dir(&self) -> PathBuf {
+        self.root.join("sessions")
     }
-}
 
-fn values(pairs: &[(&str, serde_json::Value)]) -> BTreeMap<String, serde_json::Value> {
-    pairs
-        .iter()
-        .map(|(k, v)| ((*k).to_string(), v.clone()))
-        .collect()
+    pub fn session_dir(&self, id: &str) -> PathBuf {
+        self.sessions_dir().join(id)
+    }
+
+    pub fn session_path(&self, id: &str) -> PathBuf {
+        self.session_dir(id).join("session.json")
+    }
+
+    pub fn events_path(&self, id: &str) -> PathBuf {
+        self.session_dir(id).join("events.jsonl")
+    }
+
+    pub fn load_sessions(&self) -> anyhow::Result<Vec<crate::core::model::session::Session>> {
+        let dir = self.sessions_dir();
+        if !dir.exists() {
+            return Ok(Vec::new());
+        }
+        let mut out = Vec::new();
+        for entry in std::fs::read_dir(&dir)? {
+            let entry = entry?;
+            if !entry.file_type()?.is_dir() {
+                continue;
+            }
+            let path = entry.path().join("session.json");
+            if !path.exists() {
+                continue;
+            }
+            let bytes = std::fs::read(&path)?;
+            match serde_json::from_slice::<crate::core::model::session::Session>(&bytes) {
+                Ok(s) => out.push(s),
+                Err(e) => eprintln!("session {}: {}", path.display(), e),
+            }
+        }
+        Ok(out)
+    }
+
+    pub fn save_session(
+        &self,
+        session: &crate::core::model::session::Session,
+    ) -> anyhow::Result<()> {
+        let dir = self.session_dir(&session.id);
+        std::fs::create_dir_all(&dir)?;
+        let path = dir.join("session.json");
+        let json = serde_json::to_vec_pretty(session)?;
+        write_atomic(&path, &json)?;
+        Ok(())
+    }
+
+    pub fn delete_session(&self, id: &str) -> anyhow::Result<()> {
+        let dir = self.session_dir(id);
+        if dir.exists() {
+            std::fs::remove_dir_all(&dir)?;
+        }
+        Ok(())
+    }
+
+    pub fn load_events(
+        &self,
+        session_id: &str,
+    ) -> anyhow::Result<Vec<crate::core::model::session::Event>> {
+        let path = self.events_path(session_id);
+        if !path.exists() {
+            return Ok(Vec::new());
+        }
+        let text = std::fs::read_to_string(&path)?;
+        let mut out = Vec::new();
+        for line in text.lines() {
+            let line = line.trim();
+            if line.is_empty() {
+                continue;
+            }
+            if let Ok(ev) = serde_json::from_str::<crate::core::model::session::Event>(line) {
+                out.push(ev);
+            }
+        }
+        Ok(out)
+    }
+
+    pub fn append_event(
+        &self,
+        session_id: &str,
+        mut event: crate::core::model::session::Event,
+    ) -> anyhow::Result<()> {
+        let dir = self.session_dir(session_id);
+        std::fs::create_dir_all(&dir)?;
+
+        // 自动分配 seq
+        let existing = self.load_events(session_id)?;
+        let next_seq = existing.iter().map(|e| e.seq).max().unwrap_or(0) + 1;
+        if event.seq == 0 {
+            event.seq = next_seq;
+        }
+
+        let path = self.events_path(session_id);
+        use std::io::Write;
+        let mut f = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&path)?;
+        let line = serde_json::to_string(&event)?;
+        writeln!(f, "{}", line)?;
+        Ok(())
+    }
 }
 
 fn newest_mtime_recursive(dir: &std::path::Path) -> Option<std::time::SystemTime> {

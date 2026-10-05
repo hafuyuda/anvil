@@ -5,6 +5,7 @@ const modules: { key: ModuleKey; label: string }[] = [
   { key: "story", label: "分支故事" },
   { key: "types", label: "类型" },
   { key: "board", label: "棋盘" },
+  { key: "session", label: "跑团" },
 ];
 
 export function LeftNav() {
@@ -29,7 +30,14 @@ export function LeftNav() {
         fontSize: 13,
       }}
     >
-      <div style={{ fontSize: 11, color: "#999", textTransform: "uppercase", padding: "4px 8px" }}>
+      <div
+        style={{
+          fontSize: 11,
+          color: "#999",
+          textTransform: "uppercase",
+          padding: "4px 8px",
+        }}
+      >
         模块
       </div>
       {modules.map((m) => (
@@ -52,7 +60,15 @@ export function LeftNav() {
           </button>
 
           {m.key === "world" && activeModule === "world" && projectPath && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 2, marginTop: 2, paddingLeft: 12 }}>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 2,
+                marginTop: 2,
+                paddingLeft: 12,
+              }}
+            >
               <button
                 onClick={() => setWorldSubView("cards")}
                 style={{
@@ -60,7 +76,8 @@ export function LeftNav() {
                   padding: "4px 8px",
                   border: "none",
                   borderRadius: 4,
-                  background: worldSubView === "cards" ? "#d8d8d8" : "transparent",
+                  background:
+                    worldSubView === "cards" ? "#d8d8d8" : "transparent",
                   fontSize: 12,
                   cursor: "pointer",
                 }}
@@ -74,7 +91,8 @@ export function LeftNav() {
                   padding: "4px 8px",
                   border: "none",
                   borderRadius: 4,
-                  background: worldSubView === "graph" ? "#d8d8d8" : "transparent",
+                  background:
+                    worldSubView === "graph" ? "#d8d8d8" : "transparent",
                   fontSize: 12,
                   cursor: "pointer",
                 }}
@@ -86,7 +104,15 @@ export function LeftNav() {
         </div>
       ))}
 
-      <div style={{ marginTop: 16, fontSize: 11, color: "#999", textTransform: "uppercase", padding: "4px 8px" }}>
+      <div
+        style={{
+          marginTop: 16,
+          fontSize: 11,
+          color: "#999",
+          textTransform: "uppercase",
+          padding: "4px 8px",
+        }}
+      >
         概览
       </div>
       <div style={{ padding: "4px 10px", color: "#666", fontSize: 12 }}>

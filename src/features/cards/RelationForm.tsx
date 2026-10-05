@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { ipc, type Relation, type RelationKind } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
-import { FieldInput } from "./FieldInput";
+import { FieldInput } from "../../components/FieldInput";
 
 interface Props {
   fromCardId: string;

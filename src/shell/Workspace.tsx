@@ -6,6 +6,7 @@ import { GraphView } from "../features/world/GraphView";
 import { ScenarioList } from "../features/story/ScenarioList";
 import { BoardList } from "../features/board/BoardList";
 import { ErrorBoundary } from "./ErrorBoundary";
+import { SessionList } from "../features/session/SessionList";
 
 export function Workspace() {
   const projectPath = useProjectStore((s) => s.projectPath);
@@ -43,7 +44,8 @@ export function Workspace() {
   const isGraph =
     (activeModule === "world" && worldSubView === "graph") ||
     activeModule === "story" ||
-    activeModule === "board";
+    activeModule === "board" ||
+    activeModule === "session";
 
   return (
     <div
@@ -80,6 +82,11 @@ export function Workspace() {
       {activeModule === "board" && (
         <ErrorBoundary>
           <BoardList />
+        </ErrorBoundary>
+      )}
+      {activeModule === "session" && (
+        <ErrorBoundary>
+          <SessionList />
         </ErrorBoundary>
       )}
     </div>
