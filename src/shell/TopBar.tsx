@@ -28,6 +28,8 @@ export function TopBar() {
   const openPalette = useUIStore((s) => s.openPalette);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
+  const openMergePack = useUIStore((s) => s.openMergePack);
+
   async function handleClose() {
     try {
       await ipc.closeProject();
@@ -114,6 +116,9 @@ export function TopBar() {
             </button>
             <button className="btn" onClick={exportPack}>
               导出包
+            </button>
+            <button className="btn" onClick={openMergePack}>
+              合并包
             </button>
             <button
               className="btn btn-icon"

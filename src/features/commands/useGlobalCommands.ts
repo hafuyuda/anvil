@@ -6,6 +6,7 @@ import { useCreateProject } from "../../core/useCreateProject";
 import { useExportPack } from "../../core/useExportPack";
 import { useImportPack } from "../../core/useImportPack";
 import { ipc } from "../../core/ipc";
+import { useUIStore } from "../../stores/uiStore";
 
 export function useGlobalCommands() {
   const openProjectHook = useOpenProject();
@@ -118,7 +119,13 @@ export function useGlobalCommands() {
       keywords: ["import", "导入"],
       run: () => handlers.current.importPack(),
     });
-
+    reg({
+      id: "project.merge",
+      label: "合并资源包",
+      category: "项目",
+      keywords: ["merge", "合并", "import"],
+      run: () => useUIStore.getState().openMergePack(),
+    });
     // ── 项目内操作 ──
     if (projectPath) {
       reg({

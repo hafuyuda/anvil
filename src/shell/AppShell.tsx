@@ -11,6 +11,7 @@ import { useCommands } from "../hooks/useCommands";
 import { useGlobalCommands } from "../features/commands/useGlobalCommands";
 import { CommandPalette } from "../components/CommandPalette";
 import { ipc } from "../core/ipc";
+import { MergePackDialog } from "../features/project/MergePackDialog";
 
 export function AppShell() {
   const projectPath = useProjectStore((s) => s.projectPath);
@@ -22,6 +23,9 @@ export function AppShell() {
   const commands = useCommands();
   useGlobalCommands();
   useKeyboard();
+
+  const mergePackOpen = useUIStore((s) => s.mergePackOpen);
+  const closeMergePack = useUIStore((s) => s.closeMergePack);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -88,6 +92,8 @@ export function AppShell() {
       {paletteOpen && (
         <CommandPalette commands={commands} onClose={closePalette} />
       )}
+
+      {mergePackOpen && <MergePackDialog onClose={closeMergePack} />}
     </div>
   );
 }

@@ -11,6 +11,9 @@ import type {
   Scenario,
   Session,
   Theme,
+  MergeOptions,
+  MergeResult,
+  PackInspection,
 } from "./types";
 
 export const ipc = {
@@ -35,6 +38,12 @@ export const ipc = {
     invoke<void>("export_pack", { outputPath }),
   importPack: (src: string, dest: string) =>
     invoke<void>("import_pack", { src, dest }),
+
+  // ── 资源包合并 ──
+  inspectPack: (src: string) =>
+    invoke<PackInspection>("inspect_pack_cmd", { src }),
+  mergePack: (src: string, options: MergeOptions) =>
+    invoke<MergeResult>("merge_pack", { src, options }),
 
   // ── 卡牌 ──
   saveCard: (card: Card) => invoke<void>("save_card", { card }),

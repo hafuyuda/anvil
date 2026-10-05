@@ -203,3 +203,24 @@ pub fn read_image_data_url(state: State<AppState>, relative: String) -> Result<S
     let p = guard.as_ref().ok_or("no project open")?;
     p.read_image_data_url(&relative).map_err(|e| e.to_string())
 }
+
+use crate::core::store::pack::{
+    inspect_pack, InspectNamed, MergeOptions, MergeResult, PackInspection,
+};
+
+#[tauri::command]
+pub fn inspect_pack_cmd(src: String) -> Result<PackInspection, String> {
+    inspect_pack(&PathBuf::from(src)).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn merge_pack(
+    state: State<AppState>,
+    src: String,
+    options: MergeOptions,
+) -> Result<MergeResult, String> {
+    let guard = state.project.lock().unwrap();
+    let p = guard.as_ref().ok_or("no project open")?;
+    p.merge_pack(&PathBuf::from(src), &options)
+        .map_err(|e| e.to_string())
+}

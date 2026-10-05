@@ -232,3 +232,50 @@ export interface ProjectSnapshot {
   boards: Board[];
   sessions: Session[];
 }
+
+// ============ 资源包合并 ============
+
+export type TypeMapAction =
+  | { action: "existing"; target_id: string }
+  | { action: "new" }
+  | { action: "skip" };
+
+export interface InspectType extends CardType {
+  card_count: number;
+}
+
+export interface InspectNamed {
+  id: string;
+  name: string;
+}
+
+export interface PackInspection {
+  manifest: Manifest;
+  card_types: InspectType[];
+  relation_kinds: RelationKind[];
+  scenarios: InspectNamed[];
+  boards: InspectNamed[];
+  sessions: InspectNamed[];
+  total_cards: number;
+  total_relations: number;
+}
+
+export interface MergeOptions {
+  types_only?: boolean;
+  card_type_map?: Record<string, TypeMapAction>;
+  relation_kind_map?: Record<string, TypeMapAction>;
+  include_scenarios?: string[];
+  include_boards?: string[];
+  include_sessions?: string[];
+}
+
+export interface MergeResult {
+  imported_types: number;
+  imported_cards: number;
+  imported_relations: number;
+  imported_scenarios: number;
+  imported_boards: number;
+  imported_sessions: number;
+  imported_assets: number;
+  skipped_types: string[];
+}

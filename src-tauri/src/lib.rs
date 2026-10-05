@@ -34,6 +34,8 @@ pub fn run() {
             delete_image,
             list_images,
             read_image_data_url,
+            inspect_pack_cmd,
+            merge_pack,
             // cards
             save_card,
             list_cards,
