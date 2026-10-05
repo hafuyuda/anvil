@@ -1,16 +1,21 @@
 import { useEffect, useState } from "react";
-import { ipc, type Board, type Token } from "../../core/ipc";
+import { type Token } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
+import { ScaledCardFrame } from "../../components/ScaledCardFrame";
 
 interface Props {
-  board: Board;
   token: Token;
+  onSave: (updated: Token) => Promise<void> | void;
+  onDelete: () => Promise<void> | void;
+  onClose: () => void;
 }
 
-export function TokenInspector({ board, token }: Props) {
-  const upsertBoard = useProjectStore((s) => s.upsertBoard);
+export function TokenInspector({ token, onSave, onDelete, onClose }: Props) {
   const cards = useProjectStore((s) => s.cards) ?? [];
-  const selectToken = useProjectStore((s) => s.selectToken);
+  const cardTypes = useProjectStore((s) => s.cardTypes) ?? [];
+  const selectCard = useProjectStore((s) => s.selectCard);
+  const setActiveModule = useProjectStore((s) => s.setActiveModule);
+  const setWorldSubView = useProjectStore((s) => s.setWorldSubView);
 
   const [draft, setDraft] = useState<Token>(token);
   const [dirty, setDirty] = useState(false);
@@ -35,146 +40,190 @@ export function TokenInspector({ board, token }: Props) {
   }
 
   async function save() {
-    const nextTokens = (board.tokens ?? []).map((t) =>
-      t.id === draft.id ? draft : t,
-    );
-    const next: Board = {
-      ...board,
-      tokens: nextTokens,
-      updated_at: Date.now(),
-    };
-    await ipc.upsertBoard(next);
-    upsertBoard(next);
+    await onSave(draft);
     setDirty(false);
   }
 
   async function handleDelete() {
     if (!confirm("删除该 Token？原始卡牌不受影响。")) return;
-    const nextTokens = (board.tokens ?? []).filter((t) => t.id !== draft.id);
-    const next: Board = {
-      ...board,
-      tokens: nextTokens,
-      updated_at: Date.now(),
-    };
-    await ipc.upsertBoard(next);
-    upsertBoard(next);
-    selectToken(null);
+    await onDelete();
+    onClose();
+  }
+
+  function jumpToCard() {
+    if (!linkedCard) return;
+    setActiveModule("world");
+    setWorldSubView("cards");
+    selectCard(linkedCard.id);
   }
 
   const linkedCard = token.card_id
-    ? cards.find((c) => c.id === token.card_id)
+    ? (cards.find((c) => c.id === token.card_id) ?? null)
+    : null;
+  const linkedCardType = linkedCard
+    ? (cardTypes.find((t) => t.id === linkedCard.type_id) ?? null)
     : null;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <div>
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {linkedCard && linkedCardType ? (
         <div
           style={{
-            fontSize: 11,
-            color: "var(--fg-muted)",
-            marginBottom: 4,
-            textTransform: "uppercase",
-            letterSpacing: 0.5,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 8,
           }}
         >
-          名称覆盖
-        </div>
-        <input
-          className="input"
-          value={draft.name_override ?? ""}
-          placeholder={linkedCard?.name ?? "（无）"}
-          onChange={(e) => update({ name_override: e.target.value || null })}
-        />
-        {linkedCard && (
-          <div
-            style={{
-              fontSize: 11,
-              color: "var(--fg-muted)",
-              marginTop: 2,
-            }}
+          <ScaledCardFrame
+            card={linkedCard}
+            cardType={linkedCardType}
+            baseSize="small"
+            minScale={1}
+            maxScale={2}
+          />
+          <button
+            className="btn btn-ghost"
+            onClick={jumpToCard}
+            style={{ fontSize: 11 }}
           >
-            原卡：{linkedCard.name}
-          </div>
-        )}
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        <LabeledInput
-          label="宽"
-          type="number"
-          value={draft.w ?? 80}
-          onChange={(v) => update({ w: Number(v) || 80 })}
-        />
-        <LabeledInput
-          label="高"
-          type="number"
-          value={draft.h ?? 80}
-          onChange={(v) => update({ h: Number(v) || 80 })}
-        />
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        <LabeledInput
-          label="X"
-          type="number"
-          value={draft.x}
-          onChange={(v) => update({ x: Number(v) || 0 })}
-        />
-        <LabeledInput
-          label="Y"
-          type="number"
-          value={draft.y}
-          onChange={(v) => update({ y: Number(v) || 0 })}
-        />
-      </div>
-
-      <LabeledInput
-        label="层级"
-        type="number"
-        value={draft.layer}
-        onChange={(v) => update({ layer: Number(v) || 0 })}
-      />
-
-      <label
-        style={{
-          fontSize: 12,
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          color: "var(--fg-secondary)",
-          cursor: "pointer",
-        }}
-      >
-        <input
-          type="checkbox"
-          checked={draft.visible}
-          onChange={(e) => update({ visible: e.target.checked })}
-          style={{ accentColor: "var(--accent-gold)" }}
-        />
-        可见
-      </label>
+            {linkedCard.name} · 查看卡片
+          </button>
+        </div>
+      ) : (
+        <div
+          style={{
+            padding: 12,
+            border: "1px dashed var(--border-default)",
+            borderRadius: "var(--radius-md)",
+            color: "var(--fg-muted)",
+            fontSize: 12,
+            textAlign: "center",
+          }}
+        >
+          未关联卡牌
+          <br />
+          纯装饰 Token
+        </div>
+      )}
 
       <div
         style={{
-          fontSize: 11,
-          color: "var(--fg-muted)",
-          fontFamily: "var(--font-mono)",
+          borderTop: "1px solid var(--border-subtle)",
+          paddingTop: 10,
         }}
       >
-        Token ID: {token.id.slice(0, 8)}
-      </div>
-
-      <div style={{ display: "flex", gap: 8 }}>
-        <button className="btn" onClick={save} disabled={!dirty}>
-          {dirty ? "保存" : "已保存"}
-        </button>
-        <button
-          className="btn btn-danger"
-          onClick={handleDelete}
-          style={{ marginLeft: "auto" }}
+        <div
+          style={{
+            fontSize: 10,
+            color: "var(--fg-muted)",
+            textTransform: "uppercase",
+            letterSpacing: 1,
+            marginBottom: 8,
+          }}
         >
-          删除
-        </button>
+          Token 调整
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <LabeledInput
+            label="名称覆盖"
+            value={draft.name_override ?? ""}
+            onChange={(v) => update({ name_override: v || null })}
+            placeholder={linkedCard?.name ?? "（使用卡片名）"}
+          />
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 8,
+            }}
+          >
+            <LabeledInput
+              label="宽"
+              type="number"
+              value={String(draft.w ?? 140)}
+              onChange={(v) => update({ w: Number(v) || 140 })}
+            />
+            <LabeledInput
+              label="高"
+              type="number"
+              value={String(draft.h ?? 205)}
+              onChange={(v) => update({ h: Number(v) || 205 })}
+            />
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 8,
+            }}
+          >
+            <LabeledInput
+              label="X"
+              type="number"
+              value={String(draft.x)}
+              onChange={(v) => update({ x: Number(v) || 0 })}
+            />
+            <LabeledInput
+              label="Y"
+              type="number"
+              value={String(draft.y)}
+              onChange={(v) => update({ y: Number(v) || 0 })}
+            />
+          </div>
+
+          <LabeledInput
+            label="层级"
+            type="number"
+            value={String(draft.layer)}
+            onChange={(v) => update({ layer: Number(v) || 0 })}
+          />
+
+          <label
+            style={{
+              fontSize: 12,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              color: "var(--fg-secondary)",
+              cursor: "pointer",
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={draft.visible}
+              onChange={(e) => update({ visible: e.target.checked })}
+              style={{ accentColor: "var(--accent-gold)" }}
+            />
+            可见
+          </label>
+
+          <div
+            style={{
+              fontSize: 10,
+              color: "var(--fg-muted)",
+              fontFamily: "var(--font-mono)",
+            }}
+          >
+            Token {token.id.slice(0, 8)}
+          </div>
+
+          <div style={{ display: "flex", gap: 8, paddingTop: 4 }}>
+            <button className="btn" onClick={save} disabled={!dirty}>
+              {dirty ? "保存" : "已保存"}
+            </button>
+            <button
+              className="btn btn-danger"
+              onClick={handleDelete}
+              style={{ marginLeft: "auto" }}
+            >
+              删除
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -182,33 +231,33 @@ export function TokenInspector({ board, token }: Props) {
 
 function LabeledInput({
   label,
-  type,
+  type = "text",
   value,
   onChange,
+  placeholder,
 }: {
   label: string;
-  type: "number" | "text";
-  value: string | number;
+  type?: "text" | "number";
+  value: string;
   onChange: (v: string) => void;
+  placeholder?: string;
 }) {
   return (
-    <label style={{ fontSize: 12 }}>
-      <div
-        style={{
-          color: "var(--fg-muted)",
-          marginBottom: 3,
-          textTransform: "uppercase",
-          letterSpacing: 0.5,
-          fontSize: 11,
-        }}
-      >
-        {label}
-      </div>
+    <label
+      style={{
+        fontSize: 12,
+        display: "flex",
+        flexDirection: "column",
+        gap: 3,
+      }}
+    >
+      <span style={{ color: "var(--fg-muted)" }}>{label}</span>
       <input
         className="input"
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
       />
     </label>
   );

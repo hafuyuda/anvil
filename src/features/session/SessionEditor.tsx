@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ipc,
+  type Board,
   type ChatEventKind,
   type ChatPayload,
   type GameEvent,
@@ -27,8 +28,10 @@ export function SessionEditor({ session }: Props) {
   const cards = useProjectStore((s) => s.cards) ?? [];
   const cardTypes = useProjectStore((s) => s.cardTypes) ?? [];
   const upsertSession = useProjectStore((s) => s.upsertSession);
+  const selectedTokenId = useProjectStore((s) => s.selectedTokenId);
+  const selectToken = useProjectStore((s) => s.selectToken);
 
-  const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null);
+  const [zoom, setZoom] = useState(1);
   const [events, setEvents] = useState<GameEvent[]>([]);
   const sessionRef = useRef(session);
   sessionRef.current = session;
@@ -41,12 +44,33 @@ export function SessionEditor({ session }: Props) {
   const width = board?.width ?? 1200;
   const height = board?.height ?? 800;
 
+  const effectiveBoard: Board = {
+    id: session.id,
+    name: session.name,
+    width,
+    height,
+    grid,
+    background: board?.background ?? null,
+    tokens: session.tokens,
+    created_at: session.created_at,
+    updated_at: session.updated_at,
+  };
+  const setCurrentSession = useProjectStore((s) => s.setCurrentSession);
+
+  useEffect(() => {
+    setZoom(1);
+  }, [session.id]);
+
   useEffect(() => {
     ipc
       .listEvents(session.id)
       .then(setEvents)
       .catch(() => setEvents([]));
-  }, [session.id]);
+    setCurrentSession(session.id);
+    return () => {
+      setCurrentSession(null);
+    };
+  }, [session.id, setCurrentSession]);
 
   const authors = useMemo(() => {
     const seen = new Set<string>();
@@ -184,13 +208,14 @@ export function SessionEditor({ session }: Props) {
         <div style={{ flex: 1, minWidth: 0, minHeight: 0 }}>
           {board ? (
             <BoardCanvas
-              width={width}
-              height={height}
-              grid={grid}
-              tokens={session.tokens}
-              onTokensChange={handleTokensChange}
-              selectedTokenId={selectedTokenId}
-              onSelectToken={setSelectedTokenId}
+              board={effectiveBoard}
+              zoom={zoom}
+              onZoomChange={setZoom}
+              onChange={(patch) => {
+                if (patch.tokens) {
+                  handleTokensChange(patch.tokens);
+                }
+              }}
             />
           ) : (
             <div
@@ -212,7 +237,7 @@ export function SessionEditor({ session }: Props) {
           cards={cards}
           cardTypes={cardTypes}
           selectedTokenId={selectedTokenId}
-          onSelectToken={setSelectedTokenId}
+          onSelectToken={selectToken}
         />
       </div>
 

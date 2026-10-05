@@ -1,11 +1,8 @@
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { ipc } from "./ipc";
-import { useProjectStore } from "../stores/projectStore";
-import { applyProjectTheme } from "./applyProjectTheme";
+import { openProjectAt } from "./openProjectAt";
 
 export function useCreateProject() {
-  const setProject = useProjectStore((s) => s.setProject);
-
   async function createProject() {
     const dest = await openDialog({
       directory: true,
@@ -38,35 +35,7 @@ export function useCreateProject() {
     }
 
     try {
-      await ipc.openProject(dest);
-      const [
-        cards,
-        cardTypes,
-        relationKinds,
-        relations,
-        scenarios,
-        boards,
-        sessions,
-      ] = await Promise.all([
-        ipc.listCards(),
-        ipc.listCardTypes(),
-        ipc.listRelationKinds(),
-        ipc.listAllRelations(),
-        ipc.listScenarios(),
-        ipc.listBoards(),
-        ipc.listSessions(),
-      ]);
-      setProject(
-        dest,
-        cards,
-        cardTypes,
-        relationKinds,
-        relations,
-        scenarios,
-        boards,
-        sessions,
-      );
-      await applyProjectTheme();
+      await openProjectAt(dest);
     } catch (e) {
       alert("打开新项目失败: " + e);
     }

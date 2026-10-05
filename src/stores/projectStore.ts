@@ -42,6 +42,7 @@ interface ProjectState {
   inspectorWidth: number;
   inspectorCollapsed: boolean;
   selectedCardTypeId: string | null;
+  currentSessionId: string | null;
 
   setProject: (
     path: string,
@@ -97,6 +98,7 @@ interface ProjectState {
   removeRelationKind: (id: string) => void;
   selectEdge: (id: string | null) => void;
   selectCardType: (id: string | null) => void;
+  setCurrentSession: (id: string | null) => void;
 }
 
 export const useProjectStore = create<ProjectState>((set, get) => ({
@@ -121,6 +123,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   inspectorCollapsed: false,
   selectedEdgeId: null,
   selectedCardTypeId: null,
+  currentSessionId: null,
 
   setProject: (
     projectPath,
@@ -396,4 +399,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set({ selectedEdgeId, selectedCardId: null, selectedTokenId: null }),
 
   selectCardType: (selectedCardTypeId) => set({ selectedCardTypeId }),
+
+  setCurrentSession: (currentSessionId) =>
+    set({ currentSessionId, selectedTokenId: null }),
 }));

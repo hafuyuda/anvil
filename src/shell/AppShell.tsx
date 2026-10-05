@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { TopBar } from "./TopBar";
 import { LeftNav } from "./LeftNav";
 import { Workspace } from "./Workspace";
@@ -12,6 +12,7 @@ import { useGlobalCommands } from "../features/commands/useGlobalCommands";
 import { CommandPalette } from "../components/CommandPalette";
 import { ipc } from "../core/ipc";
 import { MergePackDialog } from "../features/project/MergePackDialog";
+import { tryAutoOpenLastProject } from "../core/openProjectAt";
 
 export function AppShell() {
   const projectPath = useProjectStore((s) => s.projectPath);
@@ -70,6 +71,14 @@ export function AppShell() {
     };
   }, [projectPath]);
 
+  const autoOpenTriedRef = useRef(false);
+
+  useEffect(() => {
+    if (autoOpenTriedRef.current) return;
+    autoOpenTriedRef.current = true;
+    void tryAutoOpenLastProject();
+  }, []);
+  
   return (
     <div
       style={{

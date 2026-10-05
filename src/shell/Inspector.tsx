@@ -1,9 +1,11 @@
 import { useCallback, useRef } from "react";
+import { ipc, type Board, type Session, type Token } from "../core/ipc";
 import { useProjectStore } from "../stores/projectStore";
 import { CardEditor } from "../features/cards/CardEditor";
 import { TokenInspector } from "../features/board/TokenInspector";
 import { EdgeEditorPanel } from "../features/story/EdgeEditorPanel";
 import { CardTypePreview } from "../features/cards/CardTypePreview";
+import { nowMs } from "../lib/time";
 
 export function Inspector() {
   const activeModule = useProjectStore((s) => s.activeModule);
@@ -13,12 +15,18 @@ export function Inspector() {
   const selectedEdgeId = useProjectStore((s) => s.selectedEdgeId);
   const selectedCardTypeId = useProjectStore((s) => s.selectedCardTypeId);
   const currentBoardId = useProjectStore((s) => s.currentBoardId);
+  const currentSessionId = useProjectStore((s) => s.currentSessionId);
 
   const cards = useProjectStore((s) => s.cards) ?? [];
   const cardTypes = useProjectStore((s) => s.cardTypes) ?? [];
   const boards = useProjectStore((s) => s.boards) ?? [];
+  const sessions = useProjectStore((s) => s.sessions) ?? [];
   const relations = useProjectStore((s) => s.relations) ?? [];
   const scenarios = useProjectStore((s) => s.scenarios) ?? [];
+
+  const upsertBoard = useProjectStore((s) => s.upsertBoard);
+  const upsertSession = useProjectStore((s) => s.upsertSession);
+  const selectToken = useProjectStore((s) => s.selectToken);
 
   const width = useProjectStore((s) => s.inspectorWidth);
   const collapsed = useProjectStore((s) => s.inspectorCollapsed);
@@ -51,33 +59,97 @@ export function Inspector() {
       document.body.style.cursor = "col-resize";
       document.body.style.userSelect = "none";
     },
-    [width, setWidth]
+    [width, setWidth],
   );
 
-  const board = currentBoardId
-    ? boards.find((b) => b.id === currentBoardId) ?? null
-    : null;
-  const token =
-    selectedTokenId && board
-      ? (board.tokens ?? []).find((t) => t.id === selectedTokenId) ?? null
+  // 根据模块决定 token 来源
+  const board =
+    activeModule === "board" && currentBoardId
+      ? (boards.find((b) => b.id === currentBoardId) ?? null)
+      : null;
+  const session =
+    activeModule === "session" && currentSessionId
+      ? (sessions.find((s) => s.id === currentSessionId) ?? null)
       : null;
 
+  const tokenSource: Token[] = board
+    ? (board.tokens ?? [])
+    : session
+      ? (session.tokens ?? [])
+      : [];
+
+  const token =
+    selectedTokenId != null
+      ? (tokenSource.find((t) => t.id === selectedTokenId) ?? null)
+      : null;
+
+  async function handleTokenSave(updated: Token) {
+    if (board) {
+      const next: Board = {
+        ...board,
+        tokens: (board.tokens ?? []).map((t) =>
+          t.id === updated.id ? updated : t,
+        ),
+        updated_at: nowMs(),
+      };
+      await ipc.upsertBoard(next);
+      upsertBoard(next);
+      return;
+    }
+    if (session) {
+      const next: Session = {
+        ...session,
+        tokens: (session.tokens ?? []).map((t) =>
+          t.id === updated.id ? updated : t,
+        ),
+        updated_at: nowMs(),
+      };
+      await ipc.upsertSession(next);
+      upsertSession(next);
+      return;
+    }
+  }
+
+  async function handleTokenDelete() {
+    if (!token) return;
+    if (board) {
+      const next: Board = {
+        ...board,
+        tokens: (board.tokens ?? []).filter((t) => t.id !== token.id),
+        updated_at: nowMs(),
+      };
+      await ipc.upsertBoard(next);
+      upsertBoard(next);
+      return;
+    }
+    if (session) {
+      const next: Session = {
+        ...session,
+        tokens: (session.tokens ?? []).filter((t) => t.id !== token.id),
+        updated_at: nowMs(),
+      };
+      await ipc.upsertSession(next);
+      upsertSession(next);
+      return;
+    }
+  }
+
   const edge = selectedEdgeId
-    ? relations.find((r) => r.id === selectedEdgeId) ?? null
+    ? (relations.find((r) => r.id === selectedEdgeId) ?? null)
     : null;
 
   const edgeScenario = edge?.meta?.scenario_id
-    ? scenarios.find((s) => s.id === edge.meta.scenario_id) ?? null
+    ? (scenarios.find((s) => s.id === edge.meta.scenario_id) ?? null)
     : null;
 
   const card = cards.find((c) => c.id === selectedCardId) ?? null;
   const cardType = card
-    ? cardTypes.find((t) => t.id === card.type_id) ?? null
+    ? (cardTypes.find((t) => t.id === card.type_id) ?? null)
     : null;
 
   const previewType =
     activeModule === "types" && selectedCardTypeId
-      ? cardTypes.find((t) => t.id === selectedCardTypeId) ?? null
+      ? (cardTypes.find((t) => t.id === selectedCardTypeId) ?? null)
       : null;
 
   if (collapsed) {
@@ -198,8 +270,14 @@ export function Inspector() {
         {/* 其他模块：token / edge / card */}
         {activeModule !== "types" && (
           <>
-            {token && board && (
-              <TokenInspector key={token.id} board={board} token={token} />
+            {token && (
+              <TokenInspector
+                key={token.id}
+                token={token}
+                onSave={handleTokenSave}
+                onDelete={handleTokenDelete}
+                onClose={() => selectToken(null)}
+              />
             )}
 
             {!token && edge && (

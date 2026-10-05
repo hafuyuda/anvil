@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
+import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { ipc, type Board } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
 import { BoardCanvas } from "./BoardCanvas";
 import { DEFAULT_GRID } from "./constants";
 import { nowMs } from "../../lib/time";
+import { PickerDialog } from "../../components/PickerDialog";
+import { invalidateImage } from "../../lib/imageCache";
 
 interface Props {
   board: Board;
@@ -12,8 +15,6 @@ interface Props {
 export function BoardEditor({ board }: Props) {
   const upsertBoard = useProjectStore((s) => s.upsertBoard);
   const setCurrentBoard = useProjectStore((s) => s.setCurrentBoard);
-  const selectedTokenId = useProjectStore((s) => s.selectedTokenId);
-  const selectToken = useProjectStore((s) => s.selectToken);
   const pushUndo = useProjectStore((s) => s.pushUndo);
 
   const normalized: Board = {
@@ -23,10 +24,16 @@ export function BoardEditor({ board }: Props) {
   };
 
   const [name, setName] = useState(normalized.name);
+  const [bgPickerOpen, setBgPickerOpen] = useState(false);
+  const [imageOptions, setImageOptions] = useState<
+    { value: string; label: string }[]
+  >([]);
+
+  const [zoom, setZoom] = useState(1);
 
   useEffect(() => {
-    setName(normalized.name);
-  }, [normalized.id, normalized.name]);
+    setZoom(1);
+  }, [normalized.id]);
 
   useEffect(() => {
     setCurrentBoard(normalized.id);
@@ -71,6 +78,45 @@ export function BoardEditor({ board }: Props) {
     if (name !== normalized.name) {
       savePatch({ name }, "重命名棋盘");
     }
+  }
+
+  async function openBgPicker() {
+    try {
+      const images = await ipc.listImages();
+      if (images.length === 0) {
+        const proceed = confirm("项目里还没有图片。要现在导入一张吗？");
+        if (proceed) {
+          const src = await openDialog({
+            multiple: false,
+            filters: [
+              {
+                name: "图片",
+                extensions: ["png", "jpg", "jpeg", "gif", "webp"],
+              },
+            ],
+          });
+          if (src && !Array.isArray(src)) {
+            const relative = await ipc.importImage(src);
+            invalidateImage(relative);
+            await savePatch({ background: relative }, "设置棋盘背景");
+          }
+        }
+        return;
+      }
+      setImageOptions(
+        images.map((p) => ({
+          value: p,
+          label: p.replace("assets/images/", ""),
+        })),
+      );
+      setBgPickerOpen(true);
+    } catch (e) {
+      alert("读取图片列表失败: " + e);
+    }
+  }
+
+  async function clearBackground() {
+    await savePatch({ background: null }, "清除棋盘背景");
   }
 
   const grid = normalized.grid;
@@ -150,6 +196,61 @@ export function BoardEditor({ board }: Props) {
             style={{ width: 64 }}
           />
         </label>
+
+        <button className="btn" onClick={openBgPicker} style={{ fontSize: 12 }}>
+          {normalized.background ? "更换背景" : "设置背景"}
+        </button>
+        {normalized.background && (
+          <button
+            className="btn"
+            onClick={clearBackground}
+            style={{ fontSize: 12 }}
+          >
+            清除背景
+          </button>
+        )}
+        <div
+          style={{
+            display: "flex",
+            gap: 2,
+            alignItems: "center",
+            marginLeft: "auto",
+          }}
+        >
+          <button
+            className="btn btn-icon"
+            onClick={() => setZoom((z) => Math.max(0.25, z / 1.2))}
+            title="缩小"
+          >
+            −
+          </button>
+          <span
+            style={{
+              minWidth: 48,
+              textAlign: "center",
+              fontSize: 12,
+              fontFamily: "var(--font-mono)",
+              color: "var(--fg-secondary)",
+            }}
+          >
+            {Math.round(zoom * 100)}%
+          </span>
+          <button
+            className="btn btn-icon"
+            onClick={() => setZoom((z) => Math.min(4, z * 1.2))}
+            title="放大"
+          >
+            +
+          </button>
+          <button
+            className="btn btn-ghost"
+            onClick={() => setZoom(1)}
+            style={{ fontSize: 11, padding: "2px 6px" }}
+            title="重置为 100%"
+          >
+            100%
+          </button>
+        </div>
       </div>
 
       <div
@@ -164,15 +265,27 @@ export function BoardEditor({ board }: Props) {
         }}
       >
         <BoardCanvas
-          width={normalized.width}
-          height={normalized.height}
-          grid={grid}
-          tokens={normalized.tokens}
-          onTokensChange={(tokens) => savePatch({ tokens }, "移动 Token")}
-          selectedTokenId={selectedTokenId}
-          onSelectToken={selectToken}
+          board={normalized}
+          zoom={zoom}
+          onZoomChange={setZoom}
+          onChange={(patch) => {
+            if (patch.tokens) {
+              savePatch({ tokens: patch.tokens }, "移动 Token");
+            } else {
+              savePatch(patch);
+            }
+          }}
         />
       </div>
+
+      {bgPickerOpen && (
+        <PickerDialog
+          title="选择背景图"
+          options={[{ value: "", label: "— 无背景 —" }, ...imageOptions]}
+          onPick={(v) => savePatch({ background: v || null }, "设置棋盘背景")}
+          onClose={() => setBgPickerOpen(false)}
+        />
+      )}
     </div>
   );
 }

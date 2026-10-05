@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useProjectStore } from "../../stores/projectStore";
-import { CardFrame } from "../../components/CardFrame";
+import { ScaledCardFrame } from "../../components/ScaledCardFrame";
 import type { CardType } from "../../core/ipc";
 
 interface Props {
@@ -69,15 +69,7 @@ export function CardTypePreview({ cardType }: Props) {
             </select>
           )}
 
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              padding: "4px 0",
-            }}
-          >
-            <CardFrame card={sample} cardType={cardType} size="medium" />
-          </div>
+          <ScaledCardFrame card={sample} cardType={cardType} />
         </>
       )}
 

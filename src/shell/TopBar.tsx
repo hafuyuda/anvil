@@ -9,6 +9,7 @@ import { ProjectSettingsDialog } from "../features/project/ProjectSettingsDialog
 import { useUIStore } from "../stores/uiStore";
 import { resetTheme } from "../lib/theme";
 import { clearImageCache } from "../lib/imageCache";
+import { setLastOpenPath } from "../lib/recentProjects";
 
 export function TopBar() {
   const projectPath = useProjectStore((s) => s.projectPath);
@@ -35,8 +36,8 @@ export function TopBar() {
       await ipc.closeProject();
     } catch {}
     closeProject();
-    clearImageCache();
     resetTheme();
+    setLastOpenPath(null); // 主动关闭，下次不自动打开
   }
 
   const refreshProject = useProjectStore((s) => s.refreshProject);

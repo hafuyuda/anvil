@@ -7,6 +7,8 @@ import { useExportPack } from "../../core/useExportPack";
 import { useImportPack } from "../../core/useImportPack";
 import { ipc } from "../../core/ipc";
 import { useUIStore } from "../../stores/uiStore";
+import { getRecentProjects } from "../../lib/recentProjects";
+import { openProjectAt } from "../../core/openProjectAt";
 
 export function useGlobalCommands() {
   const openProjectHook = useOpenProject();
@@ -202,6 +204,25 @@ export function useGlobalCommands() {
           },
         });
       }
+    }
+
+    // 打开最近项目（子菜单）
+    const recent = getRecentProjects();
+    for (const path of recent.slice(0, 5)) {
+      const name = path.split(/[\\/]/).pop() ?? path;
+      reg({
+        id: `project.recent.${path}`,
+        label: `最近：${name}`,
+        category: "项目",
+        keywords: ["recent", "最近", name],
+        run: async () => {
+          try {
+            await openProjectAt(path);
+          } catch (e) {
+            alert("打开失败: " + e);
+          }
+        },
+      });
     }
 
     return () => {
