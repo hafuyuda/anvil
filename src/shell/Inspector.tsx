@@ -1,3 +1,4 @@
+import { useCallback, useRef } from "react";
 import { useProjectStore } from "../stores/projectStore";
 import { CardEditor } from "../features/cards/CardEditor";
 import { TokenInspector } from "../features/board/TokenInspector";
@@ -9,57 +10,164 @@ export function Inspector() {
   const cards = useProjectStore((s) => s.cards) ?? [];
   const cardTypes = useProjectStore((s) => s.cardTypes) ?? [];
   const boards = useProjectStore((s) => s.boards) ?? [];
+  const width = useProjectStore((s) => s.inspectorWidth);
+  const collapsed = useProjectStore((s) => s.inspectorCollapsed);
+  const setWidth = useProjectStore((s) => s.setInspectorWidth);
+  const toggle = useProjectStore((s) => s.toggleInspector);
+
+  const resizingRef = useRef(false);
+
+  const onMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      resizingRef.current = true;
+      const startX = e.clientX;
+      const startWidth = width;
+
+      function onMove(ev: MouseEvent) {
+        if (!resizingRef.current) return;
+        const delta = startX - ev.clientX;
+        setWidth(startWidth + delta);
+      }
+      function onUp() {
+        resizingRef.current = false;
+        window.removeEventListener("mousemove", onMove);
+        window.removeEventListener("mouseup", onUp);
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+      }
+      window.addEventListener("mousemove", onMove);
+      window.addEventListener("mouseup", onUp);
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+    },
+    [width, setWidth]
+  );
 
   const board = currentBoardId
-    ? (boards.find((b) => b.id === currentBoardId) ?? null)
+    ? boards.find((b) => b.id === currentBoardId) ?? null
     : null;
   const token =
     selectedTokenId && board
-      ? ((board.tokens ?? []).find((t) => t.id === selectedTokenId) ?? null)
+      ? (board.tokens ?? []).find((t) => t.id === selectedTokenId) ?? null
       : null;
 
   const card = cards.find((c) => c.id === selectedCardId) ?? null;
   const cardType = card
-    ? (cardTypes.find((t) => t.id === card.type_id) ?? null)
+    ? cardTypes.find((t) => t.id === card.type_id) ?? null
     : null;
 
-  return (
-    <div
-      style={{
-        width: 300,
-        borderLeft: "1px solid #e0e0e0",
-        background: "#fafafa",
-        padding: 12,
-        overflow: "auto",
-        fontSize: 13,
-      }}
-    >
+  if (collapsed) {
+    return (
       <div
         style={{
-          fontSize: 11,
-          color: "#999",
-          textTransform: "uppercase",
-          marginBottom: 8,
+          width: 28,
+          borderLeft: "1px solid var(--border-subtle)",
+          background: "var(--bg-panel)",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          paddingTop: 10,
+          flexShrink: 0,
         }}
       >
-        {token ? "Token" : "检查器"}
+        <button
+          onClick={toggle}
+          title="展开检查器"
+          style={{
+            writingMode: "vertical-rl",
+            fontSize: 11,
+            padding: "6px 2px",
+            border: "none",
+            background: "transparent",
+            cursor: "pointer",
+            color: "var(--fg-secondary)",
+            letterSpacing: 2,
+            fontFamily: "inherit",
+          }}
+        >
+          检查器
+        </button>
       </div>
+    );
+  }
 
-      {token && board && (
-        <TokenInspector key={token.id} board={board} token={token} />
-      )}
+  return (
+    <>
+      <div
+        onMouseDown={onMouseDown}
+        style={{
+          width: 4,
+          cursor: "col-resize",
+          background: "transparent",
+          flexShrink: 0,
+        }}
+        title="拖动调整宽度"
+      />
+      <div
+        style={{
+          width,
+          borderLeft: "1px solid var(--border-subtle)",
+          background: "var(--bg-panel)",
+          padding: 12,
+          overflow: "auto",
+          fontSize: 13,
+          display: "flex",
+          flexDirection: "column",
+          flexShrink: 0,
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: 10,
+          }}
+        >
+          <span
+            style={{
+              fontSize: 10,
+              color: "var(--fg-muted)",
+              textTransform: "uppercase",
+              letterSpacing: 1,
+            }}
+          >
+            {token ? "Token" : "检查器"}
+          </span>
+          <button
+            onClick={toggle}
+            title="折叠"
+            style={{
+              fontSize: 12,
+              border: "none",
+              background: "transparent",
+              cursor: "pointer",
+              color: "var(--fg-secondary)",
+            }}
+          >
+            ⇥
+          </button>
+        </div>
 
-      {!token && card && !cardType && (
-        <p style={{ color: "#c33", fontSize: 12 }}>
-          找不到卡牌类型 {card.type_id}
-        </p>
-      )}
+        {token && board && (
+          <TokenInspector key={token.id} board={board} token={token} />
+        )}
 
-      {!token && card && cardType && (
-        <CardEditor key={card.id} card={card} cardType={cardType} />
-      )}
+        {!token && card && !cardType && (
+          <p style={{ color: "var(--danger)", fontSize: 12 }}>
+            找不到卡牌类型 {card.type_id}
+          </p>
+        )}
 
-      {!token && !card && <p style={{ color: "#aaa" }}>未选中对象</p>}
-    </div>
+        {!token && card && cardType && (
+          <CardEditor key={card.id} card={card} cardType={cardType} />
+        )}
+
+        {!token && !card && (
+          <p style={{ color: "var(--fg-muted)" }}>未选中对象</p>
+        )}
+      </div>
+    </>
   );
 }

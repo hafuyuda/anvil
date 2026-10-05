@@ -45,7 +45,8 @@ export function Workspace() {
     (activeModule === "world" && worldSubView === "graph") ||
     activeModule === "story" ||
     activeModule === "board" ||
-    activeModule === "session";
+    activeModule === "session" ||
+    activeModule === "types";
 
   return (
     <div

@@ -14,6 +14,7 @@ export function BoardEditor({ board }: Props) {
   const setCurrentBoard = useProjectStore((s) => s.setCurrentBoard);
   const selectedTokenId = useProjectStore((s) => s.selectedTokenId);
   const selectToken = useProjectStore((s) => s.selectToken);
+  const pushUndo = useProjectStore((s) => s.pushUndo);
 
   const normalized: Board = {
     ...board,
@@ -34,15 +35,35 @@ export function BoardEditor({ board }: Props) {
     };
   }, [normalized.id, setCurrentBoard]);
 
-  async function savePatch(patch: Partial<Board>) {
-    const next: Board = {
-      ...normalized,
+  async function persist(b: Board) {
+    await ipc.upsertBoard(b);
+    upsertBoard(b);
+  }
+
+  async function savePatch(patch: Partial<Board>, undoLabel?: string) {
+    const before = normalized;
+    const after: Board = {
+      ...before,
       ...patch,
       updated_at: nowMs(),
     };
+
     try {
-      await ipc.upsertBoard(next);
-      upsertBoard(next);
+      await ipc.upsertBoard(after);
+      upsertBoard(after);
+
+      if (undoLabel) {
+        pushUndo({
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          label: undoLabel,
+          undo: async () => {
+            await persist(before);
+          },
+          redo: async () => {
+            await persist(after);
+          },
+        });
+      }
     } catch (e) {
       alert("保存失败: " + e);
     }
@@ -50,7 +71,7 @@ export function BoardEditor({ board }: Props) {
 
   function commitName() {
     if (name !== normalized.name) {
-      savePatch({ name });
+      savePatch({ name }, "重命名棋盘");
     }
   }
 
@@ -63,6 +84,7 @@ export function BoardEditor({ board }: Props) {
         minHeight: 0,
         display: "flex",
         flexDirection: "column",
+        padding: 12,
       }}
     >
       <div
@@ -103,7 +125,10 @@ export function BoardEditor({ board }: Props) {
             type="checkbox"
             checked={grid.visible}
             onChange={(e) =>
-              savePatch({ grid: { ...grid, visible: e.target.checked } })
+              savePatch(
+                { grid: { ...grid, visible: e.target.checked } },
+                "切换网格",
+              )
             }
           />
           显示网格
@@ -120,7 +145,10 @@ export function BoardEditor({ board }: Props) {
             type="checkbox"
             checked={grid.snap}
             onChange={(e) =>
-              savePatch({ grid: { ...grid, snap: e.target.checked } })
+              savePatch(
+                { grid: { ...grid, snap: e.target.checked } },
+                "切换吸附",
+              )
             }
           />
           吸附
@@ -138,9 +166,10 @@ export function BoardEditor({ board }: Props) {
             type="number"
             value={grid.size}
             onChange={(e) =>
-              savePatch({
-                grid: { ...grid, size: Number(e.target.value) || 10 },
-              })
+              savePatch(
+                { grid: { ...grid, size: Number(e.target.value) || 10 } },
+                "修改格大小",
+              )
             }
             style={{ width: 60, padding: "2px 4px" }}
           />
@@ -153,7 +182,7 @@ export function BoardEditor({ board }: Props) {
           height={normalized.height}
           grid={grid}
           tokens={normalized.tokens}
-          onTokensChange={(tokens) => savePatch({ tokens })}
+          onTokensChange={(tokens) => savePatch({ tokens }, "移动 Token")}
           selectedTokenId={selectedTokenId}
           onSelectToken={selectToken}
         />

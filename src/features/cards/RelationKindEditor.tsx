@@ -16,17 +16,27 @@ export function RelationKindEditor({ relationKind }: Props) {
     relationKind,
     async (d): Promise<void | boolean> => {
       if (!d.name.trim()) {
-        alert("关系名不能为空");
         return false;
       }
       const next: RelationKind = { ...d, updated_at: nowMs() };
       await ipc.upsertRelationKind(next);
       upsertRelationKind(next);
     },
+    { undoLabel: "编辑关系类型" },
   );
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 12,
+        padding: 12,
+        overflow: "auto",
+        flex: 1,
+        minHeight: 0,
+      }}
+    >
       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
         <input
           value={draft.name}
@@ -39,9 +49,9 @@ export function RelationKindEditor({ relationKind }: Props) {
             fontWeight: 600,
           }}
         />
-        <button onClick={commit} disabled={!dirty}>
-          {dirty ? "保存" : "已保存"}
-        </button>
+        <span style={{ fontSize: 11, color: dirty ? "#c80" : "#888" }}>
+          {dirty ? "保存中…" : "已保存"}
+        </span>
       </div>
 
       <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>

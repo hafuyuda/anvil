@@ -10,7 +10,7 @@ interface Props {
 
 export function Modal({
   title,
-  width = 420,
+  width = 460,
   onClose,
   children,
   footer,
@@ -28,11 +28,12 @@ export function Modal({
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(0,0,0,0.25)",
+        background: "var(--bg-overlay)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         zIndex: 1000,
+        backdropFilter: "blur(2px)",
       }}
       onClick={onClose}
     >
@@ -40,28 +41,52 @@ export function Modal({
         onClick={(e) => e.stopPropagation()}
         style={{
           width,
-          background: "#fff",
-          borderRadius: 8,
-          padding: 16,
+          background: "var(--bg-panel)",
+          border: "1px solid var(--border-default)",
+          borderRadius: "var(--radius-lg)",
+          boxShadow: "var(--shadow-md), 0 0 0 1px rgba(255,255,255,0.04)",
           display: "flex",
           flexDirection: "column",
-          gap: 12,
-          boxShadow: "0 4px 24px rgba(0,0,0,0.2)",
           maxHeight: "80vh",
-          overflow: "auto",
+          overflow: "hidden",
         }}
       >
         {title && (
-          <div style={{ fontSize: 14, fontWeight: 600 }}>{title}</div>
+          <div
+            style={{
+              padding: "10px 16px",
+              borderBottom: "1px solid var(--border-subtle)",
+              fontSize: 13,
+              fontFamily: "var(--font-title)",
+              fontWeight: 600,
+              letterSpacing: 0.5,
+              color: "var(--fg-primary)",
+              background: "var(--bg-surface)",
+            }}
+          >
+            {title}
+          </div>
         )}
-        {children}
+        <div
+          style={{
+            padding: 16,
+            display: "flex",
+            flexDirection: "column",
+            gap: 12,
+            overflow: "auto",
+          }}
+        >
+          {children}
+        </div>
         {footer && (
           <div
             style={{
+              padding: "10px 16px",
+              borderTop: "1px solid var(--border-subtle)",
               display: "flex",
               justifyContent: "flex-end",
               gap: 8,
-              marginTop: 4,
+              background: "var(--bg-surface)",
             }}
           >
             {footer}

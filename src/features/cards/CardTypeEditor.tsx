@@ -72,6 +72,7 @@ export function CardTypeEditor({ cardType }: Props) {
       await ipc.upsertCardType(next);
       upsertCardType(next);
     },
+    { undoLabel: "编辑卡牌类型", autoSave: false },
   );
 
   function updateField(index: number, patch: Partial<FieldDef>) {
@@ -106,7 +107,17 @@ export function CardTypeEditor({ cardType }: Props) {
   const visibleFields = draft.fields.filter((f) => !f.deprecated);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 12,
+        padding: 12,
+        overflow: "auto",
+        flex: 1,
+        minHeight: 0,
+      }}
+    >
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <input
           value={draft.name}

@@ -5,9 +5,16 @@ interface Props {
   onCommit: (v: string) => void;
   placeholder?: string;
   style?: React.CSSProperties;
+  className?: string;
 }
 
-export function SaveInput({ value, onCommit, placeholder, style }: Props) {
+export function SaveInput({
+  value,
+  onCommit,
+  placeholder,
+  style,
+  className = "input",
+}: Props) {
   const [local, setLocal] = useState(value);
 
   useEffect(() => {
@@ -20,6 +27,7 @@ export function SaveInput({ value, onCommit, placeholder, style }: Props) {
 
   return (
     <input
+      className={className}
       value={local}
       onChange={(e) => setLocal(e.target.value)}
       onBlur={commit}

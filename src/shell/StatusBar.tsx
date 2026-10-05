@@ -11,28 +11,45 @@ export function StatusBar() {
   return (
     <div
       style={{
-        height: 24,
+        height: "var(--statusbar-h)",
         display: "flex",
         alignItems: "center",
         padding: "0 12px",
-        borderTop: "1px solid #e0e0e0",
-        background: "#fafafa",
+        borderTop: "1px solid var(--border-subtle)",
+        background: "var(--bg-panel)",
         gap: 16,
         fontSize: 11,
-        color: "#888",
+        color: "var(--fg-muted)",
+        flexShrink: 0,
       }}
     >
-      <span>卡牌 {cards.length}</span>
-      <span>类型 {cardTypes.length}</span>
-      <span>索引 已启用</span>
       <span>
-        撤销 {undoStack.length} / 重做 {redoStack.length}
+        卡牌 <Mono>{cards.length}</Mono>
+      </span>
+      <span>
+        类型 <Mono>{cardTypes.length}</Mono>
+      </span>
+      <span>
+        撤销 <Mono>{undoStack.length}</Mono> / 重做{" "}
+        <Mono>{redoStack.length}</Mono>
       </span>
       {pendingSaves > 0 && (
-        <span style={{ color: "#c80" }}>保存中 {pendingSaves}</span>
+        <span style={{ color: "var(--accent-flame)" }}>
+          保存中 <Mono>{pendingSaves}</Mono>
+        </span>
       )}
       <div style={{ flex: 1 }} />
-      {projectPath && <span>{projectPath}</span>}
+      {projectPath && (
+        <span style={{ fontFamily: "var(--font-mono)" }}>{projectPath}</span>
+      )}
     </div>
+  );
+}
+
+function Mono({ children }: { children: React.ReactNode }) {
+  return (
+    <span style={{ fontFamily: "var(--font-mono)", color: "var(--fg-primary)" }}>
+      {children}
+    </span>
   );
 }

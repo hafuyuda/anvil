@@ -12,18 +12,29 @@ interface Props {
 
 export function CardEditor({ card, cardType }: Props) {
   const updateCard = useProjectStore((s) => s.updateCard);
+  const removeCard = useProjectStore((s) => s.removeCard);
 
-  const { draft, dirty, update, commit } = useDraft(card, async (d) => {
-    const next: Card = { ...d, updated_at: nowMs() };
-    await ipc.saveCard(next);
-    updateCard(next);
-  });
+  const { draft, dirty, update, commit } = useDraft(
+    card,
+    async (d): Promise<void> => {
+      const next: Card = { ...d, updated_at: nowMs() };
+      await ipc.saveCard(next);
+      updateCard(next);
+    },
+    {
+      undoLabel: "编辑卡牌",
+      onDraftChange: (d) => {
+        // 立即同步 store，让卡片墙 / 卡框立刻反映
+        updateCard({ ...d, updated_at: nowMs() });
+      },
+    },
+  );
 
   async function handleDelete() {
     if (!confirm(`确认删除卡牌「${card.name}」？此操作不可撤销。`)) return;
     try {
       await ipc.deleteCard(card.id);
-      useProjectStore.getState().removeCard(card.id);
+      removeCard(card.id);
     } catch (e) {
       alert("删除失败: " + e);
     }
@@ -46,7 +57,9 @@ export function CardEditor({ card, cardType }: Props) {
         <div style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>名称</div>
         <input
           value={draft.name}
-          onChange={(e) => update({ name: e.target.value, updated_at: nowMs() })}
+          onChange={(e) =>
+            update({ name: e.target.value, updated_at: nowMs() })
+          }
           style={{
             width: "100%",
             boxSizing: "border-box",
@@ -74,9 +87,24 @@ export function CardEditor({ card, cardType }: Props) {
         />
       ))}
 
-      <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-        <button onClick={commit} disabled={!dirty}>
-          {dirty ? "保存" : "已保存"}
+      <div
+        style={{
+          display: "flex",
+          gap: 8,
+          marginTop: 8,
+          alignItems: "center",
+        }}
+      >
+        <span style={{ fontSize: 11, color: dirty ? "#c80" : "#888" }}>
+          {dirty ? "保存中…" : "已保存"}
+        </span>
+        <button
+          onClick={commit}
+          disabled={!dirty}
+          style={{ fontSize: 11 }}
+          title="立即保存"
+        >
+          保存
         </button>
         <button
           onClick={handleDelete}

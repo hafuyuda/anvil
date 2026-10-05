@@ -1,17 +1,20 @@
 import { useState } from "react";
 import { ipc, type Scenario } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
+import { EntityListLayout } from "../../components/EntityListLayout";
 import { ScenarioEditor } from "./ScenarioEditor";
+import { newId } from "../../lib/id";
+import { nowMs } from "../../lib/time";
 
 export function ScenarioList() {
-  const scenarios = useProjectStore((s) => s.scenarios);
+  const scenarios = useProjectStore((s) => s.scenarios) ?? [];
   const upsertScenario = useProjectStore((s) => s.upsertScenario);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   async function addScenario() {
-    const now = Date.now();
+    const now = nowMs();
     const s: Scenario = {
-      id: crypto.randomUUID(),
+      id: newId(),
       name: "新剧情",
       description: null,
       entry_node: null,
@@ -27,51 +30,17 @@ export function ScenarioList() {
     setSelectedId(s.id);
   }
 
-  const selected = scenarios.find((s) => s.id === selectedId) ?? null;
-
   return (
-    <div
-      style={{
-        display: "flex",
-        gap: 16,
-        flex: 1,
-        minHeight: 0,
-        minWidth: 0,
-      }}
-    >
-      <div style={{ minWidth: 180, overflow: "auto" }}>
-        <button onClick={addScenario}>新建剧情</button>
-        <ul style={{ listStyle: "none", padding: 0 }}>
-          {scenarios.map((s) => (
-            <li
-              key={s.id}
-              onClick={() => setSelectedId(s.id)}
-              style={{
-                cursor: "pointer",
-                padding: "4px 0",
-                fontWeight: s.id === selectedId ? "bold" : "normal",
-              }}
-            >
-              {s.name}
-            </li>
-          ))}
-        </ul>
-      </div>
-      <div
-        style={{
-          flex: 1,
-          minWidth: 0,
-          minHeight: 0,
-          display: "flex",
-          flexDirection: "column",
-        }}
-      >
-        {selected ? (
-          <ScenarioEditor key={selected.id} scenario={selected} />
-        ) : (
-          <p style={{ color: "#888" }}>选择或新建一个剧情</p>
-        )}
-      </div>
-    </div>
+    <EntityListLayout
+      listLabel="剧情"
+      items={scenarios}
+      selectedId={selectedId}
+      onSelect={setSelectedId}
+      onCreate={addScenario}
+      createLabel="+ 新建剧情"
+      renderItem={(s) => s.name}
+      renderEditor={(s) => <ScenarioEditor key={s.id} scenario={s} />}
+      emptyHint="选择或新建一个剧情"
+    />
   );
 }

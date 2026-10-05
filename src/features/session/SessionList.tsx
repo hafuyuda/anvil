@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { ipc, type Session } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
+import { EntityListLayout } from "../../components/EntityListLayout";
 import { SessionEditor } from "./SessionEditor";
+import { newId } from "../../lib/id";
+import { nowMs } from "../../lib/time";
 
 export function SessionList() {
   const sessions = useProjectStore((s) => s.sessions) ?? [];
@@ -9,9 +12,9 @@ export function SessionList() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   async function addSession() {
-    const now = Date.now();
+    const now = nowMs();
     const s: Session = {
-      id: crypto.randomUUID(),
+      id: newId(),
       name: "新会话",
       board_id: null,
       state: {},
@@ -24,51 +27,17 @@ export function SessionList() {
     setSelectedId(s.id);
   }
 
-  const selected = sessions.find((s) => s.id === selectedId) ?? null;
-
   return (
-    <div
-      style={{
-        display: "flex",
-        gap: 16,
-        flex: 1,
-        minHeight: 0,
-        minWidth: 0,
-      }}
-    >
-      <div style={{ minWidth: 180, overflow: "auto" }}>
-        <button onClick={addSession}>新建会话</button>
-        <ul style={{ listStyle: "none", padding: 0 }}>
-          {sessions.map((s) => (
-            <li
-              key={s.id}
-              onClick={() => setSelectedId(s.id)}
-              style={{
-                cursor: "pointer",
-                padding: "4px 0",
-                fontWeight: s.id === selectedId ? "bold" : "normal",
-              }}
-            >
-              {s.name}
-            </li>
-          ))}
-        </ul>
-      </div>
-      <div
-        style={{
-          flex: 1,
-          minWidth: 0,
-          minHeight: 0,
-          display: "flex",
-          flexDirection: "column",
-        }}
-      >
-        {selected ? (
-          <SessionEditor key={selected.id} session={selected} />
-        ) : (
-          <p style={{ color: "#888" }}>选择或新建一个会话</p>
-        )}
-      </div>
-    </div>
+    <EntityListLayout
+      listLabel="会话"
+      items={sessions}
+      selectedId={selectedId}
+      onSelect={setSelectedId}
+      onCreate={addSession}
+      createLabel="+ 新建会话"
+      renderItem={(s) => s.name}
+      renderEditor={(s) => <SessionEditor key={s.id} session={s} />}
+      emptyHint="选择或新建一个会话"
+    />
   );
 }

@@ -50,8 +50,9 @@ export function AppShell() {
         height: "100vh",
         display: "flex",
         flexDirection: "column",
-        fontFamily: "system-ui, sans-serif",
-        color: "#222",
+        background: "var(--bg-app)",
+        color: "var(--fg-primary)",
+        fontFamily: "var(--font-body)",
       }}
     >
       <TopBar />

@@ -4,23 +4,25 @@ import {
   Controls,
   MiniMap,
   ReactFlow,
+  applyNodeChanges,
   type Edge,
   type Node,
+  type NodeChange,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useProjectStore } from "../../stores/projectStore";
 import { buildGraph } from "./graphLayout";
 
 export function GraphView() {
-  const cards = useProjectStore((s) => s.cards);
-  const relations = useProjectStore((s) => s.relations);
-  const cardTypes = useProjectStore((s) => s.cardTypes);
-  const relationKinds = useProjectStore((s) => s.relationKinds);
+  const cards = useProjectStore((s) => s.cards) ?? [];
+  const relations = useProjectStore((s) => s.relations) ?? [];
+  const cardTypes = useProjectStore((s) => s.cardTypes) ?? [];
+  const relationKinds = useProjectStore((s) => s.relationKinds) ?? [];
   const selectCard = useProjectStore((s) => s.selectCard);
 
   const [query, setQuery] = useState("");
-  const [typeFilter, setTypeFilter] = useState<string>("");
-  const [kindFilter, setKindFilter] = useState<string>("");
+  const [typeFilter, setTypeFilter] = useState("");
+  const [kindFilter, setKindFilter] = useState("");
 
   const raw = useMemo(
     () =>
@@ -29,34 +31,36 @@ export function GraphView() {
         relations,
         (typeId) =>
           cardTypes.find((t) => t.id === typeId)?.name ?? typeId.slice(0, 8),
-        (kindId) => relationKinds.find((k) => k.id === kindId)?.name ?? kindId
+        (kindId) => relationKinds.find((k) => k.id === kindId)?.name ?? kindId,
       ),
-    [cards, relations, cardTypes, relationKinds]
+    [cards, relations, cardTypes, relationKinds],
   );
 
-  const matchMap = useMemo(() => {
+  // 图数据变化时基于 raw 生成一次，之后由本地 state 驱动
+  const [nodes, setNodes] = useState<Node[]>([]);
+  const [dataVersion, setDataVersion] = useState(0);
+
+  // 每次 raw 或过滤条件变化时重建 nodes/edges 并重算布局
+  useMemo(() => {
+    const matchMap = new Map<string, boolean>();
     const q = query.trim().toLowerCase();
-    const m = new Map<string, boolean>();
     for (const n of raw.nodes) {
       const card = cards.find((c) => c.id === n.id);
       let ok = true;
       if (q && card) {
         const inName = card.name.toLowerCase().includes(q);
         const inValues = Object.values(card.values).some((v) =>
-          typeof v === "string" ? v.toLowerCase().includes(q) : false
+          typeof v === "string" ? v.toLowerCase().includes(q) : false,
         );
         ok = inName || inValues;
       }
       if (typeFilter && card && card.type_id !== typeFilter) ok = false;
-      m.set(n.id, ok);
+      matchMap.set(n.id, ok);
     }
-    return m;
-  }, [raw.nodes, query, typeFilter, cards]);
 
-  const visibleNodes: Node[] = useMemo(() => {
-    const q = query.trim();
     const hasFilter = Boolean(q || typeFilter);
-    return raw.nodes.map((n) => {
+
+    const flowNodes: Node[] = raw.nodes.map((n) => {
       const cardType = cardTypes.find((t) => t.id === n.data.typeId);
       const color = cardType?.color ?? "#888888";
       const matched = matchMap.get(n.id) ?? true;
@@ -80,20 +84,17 @@ export function GraphView() {
         },
       };
     });
-  }, [raw.nodes, cardTypes, matchMap, query, typeFilter]);
+
+    setNodes(flowNodes);
+    setDataVersion((v) => v + 1);
+  }, [raw, query, typeFilter, cards, cardTypes]);
 
   const visibleEdges: Edge[] = useMemo(() => {
     return raw.edges.map((e) => {
       const kind = relationKinds.find((k) => k.id === e.kind);
       const color = kind?.color ?? "#999999";
-      const fromMatch = matchMap.get(e.source) ?? true;
-      const toMatch = matchMap.get(e.target) ?? true;
-
       let hide = false;
       if (kindFilter && e.kind !== kindFilter) hide = true;
-      if (typeFilter && !(fromMatch && toMatch)) hide = true;
-      if (query.trim() && !(fromMatch || toMatch)) hide = true;
-
       return {
         id: e.id,
         source: e.source,
@@ -105,7 +106,11 @@ export function GraphView() {
         labelBgStyle: { fill: "#ffffffcc" },
       };
     });
-  }, [raw.edges, relationKinds, matchMap, kindFilter, typeFilter, query]);
+  }, [raw.edges, relationKinds, kindFilter]);
+
+  function onNodesChange(changes: NodeChange<Node>[]) {
+    setNodes((ns) => applyNodeChanges(changes, ns));
+  }
 
   const hasFilter = Boolean(query.trim() || typeFilter || kindFilter);
 
@@ -187,12 +192,13 @@ export function GraphView() {
 
       <div style={{ flex: 1, minHeight: 0, position: "relative" }}>
         <ReactFlow
-          nodes={visibleNodes}
+          key={dataVersion}
+          nodes={nodes}
           edges={visibleEdges}
+          onNodesChange={onNodesChange}
           onNodeClick={(_, node) => selectCard(node.id)}
           fitView
           fitViewOptions={{ padding: 0.15 }}
-          proOptions={{ hideAttribution: true }}
         >
           <Background />
           <Controls />

@@ -38,6 +38,8 @@ interface ProjectState {
   undoStack: UndoEntry[];
   redoStack: UndoEntry[];
   pendingSaves: number;
+  inspectorWidth: number;
+  inspectorCollapsed: boolean;
 
   setProject: (
     path: string,
@@ -76,6 +78,8 @@ interface ProjectState {
   clearHistory: () => void;
   incPendingSaves: () => void;
   decPendingSaves: () => void;
+  setInspectorWidth: (w: number) => void;
+  toggleInspector: () => void;
 }
 
 export const useProjectStore = create<ProjectState>((set, get) => ({
@@ -96,6 +100,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   undoStack: [],
   redoStack: [],
   pendingSaves: 0,
+  inspectorWidth: 320,
+  inspectorCollapsed: false,
 
   setProject: (
     projectPath,
@@ -300,4 +306,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set((s) => ({
       pendingSaves: Math.max(0, (s.pendingSaves ?? 0) - 1),
     })),
+
+  setInspectorWidth: (w) =>
+    set({ inspectorWidth: Math.max(200, Math.min(700, w)) }),
+  toggleInspector: () =>
+    set((s) => ({ inspectorCollapsed: !s.inspectorCollapsed })),
 }));

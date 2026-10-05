@@ -7,8 +7,8 @@ export function TopBar() {
   const setProject = useProjectStore((s) => s.setProject);
   const closeProject = useProjectStore((s) => s.closeProject);
   const pendingSaves = useProjectStore((s) => s.pendingSaves);
-  const undoStack = useProjectStore((s) => s.undoStack);
-  const redoStack = useProjectStore((s) => s.redoStack);
+  const undoStack = useProjectStore((s) => s.undoStack) ?? [];
+  const redoStack = useProjectStore((s) => s.redoStack) ?? [];
   const undo = useProjectStore((s) => s.undo);
   const redo = useProjectStore((s) => s.redo);
   const openProject = useOpenProject();
@@ -50,49 +50,64 @@ export function TopBar() {
   return (
     <div
       style={{
-        height: 40,
+        height: "var(--topbar-h)",
         display: "flex",
         alignItems: "center",
         padding: "0 12px",
-        borderBottom: "1px solid #e0e0e0",
-        background: "#fafafa",
+        borderBottom: "1px solid var(--border-subtle)",
+        background: "var(--bg-panel)",
         gap: 8,
         fontSize: 13,
+        flexShrink: 0,
       }}
     >
-      <strong style={{ color: "#333" }}>Anvil</strong>
-      <span style={{ color: "#bbb" }}>·</span>
-      <span style={{ color: "#666" }}>
+      <strong
+        style={{
+          color: "var(--accent-gold)",
+          fontFamily: "var(--font-title)",
+          fontSize: 15,
+          letterSpacing: 1,
+        }}
+      >
+        Anvil
+      </strong>
+      <span style={{ color: "var(--border-default)" }}>·</span>
+      <span style={{ color: "var(--fg-secondary)" }}>
         {projectPath ? projectPath.split(/[\\/]/).pop() : "未打开项目"}
       </span>
-      <button onClick={openProject} style={{ fontSize: 12 }}>
+
+      <button className="btn" onClick={openProject}>
         {projectPath ? "切换" : "打开"}
       </button>
+
       {projectPath && (
         <>
-          <button onClick={handleRefresh} style={{ fontSize: 12 }}>
+          <button className="btn" onClick={handleRefresh}>
             刷新
           </button>
           <button
+            className="btn"
             onClick={() => void undo()}
             disabled={undoStack.length === 0}
-            style={{ fontSize: 12 }}
             title="撤销 Ctrl+Z"
           >
-            ↶ 撤销
+            ↶
           </button>
           <button
+            className="btn"
             onClick={() => void redo()}
             disabled={redoStack.length === 0}
-            style={{ fontSize: 12 }}
             title="重做 Ctrl+Shift+Z"
           >
-            ↷ 重做
+            ↷
           </button>
           <span
             style={{
               fontSize: 11,
-              color: pendingSaves > 0 ? "#c80" : "#888",
+              color:
+                pendingSaves > 0
+                  ? "var(--accent-flame)"
+                  : "var(--fg-muted)",
             }}
           >
             {statusText}
@@ -103,22 +118,16 @@ export function TopBar() {
       <div style={{ flex: 1 }} />
 
       <input
+        className="input"
         placeholder="搜索（Ctrl+K）"
         disabled
-        style={{
-          width: 240,
-          padding: "4px 8px",
-          border: "1px solid #ddd",
-          borderRadius: 4,
-          fontSize: 12,
-          background: "#fff",
-        }}
+        style={{ width: 240, fontSize: 12 }}
       />
-      <button disabled style={{ fontSize: 12 }}>
+      <button className="btn" disabled>
         设置
       </button>
       {projectPath && (
-        <button onClick={handleClose} style={{ fontSize: 12 }}>
+        <button className="btn btn-danger" onClick={handleClose}>
           关闭项目
         </button>
       )}

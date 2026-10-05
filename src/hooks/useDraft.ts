@@ -6,16 +6,18 @@ interface HasId {
   id: string;
 }
 
-interface Options {
+interface Options<T> {
   autoSave?: boolean;
   autoSaveDelay?: number;
   undoLabel?: string;
+  /** draft 变化时立即调用，用于同步 store 让 UI 立刻一致 */
+  onDraftChange?: (draft: T) => void;
 }
 
 export function useDraft<T extends HasId>(
   source: T,
   save: (v: T) => Promise<void | boolean> | void | boolean,
-  options?: Options,
+  options?: Options<T>,
 ) {
   const [draft, setDraft] = useState<T>(source);
   const [dirty, setDirty] = useState(false);
@@ -23,23 +25,21 @@ export function useDraft<T extends HasId>(
   const autoSave = options?.autoSave ?? true;
   const delay = options?.autoSaveDelay ?? 800;
   const label = options?.undoLabel ?? "编辑";
+  const onDraftChange = options?.onDraftChange;
 
   const saveRef = useRef(save);
   saveRef.current = save;
+  const onDraftChangeRef = useRef(onDraftChange);
+  onDraftChangeRef.current = onDraftChange;
 
   const draftRef = useRef<T>(draft);
   draftRef.current = draft;
-
   const baselineRef = useRef<T>(source);
 
   const pushUndo = useProjectStore((s) => s.pushUndo);
   const incPendingSaves = useProjectStore((s) => s.incPendingSaves);
   const decPendingSaves = useProjectStore((s) => s.decPendingSaves);
 
-  const flushRef = useRef(flush);
-  flushRef.current = flush;
-
-  // 切换 source（不同 id）时重置
   if (draft.id !== source.id) {
     setDraft(source);
     setDirty(false);
@@ -47,12 +47,17 @@ export function useDraft<T extends HasId>(
   }
 
   function update(patch: Partial<T>) {
-    setDraft((d) => ({ ...d, ...patch }));
+    setDraft((d) => {
+      const next = { ...d, ...patch };
+      onDraftChangeRef.current?.(next);
+      return next;
+    });
     setDirty(true);
   }
 
   function set(next: T) {
     setDraft(next);
+    onDraftChangeRef.current?.(next);
     setDirty(true);
   }
 
@@ -79,9 +84,15 @@ export function useDraft<T extends HasId>(
         id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         label,
         undo: async () => {
+          baselineRef.current = before;
+          setDraft(before);
+          onDraftChangeRef.current?.(before);
           await saveRef.current(before);
         },
         redo: async () => {
+          baselineRef.current = after;
+          setDraft(after);
+          onDraftChangeRef.current?.(after);
           await saveRef.current(after);
         },
       });
@@ -96,14 +107,20 @@ export function useDraft<T extends HasId>(
     baselineRef.current = source;
   }
 
-  // 自动保存
+  const flushRef = useRef(flush);
+  flushRef.current = flush;
+
+  useEffect(() => {
+    return registerFlusher(() => flushRef.current());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     if (!dirty || !autoSave) return;
     const handle = setTimeout(() => {
       void flush();
     }, delay);
-    return registerFlusher(() => flushRef.current());
-
+    return () => clearTimeout(handle);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dirty, draft, autoSave, delay]);
 
