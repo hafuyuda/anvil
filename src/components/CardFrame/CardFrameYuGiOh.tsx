@@ -138,14 +138,26 @@ export function CardFrameYuGiOh({
             style={{
               display: "flex",
               justifyContent: "flex-end",
+              alignItems: "center",
+              gap: 4,
               fontSize: spec.metaSize,
               color: "var(--card-yugioh-star)",
-              letterSpacing: -1,
               padding: "0 4px",
               textShadow: "0 0 1px #fff",
             }}
           >
-            {stars}
+            {m.levelLabel && (
+              <span
+                style={{
+                  color: "var(--card-yugioh-text-dim)",
+                  fontStyle: "italic",
+                  fontSize: spec.metaSize,
+                }}
+              >
+                {m.levelLabel}
+              </span>
+            )}
+            <span style={{ letterSpacing: -1 }}>{stars}</span>
           </div>
         )}
 
@@ -201,7 +213,7 @@ export function CardFrameYuGiOh({
                 right: 4,
                 bottom: 2,
                 display: "flex",
-                gap: 6,
+                gap: 8,
                 fontSize: spec.statSize,
                 fontWeight: 700,
                 color: "var(--card-yugioh-text)",
@@ -209,8 +221,21 @@ export function CardFrameYuGiOh({
                 padding: "0 4px",
               }}
             >
-              {m.atk !== undefined && <span>ATK/{m.atk}</span>}
-              {m.def !== undefined && <span>DEF/{m.def}</span>}
+              {m.atk !== undefined && (
+                <span>
+                  {m.atkLabel ?? "ATK"}/{m.atk}
+                </span>
+              )}
+              {m.def !== undefined && (
+                <span>
+                  {m.defLabel ?? "DEF"}/{m.def}
+                </span>
+              )}
+              {m.hp !== undefined && (
+                <span>
+                  {m.hpLabel ?? "HP"}/{m.hp}
+                </span>
+              )}
             </div>
           )}
         </div>

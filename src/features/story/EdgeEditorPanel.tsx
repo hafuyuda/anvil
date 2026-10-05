@@ -69,6 +69,8 @@ export function EdgeEditorPanel({ relation, scenario }: Props) {
   const sourceCard = cards.find((c) => c.id === draft.from);
   const targetCard = cards.find((c) => c.id === draft.to);
 
+  const currentKind = relationKinds.find((k) => k.id === draft.kind);
+  
   function setCondition(next: string) {
     update({ meta: { ...draft.meta, condition: next } });
   }
@@ -113,10 +115,7 @@ export function EdgeEditorPanel({ relation, scenario }: Props) {
         </div>
         <div style={{ color: "var(--fg-primary)" }}>
           <span
-            style={{
-              cursor: "pointer",
-              color: "var(--accent-gold)",
-            }}
+            style={{ cursor: "pointer", color: "var(--accent-gold)" }}
             onClick={() =>
               sourceCard && useProjectStore.getState().selectCard(sourceCard.id)
             }
@@ -125,10 +124,7 @@ export function EdgeEditorPanel({ relation, scenario }: Props) {
           </span>
           <span style={{ color: "var(--fg-muted)", margin: "0 6px" }}>→</span>
           <span
-            style={{
-              cursor: "pointer",
-              color: "var(--accent-gold)",
-            }}
+            style={{ cursor: "pointer", color: "var(--accent-gold)" }}
             onClick={() =>
               targetCard && useProjectStore.getState().selectCard(targetCard.id)
             }
@@ -136,6 +132,19 @@ export function EdgeEditorPanel({ relation, scenario }: Props) {
             {targetCard?.name ?? draft.to.slice(0, 8)}
           </span>
         </div>
+        {currentKind?.inverse_name && (
+          <div
+            style={{
+              marginTop: 4,
+              fontSize: 11,
+              color: "var(--fg-muted)",
+              fontStyle: "italic",
+            }}
+          >
+            （在 {targetCard?.name ?? "目标"} 的视角：{currentKind.inverse_name}
+            ）
+          </div>
+        )}
       </div>
 
       <LabeledBlock label="关系类型">

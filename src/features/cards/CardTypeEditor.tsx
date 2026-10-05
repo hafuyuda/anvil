@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useProjectStore } from "../../stores/projectStore";
 import {
   ipc,
@@ -72,8 +73,16 @@ export function CardTypeEditor({ cardType }: Props) {
       await ipc.upsertCardType(next);
       upsertCardType(next);
     },
-    { undoLabel: "编辑卡牌类型", autoSave: false },
+    {
+      undoLabel: "编辑卡牌类型",
+      autoSave: false,
+      onDraftChange: (d) => {
+        upsertCardType({ ...d, updated_at: nowMs() });
+      },
+    },
   );
+
+  const [tab, setTab] = useState<"fields" | "frame">("fields");
 
   function updateField(index: number, patch: Partial<FieldDef>) {
     const fields = draft.fields.map((f, i) =>
@@ -105,91 +114,226 @@ export function CardTypeEditor({ cardType }: Props) {
   }
 
   const visibleFields = draft.fields.filter((f) => !f.deprecated);
+  const hasFrame = Boolean(draft.card_frame);
 
   return (
     <div
       style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 12,
-        padding: 12,
-        overflow: "auto",
         flex: 1,
         minHeight: 0,
+        display: "flex",
+        flexDirection: "column",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      {/* 顶部：名称 + 保存状态 */}
+      <div
+        style={{
+          padding: 12,
+          borderBottom: "1px solid var(--border-subtle)",
+          display: "flex",
+          gap: 8,
+          alignItems: "center",
+          flexShrink: 0,
+        }}
+      >
         <input
+          className="input"
           value={draft.name}
           onChange={(e) => update({ name: e.target.value })}
           style={{
-            fontSize: 16,
-            fontWeight: 600,
-            padding: "4px 8px",
             flex: 1,
+            fontSize: 16,
+            fontFamily: "var(--font-title)",
+            fontWeight: 600,
           }}
         />
-        <button onClick={addField}>加字段</button>
-        <button onClick={commit} disabled={!dirty}>
-          {dirty ? "保存" : "已保存"}
+        <span
+          style={{
+            fontSize: 11,
+            color: dirty ? "var(--warning)" : "var(--fg-muted)",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {dirty ? "有未保存修改" : "已保存"}
+        </span>
+        <button className="btn" onClick={commit} disabled={!dirty}>
+          保存
         </button>
       </div>
 
-      <input
-        value={draft.description ?? ""}
-        onChange={(e) => update({ description: e.target.value })}
-        placeholder="类型描述"
-        style={{ padding: "4px 8px", fontSize: 12 }}
-      />
-
-      <CardFrameEditor
-        cardType={draft}
-        onChange={(card_frame) => update({ card_frame })}
-      />
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {visibleFields.length === 0 && (
-          <p style={{ color: "#888", fontSize: 12 }}>还没有字段</p>
-        )}
-        {draft.fields.map((field, i) =>
-          field.deprecated ? null : (
-            <FieldRow
-              key={field.key}
-              field={field}
-              onChange={(patch) => updateField(i, patch)}
-              onRemove={() => removeField(i)}
-              onMoveUp={
-                i > 0
-                  ? () => {
-                      const fields = [...draft.fields];
-                      [fields[i - 1], fields[i]] = [fields[i], fields[i - 1]];
-                      update({
-                        fields: fields.map((f, idx) => ({ ...f, order: idx })),
-                      });
-                    }
-                  : undefined
-              }
-            />
-          ),
-        )}
+      {/* tab */}
+      <div
+        style={{
+          padding: "6px 12px",
+          borderBottom: "1px solid var(--border-subtle)",
+          background: "var(--bg-panel)",
+          display: "flex",
+          gap: 4,
+          flexShrink: 0,
+        }}
+      >
+        <TabButton active={tab === "fields"} onClick={() => setTab("fields")}>
+          字段（{visibleFields.length}）
+        </TabButton>
+        <TabButton active={tab === "frame"} onClick={() => setTab("frame")}>
+          卡框
+          {hasFrame && (
+            <span
+              style={{
+                marginLeft: 4,
+                color: "var(--accent-gold)",
+                fontSize: 10,
+              }}
+            >
+              ●
+            </span>
+          )}
+        </TabButton>
       </div>
 
-      {draft.fields.some((f) => f.deprecated) && (
-        <details style={{ fontSize: 12, color: "#888" }}>
-          <summary>已废弃字段（数据保留）</summary>
-          <ul>
-            {draft.fields
-              .filter((f) => f.deprecated)
-              .map((f) => (
-                <li key={f.key}>
-                  {f.label}（{f.key}）
-                </li>
-              ))}
-          </ul>
-        </details>
-      )}
+      {/* tab 内容 */}
+      <div style={{ flex: 1, minHeight: 0, overflow: "auto", padding: 16 }}>
+        {tab === "fields" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div>
+              <div
+                style={{
+                  fontSize: 10,
+                  color: "var(--fg-muted)",
+                  textTransform: "uppercase",
+                  letterSpacing: 1,
+                  marginBottom: 4,
+                }}
+              >
+                描述
+              </div>
+              <input
+                className="input"
+                value={draft.description ?? ""}
+                onChange={(e) => update({ description: e.target.value })}
+                placeholder="类型描述"
+              />
+            </div>
+
+            <div>
+              <div
+                style={{
+                  fontSize: 10,
+                  color: "var(--fg-muted)",
+                  textTransform: "uppercase",
+                  letterSpacing: 1,
+                  marginBottom: 6,
+                }}
+              >
+                字段
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                }}
+              >
+                {visibleFields.length === 0 && (
+                  <p style={{ color: "var(--fg-muted)", fontSize: 12 }}>
+                    还没有字段
+                  </p>
+                )}
+                {draft.fields.map((field, i) =>
+                  field.deprecated ? null : (
+                    <FieldRow
+                      key={field.key}
+                      field={field}
+                      onChange={(patch) => updateField(i, patch)}
+                      onRemove={() => removeField(i)}
+                      onMoveUp={
+                        i > 0
+                          ? () => {
+                              const fields = [...draft.fields];
+                              [fields[i - 1], fields[i]] = [
+                                fields[i],
+                                fields[i - 1],
+                              ];
+                              update({
+                                fields: fields.map((f, idx) => ({
+                                  ...f,
+                                  order: idx,
+                                })),
+                              });
+                            }
+                          : undefined
+                      }
+                    />
+                  ),
+                )}
+              </div>
+
+              <button
+                className="btn"
+                onClick={addField}
+                style={{ marginTop: 8, fontSize: 12 }}
+              >
+                + 加字段
+              </button>
+            </div>
+
+            {draft.fields.some((f) => f.deprecated) && (
+              <details style={{ fontSize: 12, color: "var(--fg-muted)" }}>
+                <summary>已废弃字段（数据保留）</summary>
+                <ul>
+                  {draft.fields
+                    .filter((f) => f.deprecated)
+                    .map((f) => (
+                      <li key={f.key}>
+                        {f.label}（{f.key}）
+                      </li>
+                    ))}
+                </ul>
+              </details>
+            )}
+          </div>
+        )}
+
+        {tab === "frame" && (
+          <CardFrameEditor
+            cardType={draft}
+            onChange={(card_frame) => update({ card_frame })}
+          />
+        )}
+      </div>
     </div>
   );
 }
+
+function TabButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      className="btn btn-ghost"
+      onClick={onClick}
+      style={{
+        fontWeight: active ? 600 : 400,
+        color: active ? "var(--fg-primary)" : "var(--fg-secondary)",
+        borderBottom: active
+          ? "2px solid var(--accent-gold)"
+          : "2px solid transparent",
+        borderRadius: 0,
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+// ============ 字段行 ============
 
 interface FieldRowProps {
   field: FieldDef;
@@ -374,6 +518,8 @@ function OptionsEditor({
   );
 }
 
+// ============ 卡框编辑 ============
+
 function CardFrameEditor({
   cardType,
   onChange,
@@ -396,13 +542,11 @@ function CardFrameEditor({
     value,
     onChange,
     filter,
-    allowEmpty = true,
   }: {
     label: string;
     value: string | null | undefined;
     onChange: (v: string | null) => void;
     filter?: (f: FieldDef) => boolean;
-    allowEmpty?: boolean;
   }) {
     const opts = filter ? fields.filter(filter) : fields;
     return (
@@ -414,13 +558,13 @@ function CardFrameEditor({
           gap: 2,
         }}
       >
-        <span style={{ color: "#888" }}>{label}</span>
+        <span style={{ color: "var(--fg-muted)" }}>{label}</span>
         <select
+          className="select"
           value={value ?? ""}
           onChange={(e) => onChange(e.target.value || null)}
-          style={{ padding: "3px 6px" }}
         >
-          {allowEmpty && <option value="">— 未指定 —</option>}
+          <option value="">— 未指定 —</option>
           {opts.map((f) => (
             <option key={f.key} value={f.key}>
               {f.label}（{f.key}）
@@ -431,25 +575,61 @@ function CardFrameEditor({
     );
   }
 
-  return (
-    <details
-      style={{
-        border: "1px solid #eee",
-        borderRadius: 4,
-        padding: 8,
-        background: "#fafafa",
-      }}
-    >
-      <summary style={{ fontSize: 12, color: "#666", cursor: "pointer" }}>
-        卡框映射（不填则自动猜测）
-      </summary>
+  function LabeledInput({
+    label,
+    value,
+    onChange,
+    placeholder,
+  }: {
+    label: string;
+    value: string;
+    onChange: (v: string) => void;
+    placeholder?: string;
+  }) {
+    return (
+      <label
+        style={{
+          fontSize: 12,
+          display: "flex",
+          flexDirection: "column",
+          gap: 2,
+        }}
+      >
+        <span style={{ color: "var(--fg-muted)" }}>{label}</span>
+        <input
+          className="input"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+        />
+      </label>
+    );
+  }
 
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div
+        style={{
+          fontSize: 11,
+          color: "var(--fg-muted)",
+          padding: 8,
+          background: "var(--bg-surface)",
+          border: "1px solid var(--border-subtle)",
+          borderRadius: "var(--radius-md)",
+          lineHeight: 1.5,
+        }}
+      >
+        指定字段在卡框各区域显示。不填则自动猜测。
+        <br />
+        右侧检查器显示实时预览。
+      </div>
+
+      {/* 基础字段 */}
       <div
         style={{
           display: "grid",
           gridTemplateColumns: "1fr 1fr",
           gap: 8,
-          marginTop: 8,
         }}
       >
         <FieldSelect
@@ -468,47 +648,126 @@ function CardFrameEditor({
           onChange={(v) => set("type_line", v)}
         />
         <FieldSelect
-          label="等级"
+          label="图像字段"
+          value={cfg.image}
+          onChange={(v) => set("image", v)}
+          filter={(f) => f.ty.kind === "image"}
+        />
+      </div>
+
+      {/* 等级 */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 8,
+        }}
+      >
+        <FieldSelect
+          label="等级字段"
           value={cfg.level}
           onChange={(v) => set("level", v)}
           filter={(f) => f.ty.kind === "number"}
         />
+        <LabeledInput
+          label="等级显示名（留空用星号）"
+          value={cfg.level_label ?? ""}
+          onChange={(v) => set("level_label", v || null)}
+          placeholder="例如：LV"
+        />
+      </div>
+
+      {/* 攻击 */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 8,
+        }}
+      >
         <FieldSelect
-          label="攻击 ATK"
+          label="攻击字段"
           value={cfg.atk}
           onChange={(v) => set("atk", v)}
           filter={(f) => f.ty.kind === "number"}
         />
+        <LabeledInput
+          label="攻击显示名（默认 ATK）"
+          value={cfg.atk_label ?? ""}
+          onChange={(v) => set("atk_label", v || null)}
+          placeholder="例如：伤害"
+        />
+      </div>
+
+      {/* 防御 */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 8,
+        }}
+      >
         <FieldSelect
-          label="防御 DEF"
+          label="防御字段"
           value={cfg.def}
           onChange={(v) => set("def", v)}
           filter={(f) => f.ty.kind === "number"}
         />
+        <LabeledInput
+          label="防御显示名（默认 DEF）"
+          value={cfg.def_label ?? ""}
+          onChange={(v) => set("def_label", v || null)}
+          placeholder="例如：价值"
+        />
+      </div>
+
+      {/* HP */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 8,
+        }}
+      >
         <FieldSelect
-          label="HP"
+          label="HP 字段"
           value={cfg.hp}
           onChange={(v) => set("hp", v)}
           filter={(f) => f.ty.kind === "number"}
         />
+        <LabeledInput
+          label="HP 显示名（默认 HP）"
+          value={cfg.hp_label ?? ""}
+          onChange={(v) => set("hp_label", v || null)}
+          placeholder="例如：生命"
+        />
       </div>
 
-      <div style={{ marginTop: 8 }}>
-        <div style={{ fontSize: 12, color: "#888", marginBottom: 4 }}>
-          正文字段（可多选）
+      {/* 正文字段 */}
+      <div>
+        <div
+          style={{
+            fontSize: 12,
+            color: "var(--fg-muted)",
+            marginBottom: 4,
+          }}
+        >
+          正文字段（可多选，按选择顺序显示）
         </div>
         <div
           style={{
-            maxHeight: 120,
+            maxHeight: 160,
             overflow: "auto",
-            border: "1px solid #eee",
-            padding: 4,
-            borderRadius: 4,
-            background: "#fff",
+            border: "1px solid var(--border-subtle)",
+            padding: 6,
+            borderRadius: "var(--radius-md)",
+            background: "var(--bg-surface)",
           }}
         >
           {fields.length === 0 && (
-            <div style={{ fontSize: 12, color: "#aaa" }}>暂无字段</div>
+            <div style={{ fontSize: 12, color: "var(--fg-muted)", padding: 4 }}>
+              暂无字段
+            </div>
           )}
           {fields.map((f) => {
             const checked = cfg.body.includes(f.key);
@@ -517,8 +776,10 @@ function CardFrameEditor({
                 key={f.key}
                 style={{
                   display: "flex",
-                  gap: 4,
+                  gap: 6,
                   fontSize: 12,
+                  color: "var(--fg-secondary)",
+                  cursor: "pointer",
                   padding: "2px 0",
                 }}
               >
@@ -531,6 +792,7 @@ function CardFrameEditor({
                       : cfg.body.filter((k) => k !== f.key);
                     set("body", body);
                   }}
+                  style={{ accentColor: "var(--accent-gold)" }}
                 />
                 {f.label}（{f.key}）
               </label>
@@ -539,15 +801,16 @@ function CardFrameEditor({
         </div>
       </div>
 
-      <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
+      <div style={{ display: "flex", gap: 8 }}>
         <button
+          className="btn btn-danger"
           onClick={() => onChange(null)}
-          style={{ fontSize: 11 }}
           disabled={!cardType.card_frame}
+          style={{ fontSize: 11 }}
         >
           清空映射
         </button>
       </div>
-    </details>
+    </div>
   );
 }

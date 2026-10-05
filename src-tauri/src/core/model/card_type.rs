@@ -16,15 +16,23 @@ pub struct CardFrameConfig {
     #[serde(default)]
     pub level: Option<String>,
     #[serde(default)]
+    pub level_label: Option<String>,
+    #[serde(default)]
     pub type_line: Option<String>,
     #[serde(default)]
     pub body: Vec<String>,
     #[serde(default)]
     pub atk: Option<String>,
     #[serde(default)]
+    pub atk_label: Option<String>,
+    #[serde(default)]
     pub def: Option<String>,
     #[serde(default)]
+    pub def_label: Option<String>,
+    #[serde(default)]
     pub hp: Option<String>,
+    #[serde(default)]
+    pub hp_label: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

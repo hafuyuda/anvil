@@ -60,7 +60,7 @@ export function RelationsPanel({ card }: Props) {
               letterSpacing: 1,
             }}
           >
-            出边（{outgoing.length}）
+            从本卡出发（{outgoing.length}）
           </div>
           {!adding && (
             <button
@@ -141,7 +141,7 @@ export function RelationsPanel({ card }: Props) {
             marginBottom: 6,
           }}
         >
-          入边（{incoming.length}）
+          指向本卡（{incoming.length}）
         </div>
         {incoming.length === 0 && (
           <div style={{ fontSize: 12, color: "var(--fg-muted)" }}>无</div>

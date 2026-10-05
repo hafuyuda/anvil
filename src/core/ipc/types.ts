@@ -44,11 +44,15 @@ export interface CardFrameConfig {
   subtitle?: string | null;
   image?: string | null;
   level?: string | null;
+  level_label?: string | null;
   type_line?: string | null;
   body: string[];
   atk?: string | null;
+  atk_label?: string | null;
   def?: string | null;
+  def_label?: string | null;
   hp?: string | null;
+  hp_label?: string | null;
 }
 
 export interface CardType {

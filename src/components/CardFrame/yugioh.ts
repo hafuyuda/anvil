@@ -5,8 +5,13 @@ export interface YugiohMapping {
   subtitle?: string;
   typeLine: string;
   level?: number;
+  levelLabel?: string;
   atk?: number;
+  atkLabel?: string;
   def?: number;
+  defLabel?: string;
+  hp?: number;
+  hpLabel?: string;
   body: string;
   image?: string;
 }
@@ -15,6 +20,20 @@ export function mapCard(card: Card, cardType: CardType): YugiohMapping {
   const cfg = cardType.card_frame;
 
   if (cfg) {
+    const levelLabel =
+      cfg.level_label && cfg.level_label.trim()
+        ? cfg.level_label.trim()
+        : undefined;
+
+    const atkLabel =
+      cfg.atk_label && cfg.atk_label.trim() ? cfg.atk_label.trim() : undefined;
+
+    const defLabel =
+      cfg.def_label && cfg.def_label.trim() ? cfg.def_label.trim() : undefined;
+
+    const hpLabel =
+      cfg.hp_label && cfg.hp_label.trim() ? cfg.hp_label.trim() : undefined;
+
     const title =
       cfg.title && typeof card.values[cfg.title] === "string"
         ? (card.values[cfg.title] as string)
@@ -40,12 +59,16 @@ export function mapCard(card: Card, cardType: CardType): YugiohMapping {
         ? (card.values[cfg.def] as number)
         : undefined;
 
+    const hp =
+      cfg.hp && typeof card.values[cfg.hp] === "number"
+        ? (card.values[cfg.hp] as number)
+        : undefined;
+
     const typeLine =
       cfg.type_line && typeof card.values[cfg.type_line] === "string"
         ? (card.values[cfg.type_line] as string)
         : cardType.name;
 
-    // ★ image：显式配置优先，否则扫描第一个有值的 image 类型字段
     const image =
       cfg.image && typeof card.values[cfg.image] === "string"
         ? (card.values[cfg.image] as string)
@@ -66,8 +89,13 @@ export function mapCard(card: Card, cardType: CardType): YugiohMapping {
       subtitle,
       typeLine,
       level,
+      levelLabel,
       atk,
+      atkLabel,
       def,
+      defLabel,
+      hp,
+      hpLabel,
       body: bodyParts.join("\n"),
       image,
     };
@@ -97,6 +125,7 @@ function fallbackMap(card: Card, cardType: CardType): YugiohMapping {
   let level: number | undefined;
   let atk: number | undefined;
   let def: number | undefined;
+  let hp: number | undefined;
   let image: string | undefined;
   const bodyParts: string[] = [];
 
@@ -105,7 +134,6 @@ function fallbackMap(card: Card, cardType: CardType): YugiohMapping {
     const key = f.key.toLowerCase();
     const label = f.label.toLowerCase();
 
-    // image 类型字段
     if (
       image === undefined &&
       f.ty.kind === "image" &&
@@ -149,6 +177,14 @@ function fallbackMap(card: Card, cardType: CardType): YugiohMapping {
       def = v;
       continue;
     }
+    if (
+      hp === undefined &&
+      (key === "hp" || label === "生命" || label.includes("生命值")) &&
+      typeof v === "number"
+    ) {
+      hp = v;
+      continue;
+    }
 
     if (f.ty.kind === "rich_text" || f.ty.kind === "text") {
       if (typeof v === "string" && v.trim()) {
@@ -167,6 +203,7 @@ function fallbackMap(card: Card, cardType: CardType): YugiohMapping {
     level,
     atk,
     def,
+    hp,
     body: bodyParts.join("\n"),
     image,
   };

@@ -3,6 +3,7 @@ import { useProjectStore } from "../../stores/projectStore";
 import { useDraft } from "../../hooks/useDraft";
 import { TypeMultiSelect } from "../../components/TypeMultiSelect";
 import { nowMs } from "../../lib/time";
+import { useMemo } from "react";
 
 interface Props {
   relationKind: RelationKind;
@@ -24,6 +25,28 @@ export function RelationKindEditor({ relationKind }: Props) {
     },
     { undoLabel: "编辑关系类型" },
   );
+
+  const relationKinds = useProjectStore((s) => s.relationKinds) ?? [];
+
+  const conflict = useMemo(() => {
+    if (!draft.name.trim()) return null;
+    const n = draft.name.trim();
+    const inv = (draft.inverse_name ?? "").trim();
+
+    for (const k of relationKinds) {
+      if (k.id === draft.id) continue;
+      if (k.name === n) {
+        return { kind: "same_name" as const, other: k };
+      }
+      if (inv && k.name === inv && (k.inverse_name ?? "") === n) {
+        return { kind: "mutual" as const, other: k };
+      }
+      if (inv && k.name === inv) {
+        return { kind: "reverse_name" as const, other: k };
+      }
+    }
+    return null;
+  }, [draft.id, draft.name, draft.inverse_name, relationKinds]);
 
   return (
     <div
@@ -68,6 +91,18 @@ export function RelationKindEditor({ relationKind }: Props) {
               boxSizing: "border-box",
             }}
           />
+          <div
+            style={{
+              marginTop: 6,
+              fontSize: 11,
+              color: "var(--fg-muted)",
+              lineHeight: 1.5,
+            }}
+          >
+            提示：一个关系类型只需建一次。反向名用于在另一侧的卡牌上显示相反的说法。
+            例如「师父」的反向名是「徒弟」，建一条 A → B「师父」，B
+            的检查器会自动显示「A → 徒弟」。
+          </div>
         </label>
         <label style={{ fontSize: 12 }}>
           <div style={{ color: "#888", marginBottom: 4 }}>颜色</div>
@@ -94,6 +129,58 @@ export function RelationKindEditor({ relationKind }: Props) {
           有向
         </label>
       </div>
+
+      {conflict && (
+        <div
+          style={{
+            marginTop: 8,
+            padding: 10,
+            background: "var(--bg-surface)",
+            border: "1px solid var(--warning)",
+            borderRadius: "var(--radius-md)",
+            fontSize: 12,
+            color: "var(--fg-secondary)",
+            lineHeight: 1.6,
+          }}
+        >
+          {conflict.kind === "same_name" && (
+            <>
+              已存在名为「{conflict.other.name}」的关系类型。
+              如果它是同一个关系，建议直接用已有的那个，不要新建。
+            </>
+          )}
+          {conflict.kind === "reverse_name" && (
+            <>
+              已存在关系类型「{conflict.other.name}」。 你输入的「
+              {draft.inverse_name}」可能是它的反向名——
+              如果是，建议在那边把反向名补上，而不是新建一个。
+            </>
+          )}
+          {conflict.kind === "mutual" && (
+            <>
+              已存在关系类型「{conflict.other.name}」（反向名「
+              {conflict.other.inverse_name}」）。
+              这是同一个关系的反向视角，不需要再建一个。
+            </>
+          )}
+          <div
+            style={{
+              marginTop: 6,
+              padding: "6px 8px",
+              background: "var(--bg-app)",
+              borderRadius: "var(--radius-sm)",
+              fontFamily: "var(--font-mono)",
+              fontSize: 11,
+              color: "var(--fg-muted)",
+            }}
+          >
+            正确用法：只建一个「{draft.name || "关系名"}」， 反向名填「
+            {draft.inverse_name || "反向名"}」。 建一条 A → B 的边，B
+            的检查器里会自动显示为「
+            {draft.inverse_name || "反向名"}」。
+          </div>
+        </div>
+      )}
 
       <TypeMultiSelect
         label="起点类型"

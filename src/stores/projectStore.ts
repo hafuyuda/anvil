@@ -41,6 +41,7 @@ interface ProjectState {
   pendingSaves: number;
   inspectorWidth: number;
   inspectorCollapsed: boolean;
+  selectedCardTypeId: string | null;
 
   setProject: (
     path: string,
@@ -95,6 +96,7 @@ interface ProjectState {
   removeCardType: (id: string) => void;
   removeRelationKind: (id: string) => void;
   selectEdge: (id: string | null) => void;
+  selectCardType: (id: string | null) => void;
 }
 
 export const useProjectStore = create<ProjectState>((set, get) => ({
@@ -118,6 +120,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   inspectorWidth: 320,
   inspectorCollapsed: false,
   selectedEdgeId: null,
+  selectedCardTypeId: null,
 
   setProject: (
     projectPath,
@@ -375,6 +378,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   removeCardType: (id) =>
     set((s) => ({
       cardTypes: (s.cardTypes ?? []).filter((t) => t.id !== id),
+      selectedCardTypeId:
+        s.selectedCardTypeId === id ? null : s.selectedCardTypeId,
     })),
 
   removeRelationKind: (id) =>
@@ -389,4 +394,6 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   selectEdge: (selectedEdgeId) =>
     set({ selectedEdgeId, selectedCardId: null, selectedTokenId: null }),
+
+  selectCardType: (selectedCardTypeId) => set({ selectedCardTypeId }),
 }));
