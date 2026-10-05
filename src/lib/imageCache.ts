@@ -1,4 +1,4 @@
-import { ipc } from "../core/ipc/ipc";
+import { ipc } from "../core/ipc";
 
 const cache = new Map<string, string>();
 const pending = new Map<string, Promise<string>>();

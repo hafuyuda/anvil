@@ -12,12 +12,7 @@ import {
   type NodeChange,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import {
-  ipc,
-  type Card,
-  type Relation,
-  type Scenario,
-} from "../../core/ipc/ipc";
+import { ipc, type Card, type Relation, type Scenario } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
 import { EdgeEditorDialog } from "./EdgeEditorDialog";
 import { newId } from "../../lib/id";

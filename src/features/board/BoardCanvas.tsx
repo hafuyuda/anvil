@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { GridConfig, Token } from "../../core/ipc/ipc";
+import type { GridConfig, Token } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
 
 interface Props {

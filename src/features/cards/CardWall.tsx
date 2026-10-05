@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ipc, type Board, type Card, type Token } from "../../core/ipc/ipc";
+import { ipc, type Board, type Card, type Token } from "../../core/ipc";
 import { useOpenProject } from "../../core/useOpenProject";
 import { useProjectStore } from "../../stores/projectStore";
 import { PickerDialog } from "../../components/PickerDialog";
@@ -425,7 +425,7 @@ function CardGridView({
   onAddToBoard,
 }: {
   cards: Card[];
-  cardTypes: import("../../core/ipc/ipc").CardType[];
+  cardTypes: import("../../core/ipc").CardType[];
   selectedCardId: string | null;
   onSelect: (id: string) => void;
   onAddToBoard: (c: Card) => void;

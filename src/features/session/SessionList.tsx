@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ipc, type Session } from "../../core/ipc/ipc";
+import { ipc, type Session } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
 import { EntityListLayout } from "../../components/EntityListLayout";
 import { SessionEditor } from "./SessionEditor";

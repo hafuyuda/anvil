@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ipc, type CardType } from "../../core/ipc/ipc";
+import { ipc, type CardType } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
 import { EntityListLayout } from "../../components/EntityListLayout";
 import { CardTypeEditor } from "./CardTypeEditor";

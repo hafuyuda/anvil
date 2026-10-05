@@ -7,7 +7,7 @@ import {
   type GridConfig,
   type Session,
   type Token,
-} from "../../core/ipc/ipc";
+} from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
 import { BoardCanvas } from "../board/BoardCanvas";
 import { DEFAULT_GRID } from "../board/constants";

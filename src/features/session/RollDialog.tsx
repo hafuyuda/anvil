@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Modal } from "../../components/Modal";
-import type { RollInfo } from "../../core/ipc/ipc";
+import type { RollInfo } from "../../core/ipc";
 
 interface Props {
   onRoll: (roll: RollInfo, note: string) => void;

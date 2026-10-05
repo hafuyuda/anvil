@@ -7,7 +7,7 @@ import type {
   RelationKind,
   Scenario,
   Session,
-} from "../core/ipc/ipc";
+} from "../core/ipc";
 
 export type ModuleKey = "world" | "story" | "board" | "session" | "types";
 export type WorldSubView = "cards" | "graph";

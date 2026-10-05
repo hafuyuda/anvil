@@ -1,5 +1,5 @@
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
-import { ipc } from "./ipc/ipc";
+import { ipc } from "./ipc";
 import { useProjectStore } from "../stores/projectStore";
 import { applyProjectTheme } from "./applyProjectTheme";
 

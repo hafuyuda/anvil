@@ -1,4 +1,4 @@
-import { ipc, type Card, type CardType } from "../../core/ipc/ipc";
+import { ipc, type Card, type CardType } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
 import { useDraft } from "../../hooks/useDraft";
 import { FieldInput } from "../../components/FieldInput";

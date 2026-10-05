@@ -4,7 +4,7 @@ import {
   type Relation,
   type RelationKind,
   type Scenario,
-} from "../../core/ipc/ipc";
+} from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
 import { Modal } from "../../components/Modal";
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import type { Card, CardType, GameEvent } from "../../core/ipc/ipc";
+import type { Card, CardType, GameEvent } from "../../core/ipc";
 import { ChatMessage } from "./ChatMessage";
 
 interface Props {

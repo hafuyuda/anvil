@@ -1,10 +1,5 @@
-import type {
-  Card,
-  CardType,
-  GameEvent,
-  ChatPayload,
-} from "../../core/ipc/ipc";
-import { isChatKind } from "../../core/ipc/ipc";
+import type { Card, CardType, GameEvent, ChatPayload } from "../../core/ipc";
+import { isChatKind } from "../../core/ipc";
 
 interface Props {
   event: GameEvent;

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ipc, type Scenario } from "../../core/ipc/ipc";
+import { ipc, type Scenario } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
 import { EntityListLayout } from "../../components/EntityListLayout";
 import { ScenarioEditor } from "./ScenarioEditor";

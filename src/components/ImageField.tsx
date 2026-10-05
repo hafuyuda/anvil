@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
-import { ipc } from "../core/ipc/ipc";
+import { ipc } from "../core/ipc";
 
 interface Props {
   value: string | null | undefined;

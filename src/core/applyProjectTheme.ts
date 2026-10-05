@@ -1,4 +1,4 @@
-import { ipc } from "./ipc/ipc";
+import { ipc } from "./ipc";
 import { applyTheme, resetTheme } from "../lib/theme";
 
 export async function applyProjectTheme() {

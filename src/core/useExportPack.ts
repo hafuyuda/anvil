@@ -1,5 +1,5 @@
 import { save as saveDialog } from "@tauri-apps/plugin-dialog";
-import { ipc } from "./ipc/ipc";
+import { ipc } from "./ipc";
 import { useProjectStore } from "../stores/projectStore";
 
 export function useExportPack() {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ipc, type Theme } from "../../core/ipc/ipc";
+import { ipc, type Theme } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
 import { applyTheme, resetTheme } from "../../lib/theme";
 import { newId } from "../../lib/id";

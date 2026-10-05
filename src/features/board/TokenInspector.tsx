@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ipc, type Board, type Token } from "../../core/ipc/ipc";
+import { ipc, type Board, type Token } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
 
 interface Props {

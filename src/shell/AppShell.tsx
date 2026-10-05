@@ -10,7 +10,7 @@ import { useKeyboard } from "../hooks/useKeyboard";
 import { useCommands } from "../hooks/useCommands";
 import { useGlobalCommands } from "../features/commands/useGlobalCommands";
 import { CommandPalette } from "../components/CommandPalette";
-import { ipc } from "../core/ipc/ipc";
+import { ipc } from "../core/ipc";
 
 export function AppShell() {
   const projectPath = useProjectStore((s) => s.projectPath);

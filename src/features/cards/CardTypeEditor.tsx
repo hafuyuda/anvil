@@ -4,7 +4,7 @@ import {
   type CardType,
   type FieldDef,
   type FieldType,
-} from "../../core/ipc/ipc";
+} from "../../core/ipc";
 import { useDraft } from "../../hooks/useDraft";
 import { TypeMultiSelect } from "../../components/TypeMultiSelect";
 import { nowMs } from "../../lib/time";

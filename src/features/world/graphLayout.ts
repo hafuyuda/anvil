@@ -7,7 +7,7 @@ import {
   type SimulationLinkDatum,
   type SimulationNodeDatum,
 } from "d3-force";
-import type { Card, Relation } from "../../core/ipc/ipc";
+import type { Card, Relation } from "../../core/ipc";
 
 interface ForceNode extends SimulationNodeDatum {
   id: string;

@@ -1,4 +1,4 @@
-import type { Card, CardType } from "../../core/ipc/ipc";
+import type { Card, CardType } from "../../core/ipc";
 
 export interface YugiohMapping {
   title: string;

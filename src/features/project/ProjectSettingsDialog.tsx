@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ipc, type Manifest } from "../../core/ipc/ipc";
+import { ipc, type Manifest } from "../../core/ipc";
 import { Modal } from "../../components/Modal";
 import { nowMs } from "../../lib/time";
 import { ThemePanel } from "./ThemePanel";

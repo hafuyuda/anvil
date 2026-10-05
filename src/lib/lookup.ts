@@ -1,4 +1,4 @@
-import type { Card, CardType, Relation, RelationKind } from "../core/ipc/ipc";
+import type { Card, CardType, Relation, RelationKind } from "../core/ipc";
 
 export function findCardType(
   cardTypes: CardType[],

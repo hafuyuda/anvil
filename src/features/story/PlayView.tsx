@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ipc, type Scenario, type VariableDef } from "../../core/ipc/ipc";
+import { ipc, type Scenario, type VariableDef } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
 
 interface Props {

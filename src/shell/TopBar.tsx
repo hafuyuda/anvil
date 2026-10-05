@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ipc } from "../core/ipc/ipc";
+import { ipc } from "../core/ipc";
 import { useProjectStore } from "../stores/projectStore";
 import { useOpenProject } from "../core/useOpenProject";
 import { useCreateProject } from "../core/useCreateProject";
