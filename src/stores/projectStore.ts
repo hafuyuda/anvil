@@ -43,6 +43,8 @@ interface ProjectState {
   inspectorCollapsed: boolean;
   selectedCardTypeId: string | null;
   currentSessionId: string | null;
+  selectedCardIds: string[];
+  selectedTokenIds: string[];
 
   setProject: (
     path: string,
@@ -99,6 +101,17 @@ interface ProjectState {
   selectEdge: (id: string | null) => void;
   selectCardType: (id: string | null) => void;
   setCurrentSession: (id: string | null) => void;
+  toggleCardSelection: (id: string) => void;
+  selectCardsRange: (
+    fromId: string,
+    toId: string,
+    orderedIds: string[],
+  ) => void;
+  clearCardSelection: () => void;
+  toggleTokenSelection: (id: string) => void;
+  clearTokenSelection: () => void;
+  setCardSelection: (ids: string[]) => void;
+  setTokenSelection: (ids: string[]) => void;
 }
 
 export const useProjectStore = create<ProjectState>((set, get) => ({
@@ -124,6 +137,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   selectedEdgeId: null,
   selectedCardTypeId: null,
   currentSessionId: null,
+  selectedCardIds: [],
+  selectedTokenIds: [],
 
   setProject: (
     projectPath,
@@ -322,8 +337,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       currentBoardId,
       selectedTokenId: null,
       selectedEdgeId: null,
+      selectedTokenIds: [],
     }),
-
   setActiveModule: (activeModule) => set({ activeModule }),
   setWorldSubView: (worldSubView) => set({ worldSubView }),
   setCardWallView: (cardWallView) => set({ cardWallView }),
@@ -389,17 +404,101 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set((s) => ({
       relationKinds: (s.relationKinds ?? []).filter((k) => k.id !== id),
     })),
+
   selectCard: (selectedCardId) =>
-    set({ selectedCardId, selectedTokenId: null, selectedEdgeId: null }),
+    set({
+      selectedCardId,
+      selectedTokenId: null,
+      selectedEdgeId: null,
+      selectedCardIds: selectedCardId ? [selectedCardId] : [],
+      selectedTokenIds: [],
+    }),
 
   selectToken: (selectedTokenId) =>
-    set({ selectedTokenId, selectedCardId: null, selectedEdgeId: null }),
+    set({
+      selectedTokenId,
+      selectedCardId: null,
+      selectedEdgeId: null,
+      selectedTokenIds: selectedTokenId ? [selectedTokenId] : [],
+      selectedCardIds: [],
+    }),
 
   selectEdge: (selectedEdgeId) =>
-    set({ selectedEdgeId, selectedCardId: null, selectedTokenId: null }),
-
+    set({
+      selectedEdgeId,
+      selectedCardId: null,
+      selectedTokenId: null,
+      selectedCardIds: [],
+      selectedTokenIds: [],
+    }),
   selectCardType: (selectedCardTypeId) => set({ selectedCardTypeId }),
 
   setCurrentSession: (currentSessionId) =>
     set({ currentSessionId, selectedTokenId: null }),
+
+  setCardSelection: (ids) =>
+    set({
+      selectedCardIds: ids,
+      selectedCardId: ids.length > 0 ? ids[ids.length - 1] : null,
+      selectedTokenId: null,
+      selectedEdgeId: null,
+      selectedTokenIds: [],
+    }),
+
+  toggleCardSelection: (id) =>
+    set((s) => {
+      const arr = [...(s.selectedCardIds ?? [])];
+      const idx = arr.indexOf(id);
+      if (idx >= 0) arr.splice(idx, 1);
+      else arr.push(id);
+      return {
+        selectedCardIds: arr,
+        selectedCardId: arr.length > 0 ? arr[arr.length - 1] : null,
+        selectedTokenId: null,
+        selectedEdgeId: null,
+      };
+    }),
+
+  selectCardsRange: (fromId, toId, orderedIds) =>
+    set(() => {
+      const i1 = orderedIds.indexOf(fromId);
+      const i2 = orderedIds.indexOf(toId);
+      if (i1 < 0 || i2 < 0) return {};
+      const [lo, hi] = i1 < i2 ? [i1, i2] : [i2, i1];
+      const arr = orderedIds.slice(lo, hi + 1);
+      return {
+        selectedCardIds: arr,
+        selectedCardId: toId,
+        selectedTokenId: null,
+        selectedEdgeId: null,
+      };
+    }),
+
+  clearCardSelection: () => set({ selectedCardIds: [], selectedCardId: null }),
+
+  setTokenSelection: (ids) =>
+    set({
+      selectedTokenIds: ids,
+      selectedTokenId: ids.length > 0 ? ids[ids.length - 1] : null,
+      selectedCardId: null,
+      selectedEdgeId: null,
+      selectedCardIds: [],
+    }),
+
+  toggleTokenSelection: (id) =>
+    set((s) => {
+      const arr = [...(s.selectedTokenIds ?? [])];
+      const idx = arr.indexOf(id);
+      if (idx >= 0) arr.splice(idx, 1);
+      else arr.push(id);
+      return {
+        selectedTokenIds: arr,
+        selectedTokenId: arr.length > 0 ? arr[arr.length - 1] : null,
+        selectedCardId: null,
+        selectedEdgeId: null,
+      };
+    }),
+
+  clearTokenSelection: () =>
+    set({ selectedTokenIds: [], selectedTokenId: null }),
 }));

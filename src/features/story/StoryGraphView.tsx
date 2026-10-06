@@ -14,6 +14,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import { ipc, type Card, type Relation, type Scenario } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
+import { GraphNode } from "../world/GraphNode";
 import { newId } from "../../lib/id";
 import { nowMs } from "../../lib/time";
 
@@ -25,11 +26,11 @@ export function StoryGraphView({ scenario }: Props) {
   const cards = useProjectStore((s) => s.cards) ?? [];
   const relations = useProjectStore((s) => s.relations) ?? [];
   const relationKinds = useProjectStore((s) => s.relationKinds) ?? [];
-  const cardTypes = useProjectStore((s) => s.cardTypes) ?? [];
   const upsertScenario = useProjectStore((s) => s.upsertScenario);
   const upsertRelation = useProjectStore((s) => s.upsertRelation);
   const removeRelation = useProjectStore((s) => s.removeRelation);
   const selectCard = useProjectStore((s) => s.selectCard);
+  const selectEdge = useProjectStore((s) => s.selectEdge);
 
   const scenarioNodes = useMemo(
     () =>
@@ -54,7 +55,7 @@ export function StoryGraphView({ scenario }: Props) {
   }, [relations, scenario.node_ids, scenario.edge_kinds, scenario.id]);
 
   const initialNodes: Node[] = useMemo(() => {
-    const radius = Math.max(200, scenarioNodes.length * 30);
+    const radius = Math.max(280, scenarioNodes.length * 40);
     return scenarioNodes.map((c, i) => {
       const stored = scenario.node_positions[c.id];
       const angle = (2 * Math.PI * i) / Math.max(1, scenarioNodes.length);
@@ -64,25 +65,14 @@ export function StoryGraphView({ scenario }: Props) {
             x: radius * Math.cos(angle),
             y: radius * Math.sin(angle),
           };
-      const cardType = cardTypes.find((t) => t.id === c.type_id);
-      const color = cardType?.color ?? "#888888";
       return {
         id: c.id,
+        type: "card",
         position: pos,
-        data: { label: c.name },
-        style: {
-          padding: 8,
-          borderRadius: 4,
-          border: `2px solid ${color}`,
-          background: `${color}22`,
-          fontSize: 12,
-          width: 140,
-          textAlign: "center" as const,
-          color: "var(--fg-primary)",
-        },
+        data: { dim: false },
       };
     });
-  }, [scenarioNodes, scenario.node_positions, cardTypes]);
+  }, [scenarioNodes, scenario.node_positions]);
 
   const initialEdges: Edge[] = useMemo(() => {
     return scenarioEdges.map((r) => {
@@ -99,8 +89,8 @@ export function StoryGraphView({ scenario }: Props) {
         style: { stroke: color },
         labelStyle: { fontSize: 10, fill: color },
         labelBgStyle: { fill: "var(--bg-panel)" },
-        labelBgPadding: [4, 2] as [number, number],
-        labelBgBorderRadius: 2,
+        labelBgPadding: [6, 3] as [number, number],
+        labelBgBorderRadius: 3,
       };
     });
   }, [scenarioEdges, relationKinds]);
@@ -154,7 +144,6 @@ export function StoryGraphView({ scenario }: Props) {
       label: null,
       meta: {
         condition: "",
-        // ★ 关键：标记这条边属于当前剧情
         scenario_id: scenario.id,
       },
       created_at: now,
@@ -163,14 +152,10 @@ export function StoryGraphView({ scenario }: Props) {
     upsertRelation(relation);
   }
 
-  const selectEdge = useProjectStore((s) => s.selectEdge);
-  
-  
   function onEdgeClick(_: unknown, edge: Edge) {
     selectEdge(edge.id);
   }
-  
-  
+
   async function onEdgesDelete(deleted: Edge[]) {
     for (const e of deleted) {
       const relation = relations.find((r) => r.id === e.id);
@@ -179,6 +164,8 @@ export function StoryGraphView({ scenario }: Props) {
       removeRelation(relation.id);
     }
   }
+
+  const nodeTypes = useMemo(() => ({ card: GraphNode }), []);
 
   if (scenario.node_ids.length === 0) {
     return (
@@ -192,6 +179,7 @@ export function StoryGraphView({ scenario }: Props) {
           fontSize: 13,
           textAlign: "center",
           padding: 24,
+          lineHeight: 1.8,
         }}
       >
         还没有节点。去「设置」里勾选要放进剧情的卡牌。
@@ -214,6 +202,7 @@ export function StoryGraphView({ scenario }: Props) {
       <ReactFlow
         nodes={nodes}
         edges={edges}
+        nodeTypes={nodeTypes}
         onNodesChange={onNodesChange}
         onNodeDragStop={onNodeDragStop}
         onConnect={onConnect}
@@ -221,7 +210,7 @@ export function StoryGraphView({ scenario }: Props) {
         onEdgesDelete={onEdgesDelete}
         onNodeClick={(_, node) => selectCard(node.id)}
         fitView
-        fitViewOptions={{ padding: 0.15 }}
+        fitViewOptions={{ padding: 0.25 }}
         proOptions={{ hideAttribution: true }}
       >
         <Background color="var(--border-subtle)" gap={20} />

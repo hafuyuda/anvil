@@ -20,6 +20,11 @@ export function CardWall() {
     addCard,
     selectCard,
     selectedCardId,
+    selectedCardIds,
+    setCardSelection,
+    toggleCardSelection,
+    selectCardsRange,
+    clearCardSelection,
     upsertBoard,
     cardWallView,
     setCardWallView,
@@ -33,9 +38,8 @@ export function CardWall() {
   const [sortAsc, setSortAsc] = useState(false);
 
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [pendingCards, setPendingCards] = useState<Card[]>([]);
   const [typePickerOpen, setTypePickerOpen] = useState(false);
-
-  const [pendingCard, setPendingCard] = useState<Card | null>(null);
 
   useEffect(() => {
     const q = query.trim();
@@ -122,32 +126,37 @@ export function CardWall() {
     }
   }
 
-  async function createTokenInBoard(board: Board, card: Card) {
-    const tokens = board.tokens ?? [];
-    const count = tokens.length;
-    const gx = 100 + (count % 8) * 100;
-    const gy = 100 + Math.floor(count / 8) * 100;
+  async function createTokensInBoard(board: Board, cardList: Card[]) {
+    const tokens = [...(board.tokens ?? [])];
+    const startIdx = tokens.length;
 
-    const newToken: Token = {
-      id: newId(),
-      card_id: card.id,
-      name_override: null,
-      value_overrides: {},
-      x: gx,
-      y: gy,
-      w: 80,
-      h: 80,
-      rotation: 0,
-      layer: 0,
-      visible: true,
-    };
+    for (let i = 0; i < cardList.length; i++) {
+      const card = cardList[i];
+      const n = startIdx + i;
+      const gx = 100 + (n % 8) * 180;
+      const gy = 100 + Math.floor(n / 8) * 240;
+
+      const newToken: Token = {
+        id: newId(),
+        card_id: card.id,
+        name_override: null,
+        value_overrides: {},
+        x: gx,
+        y: gy,
+        w: 140,
+        h: 205,
+        rotation: 0,
+        layer: n,
+        visible: true,
+      };
+      tokens.push(newToken);
+    }
 
     const next: Board = {
       ...board,
-      tokens: [...tokens, newToken],
+      tokens,
       updated_at: nowMs(),
     };
-
     try {
       await ipc.upsertBoard(next);
       upsertBoard(next);
@@ -156,17 +165,37 @@ export function CardWall() {
     }
   }
 
-  function handleAddToBoard(card: Card) {
+  function handleAddToBoard(cardList: Card[]) {
     if (boards.length === 0) {
       alert("请先在「棋盘」里创建一个棋盘");
       return;
     }
     if (boards.length === 1) {
-      createTokenInBoard(boards[0], card);
+      createTokensInBoard(boards[0], cardList);
       return;
     }
-    setPendingCard(card);
+    setPendingCards(cardList);
     setPickerOpen(true);
+  }
+
+  async function handleBulkDelete() {
+    const ids = selectedCardIds ?? [];
+    if (ids.length === 0) return;
+    if (!confirm(`删除选中的 ${ids.length} 张卡牌？此操作不可撤销。`)) return;
+    try {
+      for (const id of ids) {
+        await ipc.deleteCard(id);
+      }
+      // 一次更新 store
+      const remaining = (cards ?? []).filter((c) => !ids.includes(c.id));
+      useProjectStore.setState({
+        cards: remaining,
+        selectedCardIds: [],
+        selectedCardId: null,
+      });
+    } catch (e) {
+      alert("删除失败: " + e);
+    }
   }
 
   const typeName = (typeId: string) =>
@@ -208,6 +237,31 @@ export function CardWall() {
       setSortKey(k);
       setSortAsc(false);
     }
+  }
+
+  function handleCardClick(card: Card, e: React.MouseEvent) {
+    if (e.ctrlKey || e.metaKey) {
+      toggleCardSelection(card.id);
+      return;
+    }
+    if (e.shiftKey) {
+      const anchor = selectedCardId;
+      if (anchor) {
+        selectCardsRange(
+          anchor,
+          card.id,
+          visible.map((c) => c.id),
+        );
+        return;
+      }
+    }
+    selectCard(card.id);
+  }
+
+  const selectionCount = (selectedCardIds ?? []).length;
+
+  function selectAllVisible() {
+    setCardSelection(visible.map((c) => c.id));
   }
 
   const isEmpty = cards.length === 0 && cardTypes.length === 0;
@@ -362,6 +416,60 @@ export function CardWall() {
         </button>
       </Toolbar>
 
+      {/* 批量操作栏 */}
+      {selectionCount > 0 && (
+        <div
+          style={{
+            display: "flex",
+            gap: 8,
+            alignItems: "center",
+            padding: "6px 12px",
+            background: "var(--bg-raised)",
+            borderBottom: "1px solid var(--border-subtle)",
+            fontSize: 12,
+            flexShrink: 0,
+          }}
+        >
+          <span style={{ color: "var(--accent-gold)", fontWeight: 600 }}>
+            已选 {selectionCount} 张
+          </span>
+          <button
+            className="btn"
+            onClick={selectAllVisible}
+            style={{ fontSize: 11 }}
+          >
+            全选可见（{visible.length}）
+          </button>
+          <button
+            className="btn"
+            onClick={clearCardSelection}
+            style={{ fontSize: 11 }}
+          >
+            取消选择
+          </button>
+          <div style={{ flex: 1 }} />
+          <button
+            className="btn"
+            onClick={() => {
+              const cardsToAdd = (cards ?? []).filter((c) =>
+                selectedCardIds.includes(c.id),
+              );
+              handleAddToBoard(cardsToAdd);
+            }}
+            style={{ fontSize: 11 }}
+          >
+            → 添加到棋盘
+          </button>
+          <button
+            className="btn btn-danger"
+            onClick={handleBulkDelete}
+            style={{ fontSize: 11 }}
+          >
+            删除
+          </button>
+        </div>
+      )}
+
       <div
         style={{
           padding: "6px 16px",
@@ -385,6 +493,12 @@ export function CardWall() {
           overflow: "auto",
           padding: "0 16px 16px",
         }}
+        onClick={(e) => {
+          // 点空白区域取消选择
+          if (e.target === e.currentTarget) {
+            clearCardSelection();
+          }
+        }}
       >
         {visible.length === 0 ? (
           <p style={{ color: "var(--fg-muted)", fontSize: 12 }}>
@@ -394,32 +508,32 @@ export function CardWall() {
           <CardGridView
             cards={visible}
             cardTypes={cardTypes}
-            selectedCardId={selectedCardId}
-            onSelect={selectCard}
-            onAddToBoard={handleAddToBoard}
+            selectedCardIds={selectedCardIds}
+            onCardClick={handleCardClick}
+            onAddToBoard={(c) => handleAddToBoard([c])}
           />
         ) : (
           <CardListView
             cards={visible}
             typeName={typeName}
-            selectedCardId={selectedCardId}
-            onSelect={selectCard}
-            onAddToBoard={handleAddToBoard}
+            selectedCardIds={selectedCardIds}
+            onCardClick={handleCardClick}
+            onAddToBoard={(c) => handleAddToBoard([c])}
           />
         )}
       </div>
 
-      {pickerOpen && pendingCard && (
+      {pickerOpen && pendingCards.length > 0 && (
         <PickerDialog
-          title="选择棋盘"
+          title={`添加 ${pendingCards.length} 张卡到棋盘`}
           options={boards.map((b) => ({ value: b.id, label: b.name }))}
           onPick={(id) => {
             const b = boards.find((x) => x.id === id);
-            if (b) createTokenInBoard(b, pendingCard);
+            if (b) createTokensInBoard(b, pendingCards);
           }}
           onClose={() => {
             setPickerOpen(false);
-            setPendingCard(null);
+            setPendingCards([]);
           }}
         />
       )}
@@ -441,14 +555,14 @@ export function CardWall() {
 function CardGridView({
   cards,
   cardTypes,
-  selectedCardId,
-  onSelect,
+  selectedCardIds,
+  onCardClick,
   onAddToBoard,
 }: {
   cards: Card[];
   cardTypes: import("../../core/ipc").CardType[];
-  selectedCardId: string | null;
-  onSelect: (id: string) => void;
+  selectedCardIds: string[];
+  onCardClick: (card: Card, e: React.MouseEvent) => void;
   onAddToBoard: (c: Card) => void;
 }) {
   return (
@@ -466,7 +580,7 @@ function CardGridView({
           return (
             <div
               key={c.id}
-              onClick={() => onSelect(c.id)}
+              onClick={(e) => onCardClick(c, e)}
               style={{
                 width: 190,
                 height: 280,
@@ -486,14 +600,18 @@ function CardGridView({
           );
         }
 
+        const selected = selectedCardIds.includes(c.id);
         return (
-          <div key={c.id} style={{ position: "relative" }}>
+          <div
+            key={c.id}
+            style={{ position: "relative" }}
+            onClick={(e) => onCardClick(c, e)}
+          >
             <CardFrame
               card={c}
               cardType={ct}
               size="medium"
-              selected={selectedCardId === c.id}
-              onClick={() => onSelect(c.id)}
+              selected={selected}
             />
             <button
               className="btn btn-icon"
@@ -525,24 +643,24 @@ function CardGridView({
 function CardListView({
   cards,
   typeName,
-  selectedCardId,
-  onSelect,
+  selectedCardIds,
+  onCardClick,
   onAddToBoard,
 }: {
   cards: Card[];
   typeName: (id: string) => string;
-  selectedCardId: string | null;
-  onSelect: (id: string) => void;
+  selectedCardIds: string[];
+  onCardClick: (card: Card, e: React.MouseEvent) => void;
   onAddToBoard: (c: Card) => void;
 }) {
   return (
     <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
       {cards.map((c) => {
-        const active = selectedCardId === c.id;
+        const active = selectedCardIds.includes(c.id);
         return (
           <li
             key={c.id}
-            onClick={() => onSelect(c.id)}
+            onClick={(e) => onCardClick(c, e)}
             style={{
               cursor: "pointer",
               padding: "6px 10px",

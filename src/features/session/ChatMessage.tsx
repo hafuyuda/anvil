@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { Card, CardType, GameEvent, ChatPayload } from "../../core/ipc";
 import { isChatKind } from "../../core/ipc";
 
@@ -5,13 +6,82 @@ interface Props {
   event: GameEvent;
   cards: Card[];
   cardTypes: CardType[];
+  onEdit?: (event: GameEvent) => void;
+  onDelete?: (event: GameEvent) => void;
 }
 
-export function ChatMessage({ event, cards, cardTypes }: Props) {
-  if (!isChatKind(event.kind)) {
-    return <SystemLine event={event} />;
-  }
+export function ChatMessage({
+  event,
+  cards,
+  cardTypes,
+  onEdit,
+  onDelete,
+}: Props) {
+  const [hover, setHover] = useState(false);
 
+  return (
+    <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{ position: "relative" }}
+    >
+      {/* 操作按钮 */}
+      {(onEdit || onDelete) && hover && (
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            right: 0,
+            display: "flex",
+            gap: 4,
+            zIndex: 10,
+          }}
+        >
+          {onEdit && (
+            <button
+              className="btn"
+              onClick={() => onEdit(event)}
+              style={{
+                fontSize: 10,
+                padding: "1px 6px",
+                background: "var(--bg-raised)",
+              }}
+              title="编辑"
+            >
+              编辑
+            </button>
+          )}
+          {onDelete && (
+            <button
+              className="btn btn-danger"
+              onClick={() => onDelete(event)}
+              style={{ fontSize: 10, padding: "1px 6px" }}
+              title="删除"
+            >
+              删除
+            </button>
+          )}
+        </div>
+      )}
+
+      {isChatKind(event.kind) ? (
+        <ChatBody event={event} cards={cards} cardTypes={cardTypes} />
+      ) : (
+        <SystemLine event={event} />
+      )}
+    </div>
+  );
+}
+
+function ChatBody({
+  event,
+  cards,
+  cardTypes,
+}: {
+  event: GameEvent;
+  cards: Card[];
+  cardTypes: CardType[];
+}) {
   const payload = event.payload as ChatPayload;
   const authorName = payload.author_name ?? "未知";
   const authorCard = payload.author_card_id

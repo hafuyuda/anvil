@@ -67,6 +67,8 @@ pub fn run() {
             delete_session,
             list_events,
             append_event,
+            update_event,
+            delete_event,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

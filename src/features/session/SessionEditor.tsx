@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Board,
   ipc,
-  type Board,
   type ChatEventKind,
   type ChatPayload,
   type GameEvent,
@@ -18,6 +18,7 @@ import { SaveInput } from "../../components/SaveInput";
 import { ChatLog } from "./ChatLog";
 import { ChatInput } from "./ChatInput";
 import { PartyPanel } from "./PartyPanel";
+import { EventEditorDialog } from "./EventEditorDialog";
 
 interface Props {
   session: Session;
@@ -28,13 +29,18 @@ export function SessionEditor({ session }: Props) {
   const cards = useProjectStore((s) => s.cards) ?? [];
   const cardTypes = useProjectStore((s) => s.cardTypes) ?? [];
   const upsertSession = useProjectStore((s) => s.upsertSession);
+  const setCurrentSession = useProjectStore((s) => s.setCurrentSession);
   const selectedTokenId = useProjectStore((s) => s.selectedTokenId);
   const selectToken = useProjectStore((s) => s.selectToken);
 
   const [zoom, setZoom] = useState(1);
   const [events, setEvents] = useState<GameEvent[]>([]);
+  const [chatHeight, setChatHeight] = useState(340);
+  const [resizingChat, setResizingChat] = useState(false);
+
   const sessionRef = useRef(session);
   sessionRef.current = session;
+  const sessionContainerRef = useRef<HTMLDivElement | null>(null);
 
   const board = session.board_id
     ? (boards.find((b) => b.id === session.board_id) ?? null)
@@ -55,26 +61,64 @@ export function SessionEditor({ session }: Props) {
     created_at: session.created_at,
     updated_at: session.updated_at,
   };
-  const setCurrentSession = useProjectStore((s) => s.setCurrentSession);
 
+  const [editingEvent, setEditingEvent] = useState<GameEvent | null>(null);
+
+  // 切换会话时重置缩放和聊天区高度
   useEffect(() => {
     setZoom(1);
+    setChatHeight(340);
   }, [session.id]);
 
+  // 加载事件
   useEffect(() => {
     ipc
       .listEvents(session.id)
       .then(setEvents)
       .catch(() => setEvents([]));
+  }, [session.id]);
+
+  // 登记当前会话（供检查器使用）
+  useEffect(() => {
     setCurrentSession(session.id);
     return () => {
       setCurrentSession(null);
     };
   }, [session.id, setCurrentSession]);
 
+  // 聊天区高度拖拽
+  useEffect(() => {
+    if (!resizingChat) return;
+
+    function onMove(e: MouseEvent) {
+      const rect = sessionContainerRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const newHeight = rect.bottom - e.clientY;
+      setChatHeight(Math.max(160, Math.min(rect.height - 200, newHeight)));
+    }
+    function onUp() {
+      setResizingChat(false);
+    }
+
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    document.body.style.cursor = "row-resize";
+    document.body.style.userSelect = "none";
+
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+  }, [resizingChat]);
+
+  // 参与角色（KP 永远在第一位）
   const authors = useMemo(() => {
+    const out: { card_id: string | null; name: string }[] = [
+      { card_id: null, name: "KP" },
+    ];
     const seen = new Set<string>();
-    const out: { card_id: string | null; name: string }[] = [];
     for (const t of session.tokens) {
       if (!t.card_id || seen.has(t.card_id)) continue;
       seen.add(t.card_id);
@@ -145,8 +189,39 @@ export function SessionEditor({ session }: Props) {
     await logEvent(kind, payload);
   }
 
+  async function handleEditEvent(event: GameEvent) {
+    setEditingEvent(event);
+  }
+
+  async function handleSaveEvent(
+    payload: unknown,
+    note?: string,
+  ): Promise<void> {
+    if (!editingEvent) return;
+    try {
+      await ipc.updateEvent(session.id, editingEvent.seq, payload, note);
+      const updated = await ipc.listEvents(session.id);
+      setEvents(updated);
+    } catch (e) {
+      alert("保存失败: " + e);
+      throw e;
+    }
+  }
+
+  async function handleDeleteEvent(event: GameEvent) {
+    if (!confirm(`删除这条消息？#${event.seq}`)) return;
+    try {
+      await ipc.deleteEvent(session.id, event.seq);
+      const updated = await ipc.listEvents(session.id);
+      setEvents(updated);
+    } catch (e) {
+      alert("删除失败: " + e);
+    }
+  }
+
   return (
     <div
+      ref={sessionContainerRef}
       style={{
         flex: 1,
         minHeight: 0,
@@ -203,7 +278,7 @@ export function SessionEditor({ session }: Props) {
         </label>
       </div>
 
-      {/* 中部：舞台 + 角色面板 */}
+      {/* 中部：舞台 + 角色列表 */}
       <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
         <div style={{ flex: 1, minWidth: 0, minHeight: 0 }}>
           {board ? (
@@ -241,10 +316,33 @@ export function SessionEditor({ session }: Props) {
         />
       </div>
 
+      {/* 拖拽条 */}
+      <div
+        onMouseDown={() => setResizingChat(true)}
+        style={{
+          height: 4,
+          cursor: "row-resize",
+          background: resizingChat ? "var(--accent-gold)" : "transparent",
+          flexShrink: 0,
+          transition: "background 0.12s",
+        }}
+        onMouseEnter={(e) => {
+          if (!resizingChat) {
+            (e.currentTarget as HTMLElement).style.background =
+              "var(--border-strong)";
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (!resizingChat) {
+            (e.currentTarget as HTMLElement).style.background = "transparent";
+          }
+        }}
+      />
+
       {/* 底部：对话流 + 输入 */}
       <div
         style={{
-          height: 340,
+          height: chatHeight,
           borderTop: "1px solid var(--border-subtle)",
           display: "flex",
           flexDirection: "column",
@@ -262,6 +360,7 @@ export function SessionEditor({ session }: Props) {
             justifyContent: "space-between",
             textTransform: "uppercase",
             letterSpacing: 1,
+            flexShrink: 0,
           }}
         >
           <span>对话记录</span>
@@ -270,7 +369,13 @@ export function SessionEditor({ session }: Props) {
           </span>
         </div>
 
-        <ChatLog events={events} cards={cards} cardTypes={cardTypes} />
+        <ChatLog
+          events={events}
+          cards={cards}
+          cardTypes={cardTypes}
+          onEdit={handleEditEvent}
+          onDelete={handleDeleteEvent}
+        />
 
         <ChatInput
           authors={authors}
@@ -278,6 +383,13 @@ export function SessionEditor({ session }: Props) {
           onSend={handleSend}
         />
       </div>
+      {editingEvent && (
+        <EventEditorDialog
+          event={editingEvent}
+          onSave={handleSaveEvent}
+          onClose={() => setEditingEvent(null)}
+        />
+      )}
     </div>
   );
 }

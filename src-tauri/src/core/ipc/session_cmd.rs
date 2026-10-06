@@ -50,3 +50,24 @@ pub fn append_event(
     };
     p.append_event(&session_id, ev).map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub fn update_event(
+    state: State<AppState>,
+    session_id: String,
+    seq: u64,
+    payload: serde_json::Value,
+    note: Option<String>,
+) -> Result<(), String> {
+    let guard = state.project.lock().unwrap();
+    let p = guard.as_ref().ok_or("no project open")?;
+    p.update_event(&session_id, seq, payload, note)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn delete_event(state: State<AppState>, session_id: String, seq: u64) -> Result<(), String> {
+    let guard = state.project.lock().unwrap();
+    let p = guard.as_ref().ok_or("no project open")?;
+    p.delete_event(&session_id, seq).map_err(|e| e.to_string())
+}

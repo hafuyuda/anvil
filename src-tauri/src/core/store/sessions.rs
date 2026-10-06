@@ -100,4 +100,56 @@ impl Project {
         writeln!(f, "{line}")?;
         Ok(())
     }
+
+    pub fn update_event(
+        &self,
+        session_id: &str,
+        seq: u64,
+        payload: serde_json::Value,
+        note: Option<String>,
+    ) -> anyhow::Result<()> {
+        let mut events = self.load_events(session_id)?;
+        let mut found = false;
+        for ev in events.iter_mut() {
+            if ev.seq == seq {
+                ev.payload = payload.clone();
+                ev.note = note.clone();
+                found = true;
+                break;
+            }
+        }
+        if !found {
+            return Err(anyhow::anyhow!("event seq {seq} not found"));
+        }
+        self.save_events(session_id, &events)?;
+        Ok(())
+    }
+
+    pub fn delete_event(&self, session_id: &str, seq: u64) -> anyhow::Result<()> {
+        let mut events = self.load_events(session_id)?;
+        let before = events.len();
+        events.retain(|e| e.seq != seq);
+        if events.len() == before {
+            return Ok(());
+        }
+        self.save_events(session_id, &events)?;
+        Ok(())
+    }
+
+    fn save_events(
+        &self,
+        session_id: &str,
+        events: &[crate::core::model::session::Event],
+    ) -> anyhow::Result<()> {
+        let dir = self.session_dir(session_id);
+        std::fs::create_dir_all(&dir)?;
+        let path = self.events_path(session_id);
+        let mut buf = String::new();
+        for ev in events {
+            buf.push_str(&serde_json::to_string(ev)?);
+            buf.push('\n');
+        }
+        crate::core::store::atomic::write_atomic(&path, buf.as_bytes())?;
+        Ok(())
+    }
 }

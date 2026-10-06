@@ -115,4 +115,13 @@ export const ipc = {
   listImages: () => invoke<string[]>("list_images"),
   readImageDataUrl: (relative: string) =>
     invoke<string>("read_image_data_url", { relative }),
+
+  updateEvent: (
+    sessionId: string,
+    seq: number,
+    payload: unknown,
+    note?: string,
+  ) => invoke<void>("update_event", { sessionId, seq, payload, note }),
+  deleteEvent: (sessionId: string, seq: number) =>
+    invoke<void>("delete_event", { sessionId, seq }),
 };

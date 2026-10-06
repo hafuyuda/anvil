@@ -16,6 +16,8 @@ interface Props<T extends Item> {
   onDelete?: (item: T) => void;
   emptyHint: string;
   listWidth?: number;
+  /** 列表头部的额外控件（如排序下拉） */
+  listControls?: ReactNode;
 }
 
 export function EntityListLayout<T extends Item>({
@@ -30,6 +32,7 @@ export function EntityListLayout<T extends Item>({
   onDelete,
   emptyHint,
   listWidth = 200,
+  listControls,
 }: Props<T>) {
   const selected = items.find((i) => i.id === selectedId) ?? null;
   const [hoverId, setHoverId] = useState<string | null>(null);
@@ -77,6 +80,7 @@ export function EntityListLayout<T extends Item>({
               {listLabel}（{items.length}）
             </div>
           )}
+          {listControls}
         </div>
 
         <div style={{ flex: 1, overflowY: "auto", padding: 4 }}>

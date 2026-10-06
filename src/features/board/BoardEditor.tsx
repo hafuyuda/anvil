@@ -156,6 +156,9 @@ export function BoardEditor({ board }: Props) {
   const cards = useProjectStore((s) => s.cards) ?? [];
   const cardTypes = useProjectStore((s) => s.cardTypes) ?? [];
 
+  const selectedTokenIds = useProjectStore((s) => s.selectedTokenIds) ?? [];
+  const clearTokenSelection = useProjectStore((s) => s.clearTokenSelection);
+
   return (
     <div
       style={{
@@ -386,6 +389,57 @@ export function BoardEditor({ board }: Props) {
           }}
           onClose={() => setCardPickerOpen(false)}
         />
+      )}
+
+      {selectedTokenIds.length > 0 && (
+        <div
+          style={{
+            display: "flex",
+            gap: 6,
+            alignItems: "center",
+            padding: "4px 8px",
+            background: "var(--bg-raised)",
+            borderRadius: "var(--radius-md)",
+            marginLeft: "auto",
+          }}
+        >
+          <span
+            style={{
+              fontSize: 11,
+              color: "var(--accent-gold)",
+              fontWeight: 600,
+            }}
+          >
+            已选 {selectedTokenIds.length}
+          </span>
+          <button
+            className="btn"
+            onClick={clearTokenSelection}
+            style={{ fontSize: 11, padding: "2px 8px" }}
+          >
+            取消
+          </button>
+          <button
+            className="btn btn-danger"
+            onClick={async () => {
+              if (!confirm(`删除选中的 ${selectedTokenIds.length} 个 Token？`))
+                return;
+              const next: Board = {
+                ...normalized,
+                tokens: normalized.tokens.filter(
+                  (t) => !selectedTokenIds.includes(t.id),
+                ),
+                updated_at: nowMs(),
+              };
+              await ipc.upsertBoard(next);
+              upsertBoard(next);
+              clearTokenSelection();
+            }}
+            style={{ fontSize: 11, padding: "2px 8px" }}
+          >
+            删除
+          </button>
+        </div>
       )}
     </div>
   );

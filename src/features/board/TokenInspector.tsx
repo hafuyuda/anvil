@@ -10,6 +10,13 @@ interface Props {
   onClose: () => void;
 }
 
+function normalizeForSlider(deg: number): number {
+  let d = deg % 360;
+  if (d > 180) d -= 360;
+  if (d < -180) d += 360;
+  return d;
+}
+
 export function TokenInspector({ token, onSave, onDelete, onClose }: Props) {
   const cards = useProjectStore((s) => s.cards) ?? [];
   const cardTypes = useProjectStore((s) => s.cardTypes) ?? [];
@@ -30,6 +37,7 @@ export function TokenInspector({ token, onSave, onDelete, onClose }: Props) {
     token.name_override,
     token.w,
     token.h,
+    token.rotation,
     token.layer,
     token.visible,
   ]);
@@ -173,6 +181,75 @@ export function TokenInspector({ token, onSave, onDelete, onClose }: Props) {
               value={String(draft.y)}
               onChange={(v) => update({ y: Number(v) || 0 })}
             />
+          </div>
+
+          {/* 旋转 */}
+          <div>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 4,
+              }}
+            >
+              <span
+                style={{
+                  color: "var(--fg-muted)",
+                  fontSize: 11,
+                  textTransform: "uppercase",
+                  letterSpacing: 0.5,
+                }}
+              >
+                旋转
+              </span>
+              <button
+                className="btn btn-ghost"
+                onClick={() => update({ rotation: 0 })}
+                style={{ fontSize: 10, padding: "1px 6px" }}
+                title="重置为 0°"
+              >
+                重置
+              </button>
+            </div>
+            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              <input
+                type="range"
+                min={-180}
+                max={180}
+                step={1}
+                value={normalizeForSlider(draft.rotation)}
+                onChange={(e) => update({ rotation: Number(e.target.value) })}
+                style={{
+                  flex: 1,
+                  accentColor: "var(--accent-gold)",
+                }}
+              />
+              <input
+                className="input"
+                type="number"
+                value={Math.round(draft.rotation)}
+                onChange={(e) =>
+                  update({ rotation: Number(e.target.value) || 0 })
+                }
+                style={{
+                  width: 64,
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 12,
+                }}
+              />
+              <span style={{ fontSize: 11, color: "var(--fg-muted)" }}>°</span>
+            </div>
+            <div
+              style={{
+                fontSize: 10,
+                color: "var(--fg-muted)",
+                marginTop: 4,
+                lineHeight: 1.5,
+              }}
+            >
+              棋盘上按住 Alt 拖拽 token 可旋转，按住 Shift 吸附 15°
+            </div>
           </div>
 
           <LabeledInput

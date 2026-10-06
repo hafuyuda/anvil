@@ -25,32 +25,36 @@ const DEFAULT_TOKEN_H = 205;
 const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 4;
 
+interface DragState {
+  primaryTokenId: string;
+  // 起始时所有选中 token 的初始位置
+  initialPositions: Record<string, { x: number; y: number }>;
+  offsetX: number;
+  offsetY: number;
+  moved: boolean;
+}
+
 export function BoardCanvas({ board, zoom, onZoomChange, onChange }: Props) {
   const cards = useProjectStore((s) => s.cards) ?? [];
   const cardTypes = useProjectStore((s) => s.cardTypes) ?? [];
-  const selectedTokenId = useProjectStore((s) => s.selectedTokenId);
+  const selectedTokenIds = useProjectStore((s) => s.selectedTokenIds) ?? [];
   const selectToken = useProjectStore((s) => s.selectToken);
+  const toggleTokenSelection = useProjectStore((s) => s.toggleTokenSelection);
+  const clearTokenSelection = useProjectStore((s) => s.clearTokenSelection);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const [dragging, setDragging] = useState<{
-    tokenId: string;
-    offsetX: number;
-    offsetY: number;
-    moved: boolean;
-  } | null>(null);
+  const [dragging, setDragging] = useState<DragState | null>(null);
   const [localTokens, setLocalTokens] = useState<Token[] | null>(null);
 
   const grid = board.grid ?? DEFAULT_GRID;
   const boardTokens = board.tokens ?? [];
   const bgUrl = useImageUrl(board.background ?? null);
 
-  // 用 ref 保存最新的 zoom，滚轮监听只挂一次
   const zoomRef = useRef(zoom);
   zoomRef.current = zoom;
   const onZoomRef = useRef(onZoomChange);
   onZoomRef.current = onZoomChange;
 
-  // 外部 board.tokens 变化时同步
   useEffect(() => {
     if (dragging || !localTokens) return;
     const same =
@@ -94,8 +98,8 @@ export function BoardCanvas({ board, zoom, onZoomChange, onChange }: Props) {
       });
     }
 
-    el.addEventListener("wheel", handleWheel, { passive: false });
-    return () => el.removeEventListener("wheel", handleWheel);
+    container.addEventListener("wheel", handleWheel, { passive: false });
+    return () => container.removeEventListener("wheel", handleWheel);
   }, []);
 
   function snap(v: number) {
@@ -120,24 +124,47 @@ export function BoardCanvas({ board, zoom, onZoomChange, onChange }: Props) {
   function onTokenPointerDown(e: React.PointerEvent, t: Token) {
     if (e.button !== 0) return;
     e.stopPropagation();
+
     const pt = getBoardPoint(e);
     if (!pt) return;
 
+    const isMulti = e.ctrlKey || e.metaKey || e.shiftKey;
+
+    if (isMulti) {
+      toggleTokenSelection(t.id);
+      return;
+    }
+
+    // 如果点在未选中的 token 上 → 单选
+    if (!selectedTokenIds.includes(t.id)) {
+      selectToken(t.id);
+    }
+
+    // 确定拖动集合
+    const dragIds = selectedTokenIds.includes(t.id) ? selectedTokenIds : [t.id];
+
+    const initialPositions: Record<string, { x: number; y: number }> = {};
+    for (const tid of dragIds) {
+      const token = boardTokens.find((x) => x.id === tid);
+      if (token) initialPositions[tid] = { x: token.x, y: token.y };
+    }
+
     setDragging({
-      tokenId: t.id,
+      primaryTokenId: t.id,
+      initialPositions,
       offsetX: pt.x - t.x,
       offsetY: pt.y - t.y,
       moved: false,
     });
 
-    // 提到最前
+    // 把所有选中的提到最前
     const maxLayer = boardTokens.reduce((m, x) => Math.max(m, x.layer), 0);
+    const idsSet = new Set(dragIds);
     const next = boardTokens.map((x) =>
-      x.id === t.id ? { ...x, layer: maxLayer + 1 } : x,
+      idsSet.has(x.id) ? { ...x, layer: maxLayer + 1 } : x,
     );
     setLocalTokens(next);
 
-    selectToken(t.id);
     (e.target as Element).setPointerCapture(e.pointerId);
   }
 
@@ -146,13 +173,22 @@ export function BoardCanvas({ board, zoom, onZoomChange, onChange }: Props) {
     const pt = getBoardPoint(e);
     if (!pt) return;
 
-    const x = snap(pt.x - dragging.offsetX);
-    const y = snap(pt.y - dragging.offsetY);
+    const primary = dragging.initialPositions[dragging.primaryTokenId];
+    if (!primary) return;
+
+    const nx = snap(pt.x - dragging.offsetX);
+    const ny = snap(pt.y - dragging.offsetY);
+    const dx = nx - primary.x;
+    const dy = ny - primary.y;
 
     const current = localTokens ?? boardTokens;
-    const next = current.map((t) =>
-      t.id === dragging.tokenId ? { ...t, x, y } : t,
-    );
+    const next = current.map((t) => {
+      const init = dragging.initialPositions[t.id];
+      if (init) {
+        return { ...t, x: init.x + dx, y: init.y + dy };
+      }
+      return t;
+    });
     setLocalTokens(next);
     if (!dragging.moved) setDragging({ ...dragging, moved: true });
   }
@@ -167,11 +203,13 @@ export function BoardCanvas({ board, zoom, onZoomChange, onChange }: Props) {
   }
 
   function onContainerPointerDown(e: React.PointerEvent) {
+    const target = e.target as HTMLElement;
     if (
       e.target === containerRef.current ||
-      (e.target as HTMLElement).dataset.bg === "1"
+      target.dataset.bg === "1" ||
+      target.dataset.boardBg === "1"
     ) {
-      selectToken(null);
+      clearTokenSelection();
     }
   }
 
@@ -179,7 +217,8 @@ export function BoardCanvas({ board, zoom, onZoomChange, onChange }: Props) {
     const w = t.w ?? DEFAULT_TOKEN_W;
     const h = t.h ?? DEFAULT_TOKEN_H;
     const scale = w / DEFAULT_TOKEN_W;
-    const selected = selectedTokenId === t.id;
+    const selected = selectedTokenIds.includes(t.id);
+    const isDragging = dragging && dragging.initialPositions[t.id];
     const card = t.card_id ? cards.find((c) => c.id === t.card_id) : null;
     const cardType = card
       ? cardTypes.find((ct) => ct.id === card.type_id)
@@ -196,16 +235,17 @@ export function BoardCanvas({ board, zoom, onZoomChange, onChange }: Props) {
           width: w,
           height: h,
           zIndex: t.layer + 1,
-          cursor: dragging?.tokenId === t.id ? "grabbing" : "grab",
-          transition:
-            dragging?.tokenId === t.id
-              ? "none"
-              : "box-shadow 0.15s, transform 0.15s",
-          transform: selected ? "translateY(-2px)" : "none",
+          cursor: isDragging ? "grabbing" : "grab",
+          transition: isDragging ? "none" : "filter 0.15s, transform 0.15s",
+          transform: `rotate(${t.rotation}deg)`,
+          transformOrigin: "center center",
           filter: selected
             ? "drop-shadow(0 0 0 var(--accent-gold)) drop-shadow(0 4px 12px rgba(0,0,0,0.5))"
             : undefined,
           userSelect: "none",
+          outline: selected ? "2px solid var(--accent-gold)" : "none",
+          outlineOffset: 2,
+          borderRadius: "var(--radius-md)",
         }}
         onPointerDown={(e) => onTokenPointerDown(e, t)}
       >
@@ -223,7 +263,7 @@ export function BoardCanvas({ board, zoom, onZoomChange, onChange }: Props) {
           ) : (
             <PlaceholderToken
               label={t.name_override ?? "Token"}
-              selected={selected}
+              selected={false}
             />
           )}
         </div>
@@ -296,7 +336,6 @@ export function BoardCanvas({ board, zoom, onZoomChange, onChange }: Props) {
       onPointerUp={onPointerUp}
       onPointerDown={onContainerPointerDown}
     >
-      {/* 外层占位：撑起缩放后的滚动区域 */}
       <div
         style={{
           width: board.width * zoom + PADDING * 2,
@@ -305,8 +344,8 @@ export function BoardCanvas({ board, zoom, onZoomChange, onChange }: Props) {
           position: "relative",
         }}
       >
-        {/* 内层：等比缩放 */}
         <div
+          data-board-bg="1"
           style={{
             position: "absolute",
             left: PADDING,
@@ -322,7 +361,6 @@ export function BoardCanvas({ board, zoom, onZoomChange, onChange }: Props) {
             background: bgUrl ? "var(--bg-surface)" : "var(--bg-panel)",
           }}
         >
-          {/* 背景图 */}
           {bgUrl && (
             <img
               src={bgUrl}
@@ -341,7 +379,6 @@ export function BoardCanvas({ board, zoom, onZoomChange, onChange }: Props) {
             />
           )}
 
-          {/* 网格 */}
           {grid.visible && (
             <svg
               width={board.width}
@@ -356,7 +393,6 @@ export function BoardCanvas({ board, zoom, onZoomChange, onChange }: Props) {
             </svg>
           )}
 
-          {/* Tokens */}
           {tokens
             .filter((t) => t.visible)
             .sort((a, b) => a.layer - b.layer)

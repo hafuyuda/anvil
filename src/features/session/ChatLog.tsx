@@ -7,9 +7,18 @@ interface Props {
   cards: Card[];
   cardTypes: CardType[];
   filter?: "all" | "chat";
+  onEdit?: (event: GameEvent) => void;
+  onDelete?: (event: GameEvent) => void;
 }
 
-export function ChatLog({ events, cards, cardTypes, filter = "all" }: Props) {
+export function ChatLog({
+  events,
+  cards,
+  cardTypes,
+  filter = "all",
+  onEdit,
+  onDelete,
+}: Props) {
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -55,6 +64,8 @@ export function ChatLog({ events, cards, cardTypes, filter = "all" }: Props) {
           event={e}
           cards={cards}
           cardTypes={cardTypes}
+          onEdit={onEdit}
+          onDelete={onDelete}
         />
       ))}
       <div ref={bottomRef} />
