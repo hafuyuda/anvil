@@ -5,6 +5,7 @@ import { EntityListLayout } from "../../components/EntityListLayout";
 import { SessionEditor } from "./SessionEditor";
 import { newId } from "../../lib/id";
 import { nowMs } from "../../lib/time";
+import { useDeleteUndo } from "../../hooks/useDeleteUndo";
 
 type SortKey = "updated_desc" | "updated_asc" | "created_desc" | "name";
 
@@ -45,12 +46,23 @@ export function SessionList() {
     setSelectedId(s.id);
   }
 
+  const deleteWithUndo = useDeleteUndo();
+
   async function handleDelete(s: Session) {
-    if (!confirm(`删除会话「${s.name}」？对话记录会一并删除。`)) return;
+    if (!confirm(`删除「${s.name}」？可用 Ctrl+Z 撤销。`)) return;
     try {
-      await ipc.deleteSession(s.id);
-      removeSession(s.id);
-      if (selectedId === s.id) setSelectedId(null);
+      await deleteWithUndo({
+        label: "删除会话",
+        do: async () => {
+          await ipc.deleteSession(s.id);
+          removeSession(s.id);
+          if (selectedId === s.id) setSelectedId(null);
+        },
+        restore: async () => {
+          await ipc.upsertSession(s);
+          upsertSession(s);
+        },
+      });
     } catch (e) {
       alert("删除失败: " + e);
     }

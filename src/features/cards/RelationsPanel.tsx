@@ -7,6 +7,8 @@ import {
 } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
 import { RelationForm } from "./RelationForm";
+import { useDeleteUndo } from "../../hooks/useDeleteUndo";
+
 
 interface Props {
   card: Card;
@@ -52,11 +54,23 @@ export function RelationsPanel({ card }: Props) {
     return false;
   });
 
+  const deleteWithUndo = useDeleteUndo();
+  const upsertRelation = useProjectStore((s) => s.upsertRelation);
+
   async function handleDelete(r: Relation) {
-    if (!confirm("确认删除这条关系？")) return;
+    if (!confirm("确认删除这条关系？可用 Ctrl+Z 撤销。")) return;
     try {
-      await ipc.deleteRelation(r.from, r.id);
-      removeRelation(r.id);
+      await deleteWithUndo({
+        label: "删除关系",
+        do: async () => {
+          await ipc.deleteRelation(r.from, r.id);
+          removeRelation(r.id);
+        },
+        restore: async () => {
+          await ipc.upsertRelation(r);
+          upsertRelation(r);
+        },
+      });
     } catch (e) {
       alert("删除失败: " + e);
     }

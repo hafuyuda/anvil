@@ -8,6 +8,7 @@ import { nowMs } from "../../lib/time";
 import { PickerDialog } from "../../components/PickerDialog";
 import { invalidateImage } from "../../lib/imageCache";
 import { newId } from "../../lib/id";
+import { useDeleteUndo } from "../../hooks/useDeleteUndo";
 
 interface Props {
   board: Board;
@@ -158,6 +159,8 @@ export function BoardEditor({ board }: Props) {
 
   const selectedTokenIds = useProjectStore((s) => s.selectedTokenIds) ?? [];
   const clearTokenSelection = useProjectStore((s) => s.clearTokenSelection);
+
+  const deleteWithUndo = useDeleteUndo();
 
   return (
     <div
@@ -422,18 +425,43 @@ export function BoardEditor({ board }: Props) {
           <button
             className="btn btn-danger"
             onClick={async () => {
-              if (!confirm(`删除选中的 ${selectedTokenIds.length} 个 Token？`))
+              const ids = selectedTokenIds;
+              if (ids.length === 0) return;
+              if (
+                !confirm(
+                  `删除选中的 ${ids.length} 个 Token？可用 Ctrl+Z 撤销。`,
+                )
+              )
                 return;
-              const next: Board = {
-                ...normalized,
-                tokens: normalized.tokens.filter(
-                  (t) => !selectedTokenIds.includes(t.id),
-                ),
-                updated_at: nowMs(),
-              };
-              await ipc.upsertBoard(next);
-              upsertBoard(next);
-              clearTokenSelection();
+
+              const removed = normalized.tokens.filter((t) =>
+                ids.includes(t.id),
+              );
+
+              await deleteWithUndo({
+                label: `删除 ${ids.length} 个 Token`,
+                do: async () => {
+                  const next: Board = {
+                    ...normalized,
+                    tokens: normalized.tokens.filter(
+                      (t) => !ids.includes(t.id),
+                    ),
+                    updated_at: nowMs(),
+                  };
+                  await ipc.upsertBoard(next);
+                  upsertBoard(next);
+                  clearTokenSelection();
+                },
+                restore: async () => {
+                  const next: Board = {
+                    ...normalized,
+                    tokens: [...normalized.tokens, ...removed],
+                    updated_at: nowMs(),
+                  };
+                  await ipc.upsertBoard(next);
+                  upsertBoard(next);
+                },
+              });
             }}
             style={{ fontSize: 11, padding: "2px 8px" }}
           >

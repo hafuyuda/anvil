@@ -7,6 +7,7 @@ import { CardFrame } from "../../components/CardFrame";
 import { Toolbar, ToolbarSpacer } from "../../components/Toolbar";
 import { newId } from "../../lib/id";
 import { nowMs } from "../../lib/time";
+import { useDeleteUndo } from "../../hooks/useDeleteUndo";
 
 type SortKey = "name" | "updated_at" | "type";
 
@@ -178,20 +179,49 @@ export function CardWall() {
     setPickerOpen(true);
   }
 
+  const deleteWithUndo = useDeleteUndo();
+
   async function handleBulkDelete() {
     const ids = selectedCardIds ?? [];
     if (ids.length === 0) return;
-    if (!confirm(`删除选中的 ${ids.length} 张卡牌？此操作不可撤销。`)) return;
+
+    const cardsToDelete = (cards ?? []).filter((c) => ids.includes(c.id));
+    if (cardsToDelete.length === 0) return;
+
+    if (
+      !confirm(`删除选中的 ${cardsToDelete.length} 张卡牌？可用 Ctrl+Z 撤销。`)
+    )
+      return;
+
     try {
-      for (const id of ids) {
-        await ipc.deleteCard(id);
-      }
-      // 一次更新 store
-      const remaining = (cards ?? []).filter((c) => !ids.includes(c.id));
-      useProjectStore.setState({
-        cards: remaining,
-        selectedCardIds: [],
-        selectedCardId: null,
+      await deleteWithUndo({
+        label: `删除 ${cardsToDelete.length} 张卡牌`,
+        do: async () => {
+          for (const c of cardsToDelete) {
+            await ipc.deleteCard(c.id);
+          }
+          const state = useProjectStore.getState();
+          const remaining = (state.cards ?? []).filter(
+            (c) => !ids.includes(c.id),
+          );
+          useProjectStore.setState({
+            cards: remaining,
+            relations: (state.relations ?? []).filter(
+              (r) => !ids.includes(r.from) && !ids.includes(r.to),
+            ),
+            selectedCardIds: [],
+            selectedCardId: null,
+          });
+        },
+        restore: async () => {
+          for (const c of cardsToDelete) {
+            await ipc.saveCard(c);
+          }
+          const state = useProjectStore.getState();
+          useProjectStore.setState({
+            cards: [...(state.cards ?? []), ...cardsToDelete],
+          });
+        },
       });
     } catch (e) {
       alert("删除失败: " + e);

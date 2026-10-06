@@ -5,10 +5,10 @@ import { EntityListLayout } from "../../components/EntityListLayout";
 import { ScenarioEditor } from "./ScenarioEditor";
 import { newId } from "../../lib/id";
 import { nowMs } from "../../lib/time";
+import { useDeleteUndo } from "../../hooks/useDeleteUndo";
 
 export function ScenarioList() {
   const scenarios = useProjectStore((s) => s.scenarios) ?? [];
-  const upsertScenario = useProjectStore((s) => s.upsertScenario);
   const removeScenario = useProjectStore((s) => s.removeScenario);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -31,12 +31,24 @@ export function ScenarioList() {
     setSelectedId(s.id);
   }
 
+  const deleteWithUndo = useDeleteUndo();
+  const upsertScenario = useProjectStore((s) => s.upsertScenario);
+
   async function handleDelete(s: Scenario) {
-    if (!confirm(`删除剧情「${s.name}」？此操作不可撤销。`)) return;
+    if (!confirm(`删除剧情「${s.name}」？可用 Ctrl+Z 撤销。`)) return;
     try {
-      await ipc.deleteScenario(s.id);
-      removeScenario(s.id);
-      if (selectedId === s.id) setSelectedId(null);
+      await deleteWithUndo({
+        label: "删除剧情",
+        do: async () => {
+          await ipc.deleteScenario(s.id);
+          removeScenario(s.id);
+          if (selectedId === s.id) setSelectedId(null);
+        },
+        restore: async () => {
+          await ipc.upsertScenario(s);
+          upsertScenario(s);
+        },
+      });
     } catch (e) {
       alert("删除失败: " + e);
     }

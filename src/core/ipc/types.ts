@@ -283,3 +283,15 @@ export interface MergeResult {
   imported_assets: number;
   skipped_types: string[];
 }
+
+export interface ProjectStats {
+  card_types: number;
+  relation_kinds: number;
+  cards: number;
+  relations: number;
+  scenarios: number;
+  boards: number;
+  sessions: number;
+  events: number;
+  images: number;
+}

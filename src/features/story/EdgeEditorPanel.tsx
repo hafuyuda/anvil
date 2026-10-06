@@ -8,6 +8,7 @@ import {
 import { useProjectStore } from "../../stores/projectStore";
 import { useDraft } from "../../hooks/useDraft";
 import { parseEffects, validateEffects } from "./effects";
+import { useDeleteUndo } from "../../hooks/useDeleteUndo";
 
 interface Props {
   relation: Relation;
@@ -70,7 +71,7 @@ export function EdgeEditorPanel({ relation, scenario }: Props) {
   const targetCard = cards.find((c) => c.id === draft.to);
 
   const currentKind = relationKinds.find((k) => k.id === draft.kind);
-  
+
   function setCondition(next: string) {
     update({ meta: { ...draft.meta, condition: next } });
   }
@@ -79,12 +80,24 @@ export function EdgeEditorPanel({ relation, scenario }: Props) {
     update({ meta: { ...draft.meta, effects: next } });
   }
 
+  const deleteWithUndo = useDeleteUndo();
+
   async function handleDelete() {
-    if (!confirm("删除这条关系？")) return;
+    if (!confirm("删除这条关系？可用 Ctrl+Z 撤销。")) return;
+    const snapshot = { ...draft };
     try {
-      await ipc.deleteRelation(draft.from, draft.id);
-      removeRelation(draft.id);
-      selectEdge(null);
+      await deleteWithUndo({
+        label: "删除剧情关系",
+        do: async () => {
+          await ipc.deleteRelation(snapshot.from, snapshot.id);
+          removeRelation(snapshot.id);
+          selectEdge(null);
+        },
+        restore: async () => {
+          await ipc.upsertRelation(snapshot);
+          upsertRelation(snapshot);
+        },
+      });
     } catch (e) {
       alert("删除失败: " + e);
     }

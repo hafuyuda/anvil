@@ -224,3 +224,64 @@ pub fn merge_pack(
     p.merge_pack(&PathBuf::from(src), &options)
         .map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub fn list_unused_images(state: State<AppState>) -> Result<Vec<String>, String> {
+    let guard = state.project.lock().unwrap();
+    let p = guard.as_ref().ok_or("no project open")?;
+    p.find_unused_images().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn cleanup_unused_images(state: State<AppState>) -> Result<Vec<String>, String> {
+    let guard = state.project.lock().unwrap();
+    let p = guard.as_ref().ok_or("no project open")?;
+    p.cleanup_unused_images().map_err(|e| e.to_string())
+}
+
+#[derive(serde::Serialize)]
+pub struct ProjectStats {
+    pub card_types: usize,
+    pub relation_kinds: usize,
+    pub cards: usize,
+    pub relations: usize,
+    pub scenarios: usize,
+    pub boards: usize,
+    pub sessions: usize,
+    pub events: usize,
+    pub images: usize,
+}
+
+#[tauri::command]
+pub fn project_stats(state: State<AppState>) -> Result<ProjectStats, String> {
+    let guard = state.project.lock().unwrap();
+    let p = guard.as_ref().ok_or("no project open")?;
+
+    let card_types = p.load_card_types().map_err(|e| e.to_string())?.len();
+    let relation_kinds = p.load_relation_kinds().map_err(|e| e.to_string())?.len();
+    let cards = p.load_all_cards().map_err(|e| e.to_string())?.len();
+    let relations = p.list_all_relations().map_err(|e| e.to_string())?.len();
+    let scenarios = p.load_scenarios().map_err(|e| e.to_string())?.len();
+    let boards = p.load_boards().map_err(|e| e.to_string())?.len();
+
+    let sessions_list = p.load_sessions().map_err(|e| e.to_string())?;
+    let sessions = sessions_list.len();
+    let mut events = 0usize;
+    for s in &sessions_list {
+        events += p.load_events(&s.id).map(|v| v.len()).unwrap_or(0);
+    }
+
+    let images = p.list_images().map_err(|e| e.to_string())?.len();
+
+    Ok(ProjectStats {
+        card_types,
+        relation_kinds,
+        cards,
+        relations,
+        scenarios,
+        boards,
+        sessions,
+        events,
+        images,
+    })
+}

@@ -6,6 +6,7 @@ import { BoardEditor } from "./BoardEditor";
 import { DEFAULT_GRID } from "./constants";
 import { newId } from "../../lib/id";
 import { nowMs } from "../../lib/time";
+import { useDeleteUndo } from "../../hooks/useDeleteUndo";
 
 export function BoardList() {
   const boards = useProjectStore((s) => s.boards) ?? [];
@@ -31,12 +32,23 @@ export function BoardList() {
     setSelectedId(b.id);
   }
 
-  async function handleDelete(b: Board) {
-    if (!confirm(`删除棋盘「${b.name}」？此操作不可撤销。`)) return;
+  const deleteWithUndo = useDeleteUndo();
+
+  async function handleDelete(s: Board) {
+    if (!confirm(`删除「${s.name}」？可用 Ctrl+Z 撤销。`)) return;
     try {
-      await ipc.deleteBoard(b.id);
-      removeBoard(b.id);
-      if (selectedId === b.id) setSelectedId(null);
+      await deleteWithUndo({
+        label: "删除棋盘",
+        do: async () => {
+          await ipc.deleteBoard(s.id);
+          removeBoard(s.id);
+          if (selectedId === s.id) setSelectedId(null);
+        },
+        restore: async () => {
+          await ipc.upsertBoard(s);
+          upsertBoard(s);
+        },
+      });
     } catch (e) {
       alert("删除失败: " + e);
     }

@@ -330,6 +330,28 @@ function systemText(event: GameEvent): string {
       const v = payload.value;
       return `状态：${k} = ${JSON.stringify(v)}`;
     }
+    case "effect.apply": {
+      const applied = payload.applied as
+        | Array<{
+            raw: string;
+            is_roll?: boolean;
+            roll_detail?: number[];
+          }>
+        | undefined;
+      const label = payload.relation_label as string | undefined;
+      if (!applied || applied.length === 0) {
+        return label ? `效果：${label}` : "效果执行";
+      }
+      const parts = applied.map((a) => {
+        const rollInfo =
+          a.is_roll && a.roll_detail && a.roll_detail.length > 0
+            ? ` [${a.roll_detail.join(",")}]`
+            : "";
+        return `${a.raw}${rollInfo}`;
+      });
+      const prefix = label ? `${label} → ` : "";
+      return `${prefix}效果：${parts.join(" · ")}`;
+    }
     case "note":
       return event.note ?? "备注";
     default:

@@ -4,6 +4,7 @@ import { useDraft } from "../../hooks/useDraft";
 import { FieldInput } from "../../components/FieldInput";
 import { RelationsPanel } from "./RelationsPanel";
 import { nowMs } from "../../lib/time";
+import { useDeleteUndo } from "../../hooks/useDeleteUndo";
 
 interface Props {
   card: Card;
@@ -30,11 +31,22 @@ export function CardEditor({ card, cardType }: Props) {
     },
   );
 
+  const deleteWithUndo = useDeleteUndo();
+
   async function handleDelete() {
-    if (!confirm(`确认删除卡牌「${card.name}」？此操作不可撤销。`)) return;
+    if (!confirm(`确认删除卡牌「${card.name}」？可用 Ctrl+Z 撤销。`)) return;
     try {
-      await ipc.deleteCard(card.id);
-      removeCard(card.id);
+      await deleteWithUndo({
+        label: "删除卡牌",
+        do: async () => {
+          await ipc.deleteCard(card.id);
+          useProjectStore.getState().removeCard(card.id);
+        },
+        restore: async () => {
+          await ipc.saveCard(card);
+          useProjectStore.getState().addCard(card);
+        },
+      });
     } catch (e) {
       alert("删除失败: " + e);
     }

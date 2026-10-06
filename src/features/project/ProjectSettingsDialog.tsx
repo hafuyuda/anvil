@@ -3,13 +3,17 @@ import { ipc, type Manifest } from "../../core/ipc";
 import { Modal } from "../../components/Modal";
 import { nowMs } from "../../lib/time";
 import { ThemePanel } from "./ThemePanel";
+import { AssetsTab } from "./AssetsTab";
+import { StatsTab } from "./StatsTab";
 
 interface Props {
   onClose: () => void;
 }
 
 export function ProjectSettingsDialog({ onClose }: Props) {
-  const [tab, setTab] = useState<"general" | "theme">("general");
+  const [tab, setTab] = useState<"general" | "theme" | "assets" | "stats">(
+    "general",
+  );
   const [manifest, setManifest] = useState<Manifest | null>(null);
   const [draft, setDraft] = useState<Manifest | null>(null);
   const [dirty, setDirty] = useState(false);
@@ -71,7 +75,7 @@ export function ProjectSettingsDialog({ onClose }: Props) {
   return (
     <Modal
       title="项目设置"
-      width={tab === "theme" ? 700 : 480}
+      width={tab === "theme" ? 700 : tab === "assets" ? 720 : 480}
       onClose={onClose}
       footer={
         <>
@@ -125,6 +129,34 @@ export function ProjectSettingsDialog({ onClose }: Props) {
           }}
         >
           主题
+        </button>
+        <button
+          className="btn btn-ghost"
+          onClick={() => setTab("assets")}
+          style={{
+            fontWeight: tab === "theme" ? 600 : 400,
+            borderBottom:
+              tab === "theme"
+                ? "2px solid var(--accent-gold)"
+                : "2px solid transparent",
+            borderRadius: 0,
+          }}
+        >
+          图片资源
+        </button>
+        <button
+          className="btn btn-ghost"
+          onClick={() => setTab("stats")}
+          style={{
+            fontWeight: tab === "theme" ? 600 : 400,
+            borderBottom:
+              tab === "theme"
+                ? "2px solid var(--accent-gold)"
+                : "2px solid transparent",
+            borderRadius: 0,
+          }}
+        >
+          数据统计
         </button>
       </div>
 
@@ -204,6 +236,10 @@ export function ProjectSettingsDialog({ onClose }: Props) {
           onChangeThemeId={saveThemeId}
         />
       )}
+
+      {tab === "assets" && <AssetsTab />}
+
+      {tab === "stats" && <StatsTab />}
     </Modal>
   );
 }

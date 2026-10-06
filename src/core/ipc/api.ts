@@ -14,6 +14,7 @@ import type {
   MergeOptions,
   MergeResult,
   PackInspection,
+  ProjectStats,
 } from "./types";
 
 export const ipc = {
@@ -124,4 +125,8 @@ export const ipc = {
   ) => invoke<void>("update_event", { sessionId, seq, payload, note }),
   deleteEvent: (sessionId: string, seq: number) =>
     invoke<void>("delete_event", { sessionId, seq }),
+
+  listUnusedImages: () => invoke<string[]>("list_unused_images"),
+  cleanupUnusedImages: () => invoke<string[]>("cleanup_unused_images"),
+  projectStats: () => invoke<ProjectStats>("project_stats"),
 };

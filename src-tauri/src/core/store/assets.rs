@@ -1,4 +1,5 @@
 use super::project::Project;
+use crate::core::model::card_type::FieldType;
 use std::path::PathBuf;
 
 const ALLOWED_EXT: &[&str] = &["png", "jpg", "jpeg", "gif", "webp", "svg"];
@@ -118,5 +119,58 @@ impl Project {
 
         let b64 = general_purpose::STANDARD.encode(&bytes);
         Ok(format!("data:{mime};base64,{b64}"))
+    }
+
+    /// 找出所有未被任何卡片引用的图片。
+    pub fn find_unused_images(&self) -> anyhow::Result<Vec<String>> {
+        let card_types = self.load_card_types()?;
+        let cards = self.load_all_cards()?;
+        let all_images = self.list_images()?;
+
+        // 建立 type_id -> [image 字段 key] 映射
+        let mut image_fields: std::collections::HashMap<String, Vec<String>> =
+            std::collections::HashMap::new();
+        for ct in &card_types {
+            let keys: Vec<String> = ct
+                .fields
+                .iter()
+                .filter(|f| matches!(f.ty, FieldType::Image))
+                .map(|f| f.key.clone())
+                .collect();
+            image_fields.insert(ct.id.clone(), keys);
+        }
+
+        // 收集所有被引用的图片路径
+        let mut used: std::collections::HashSet<String> = std::collections::HashSet::new();
+        for card in &cards {
+            if let Some(keys) = image_fields.get(&card.type_id) {
+                for k in keys {
+                    if let Some(serde_json::Value::String(s)) = card.values.get(k) {
+                        let s = s.trim();
+                        if !s.is_empty() {
+                            used.insert(s.to_string());
+                        }
+                    }
+                }
+            }
+        }
+
+        let unused: Vec<String> = all_images
+            .into_iter()
+            .filter(|p| !used.contains(p))
+            .collect();
+        Ok(unused)
+    }
+
+    /// 删除所有未被引用的图片，返回删除的路径列表。
+    pub fn cleanup_unused_images(&self) -> anyhow::Result<Vec<String>> {
+        let unused = self.find_unused_images()?;
+        let mut deleted = Vec::new();
+        for p in unused {
+            if self.delete_image(&p).is_ok() {
+                deleted.push(p);
+            }
+        }
+        Ok(deleted)
     }
 }

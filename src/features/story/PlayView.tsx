@@ -58,6 +58,8 @@ export function PlayView({ scenario }: Props) {
     }[]
   >([]);
 
+  const currentSessionId = useProjectStore((s) => s.currentSessionId);
+
   useEffect(() => {
     let cancelled = false;
     async function run() {
@@ -114,6 +116,28 @@ export function PlayView({ scenario }: Props) {
           );
         } else {
           setLastRolls([]);
+        }
+
+        // ★ 如果当前有会话打开，把效果写进事件日志
+        if (currentSessionId) {
+          void ipc
+            .appendEvent(currentSessionId, "effect.apply", {
+              scenario_id: scenario.id,
+              scenario_name: scenario.name,
+              from_card_id: currentId,
+              to_card_id: toId,
+              relation_label: relation.label,
+              applied: result.applied.map((a) => ({
+                key: a.key,
+                op: a.op,
+                raw: a.raw,
+                resolved: a.resolved,
+                is_roll: a.isRoll,
+                roll_detail: a.rollDetail,
+              })),
+              values_after: result.values,
+            })
+            .catch((e) => console.warn("写事件日志失败:", e));
         }
       } else {
         setLastRolls([]);

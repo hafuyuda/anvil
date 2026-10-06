@@ -36,6 +36,9 @@ pub fn run() {
             read_image_data_url,
             inspect_pack_cmd,
             merge_pack,
+            list_unused_images,
+            cleanup_unused_images,
+            project_stats,
             // cards
             save_card,
             list_cards,

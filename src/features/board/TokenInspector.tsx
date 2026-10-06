@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { type Token } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
 import { ScaledCardFrame } from "../../components/ScaledCardFrame";
+import { useDeleteUndo } from "../../hooks/useDeleteUndo";
 
 interface Props {
   token: Token;
@@ -52,10 +53,20 @@ export function TokenInspector({ token, onSave, onDelete, onClose }: Props) {
     setDirty(false);
   }
 
+  const deleteWithUndo = useDeleteUndo();
+
   async function handleDelete() {
-    if (!confirm("删除该 Token？原始卡牌不受影响。")) return;
-    await onDelete();
-    onClose();
+    if (!confirm("删除该 Token？可用 Ctrl+Z 撤销。")) return;
+    await deleteWithUndo({
+      label: "删除 Token",
+      do: async () => {
+        await onDelete();
+        onClose();
+      },
+      restore: async () => {
+        await onSave(token);
+      },
+    });
   }
 
   function jumpToCard() {

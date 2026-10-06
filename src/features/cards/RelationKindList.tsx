@@ -5,6 +5,7 @@ import { EntityListLayout } from "../../components/EntityListLayout";
 import { RelationKindEditor } from "./RelationKindEditor";
 import { newId } from "../../lib/id";
 import { nowMs } from "../../lib/time";
+import { useDeleteUndo } from "../../hooks/useDeleteUndo";
 
 export function RelationKindList() {
   const relationKinds = useProjectStore((s) => s.relationKinds) ?? [];
@@ -32,17 +33,23 @@ export function RelationKindList() {
     setSelectedId(newKind.id);
   }
 
-  async function handleDelete(k: RelationKind) {
-    const inUse = relations.filter((r) => r.kind === k.id).length;
-    if (inUse > 0) {
-      alert(`还有 ${inUse} 条关系在使用这个类型。`);
-      return;
-    }
-    if (!confirm(`删除关系类型「${k.name}」？`)) return;
+  const deleteWithUndo = useDeleteUndo();
+
+  async function handleDelete(s: RelationKind) {
+    if (!confirm(`删除「${s.name}」？可用 Ctrl+Z 撤销。`)) return;
     try {
-      await ipc.deleteRelationKind(k.id);
-      removeRelationKind(k.id);
-      if (selectedId === k.id) setSelectedId(null);
+      await deleteWithUndo({
+        label: "删除关系",
+        do: async () => {
+          await ipc.deleteRelationKind(s.id);
+          removeRelationKind(s.id);
+          if (selectedId === s.id) setSelectedId(null);
+        },
+        restore: async () => {
+          await ipc.upsertRelationKind(s);
+          upsertRelationKind(s);
+        },
+      });
     } catch (e) {
       alert("删除失败: " + e);
     }

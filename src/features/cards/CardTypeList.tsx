@@ -4,6 +4,7 @@ import { useProjectStore } from "../../stores/projectStore";
 import { EntityListLayout } from "../../components/EntityListLayout";
 import { CardTypeEditor } from "./CardTypeEditor";
 import { RelationKindList } from "./RelationKindList";
+import { useDeleteUndo } from "../../hooks/useDeleteUndo";
 import { newId } from "../../lib/id";
 import { nowMs } from "../../lib/time";
 
@@ -87,6 +88,8 @@ function CardTypeSection() {
   const selectedId = useProjectStore((s) => s.selectedCardTypeId);
   const selectCardType = useProjectStore((s) => s.selectCardType);
 
+  const deleteWithUndo = useDeleteUndo();
+
   async function addType() {
     const now = nowMs();
     const newType: CardType = {
@@ -109,10 +112,20 @@ function CardTypeSection() {
       alert(`还有 ${inUse} 张卡在使用这个类型，先删除或改类型。`);
       return;
     }
-    if (!confirm(`删除类型「${t.name}」？`)) return;
+    if (!confirm(`删除类型「${t.name}」？可用 Ctrl+Z 撤销。`)) return;
     try {
-      await ipc.deleteCardType(t.id);
-      removeCardType(t.id);
+      await deleteWithUndo({
+        label: "删除卡牌类型",
+        do: async () => {
+          await ipc.deleteCardType(t.id);
+          removeCardType(t.id);
+          if (selectedId === t.id) selectCardType(null);
+        },
+        restore: async () => {
+          await ipc.upsertCardType(t);
+          upsertCardType(t);
+        },
+      });
     } catch (e) {
       alert("删除失败: " + e);
     }
