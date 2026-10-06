@@ -26,7 +26,7 @@ Anvil 把世界观搭建、分支故事、棋盘推演、跑团记录统一在�
 
 ## 截图
 
-> 截图占位 —— 欢迎 PR 补充。
+![alt text](docs/start-menu.png)
 
 ```
 docs/
