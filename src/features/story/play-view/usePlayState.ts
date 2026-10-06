@@ -6,6 +6,8 @@ import {
   type Scenario,
 } from "../../../core/ipc";
 import { applyEffects, parseEffects } from "../effects";
+import { parseScript } from "../script/parser";
+import type { ParsedScript, ScriptLine } from "../script/types";
 
 export interface LastRoll {
   key: string;
@@ -16,9 +18,8 @@ export interface LastRoll {
 
 export function usePlayState(
   scenario: Scenario,
-  cards: Card[],
-  relations: Relation[],
-  currentSessionId: string | null
+  _cards: Card[],
+  relations: Relation[]
 ) {
   const [values, setValues] = useState<Record<string, unknown>>(() => {
     const init: Record<string, unknown> = {};
@@ -36,6 +37,13 @@ export function usePlayState(
     Record<string, { ok: boolean; error?: string }>
   >({});
   const [lastRolls, setLastRolls] = useState<LastRoll[]>([]);
+
+  // ── 剧本状态 ──
+  const [script, setScript] = useState<ParsedScript | null>(null);
+  const [scriptLoading, setScriptLoading] = useState(false);
+  const [lineIndex, setLineIndex] = useState(0);
+  const [effectiveLines, setEffectiveLines] = useState<ScriptLine[]>([]);
+  const [bgAt, setBgAt] = useState<(string | null)[]>([]);
 
   const nodeIds = useMemo(
     () => new Set(scenario.node_ids),
@@ -86,6 +94,66 @@ export function usePlayState(
     };
   }, [relations, nodeIds, values, scenario]);
 
+  // 加载当前场景的剧本
+  useEffect(() => {
+    if (!currentId) {
+      setScript(null);
+      setEffectiveLines([]);
+      setBgAt([]);
+      setLineIndex(0);
+      return;
+    }
+    let cancelled = false;
+    setScriptLoading(true);
+    ipc
+      .loadScript(currentId)
+      .then((content) => {
+        if (cancelled) return;
+        if (!content || content.trim() === "") {
+          setScript(null);
+          setEffectiveLines([]);
+          setBgAt([]);
+        } else {
+          const parsed = parseScript(content);
+          setScript(parsed);
+
+          // 预处理：抽离指令行（bg / bgm / sfx），计算每一行的背景
+          const eff: ScriptLine[] = [];
+          const bgs: (string | null)[] = [];
+          let currentBg: string | null = parsed.frontmatter.bg ?? null;
+
+          for (const line of parsed.lines) {
+            if (line.type === "bg") {
+              currentBg = line.image;
+            } else if (line.type === "bgm" || line.type === "sfx") {
+              // 暂不处理
+            } else {
+              eff.push(line);
+              bgs.push(currentBg);
+            }
+          }
+
+          setEffectiveLines(eff);
+          setBgAt(bgs);
+        }
+        setLineIndex(0);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setScript(null);
+          setEffectiveLines([]);
+          setBgAt([]);
+          setLineIndex(0);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setScriptLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [currentId]);
+
   function setValue(key: string, val: unknown) {
     setValues((s) => ({ ...s, [key]: val }));
   }
@@ -124,28 +192,6 @@ export function usePlayState(
         } else {
           setLastRolls([]);
         }
-
-        // 如果当前有会话打开，把效果写进事件日志
-        if (currentSessionId) {
-          void ipc
-            .appendEvent(currentSessionId, "effect.apply", {
-              scenario_id: scenario.id,
-              scenario_name: scenario.name,
-              from_card_id: currentId,
-              to_card_id: toId,
-              relation_label: relation.label,
-              applied: result.applied.map((a) => ({
-                key: a.key,
-                op: a.op,
-                raw: a.raw,
-                resolved: a.resolved,
-                is_roll: a.isRoll,
-                roll_detail: a.rollDetail,
-              })),
-              values_after: result.values,
-            })
-            .catch((e) => console.warn("写事件日志失败:", e));
-        }
       } else {
         setLastRolls([]);
       }
@@ -153,6 +199,7 @@ export function usePlayState(
 
     setHistory((h) => [...h, currentId]);
     setCurrentId(toId);
+    setLineIndex(0);
   }
 
   function back() {
@@ -160,6 +207,7 @@ export function usePlayState(
       if (h.length === 0) return h;
       const prev = h[h.length - 1];
       setCurrentId(prev);
+      setLineIndex(0);
       return h.slice(0, -1);
     });
   }
@@ -167,12 +215,37 @@ export function usePlayState(
   function reset() {
     setHistory([]);
     setCurrentId(scenario.entry_node ?? scenario.node_ids[0] ?? null);
+    setLineIndex(0);
     const init: Record<string, unknown> = {};
     for (const v of scenario.variables) {
       init[v.key] = v.default ?? null;
     }
     setValues(init);
   }
+
+  function advanceLine() {
+    if (effectiveLines.length === 0) return;
+    if (lineIndex < effectiveLines.length - 1) {
+      setLineIndex((i) => i + 1);
+    }
+  }
+
+  function jumpToEnd() {
+    if (effectiveLines.length === 0) return;
+    setLineIndex(effectiveLines.length - 1);
+  }
+
+  const atEnd =
+    effectiveLines.length === 0 || lineIndex >= effectiveLines.length - 1;
+  const hasScript = effectiveLines.length > 0;
+
+  const currentLine: ScriptLine | null =
+    effectiveLines.length > 0
+      ? effectiveLines[Math.min(lineIndex, effectiveLines.length - 1)]
+      : null;
+
+  const currentBg: string | null =
+    bgAt.length > 0 ? bgAt[Math.min(lineIndex, bgAt.length - 1)] : null;
 
   return {
     values,
@@ -186,5 +259,16 @@ export function usePlayState(
     back,
     reset,
     resetVars,
+    // 剧本
+    script,
+    scriptLoading,
+    lineIndex,
+    advanceLine,
+    jumpToEnd,
+    atEnd,
+    hasScript,
+    currentLine,
+    currentBg,
+    effectiveLineCount: effectiveLines.length,
   };
 }

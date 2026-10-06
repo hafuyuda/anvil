@@ -19,6 +19,7 @@ impl Project {
         std::fs::create_dir_all(root.join("scenarios"))?;
         std::fs::create_dir_all(root.join("sessions"))?;
         std::fs::create_dir_all(root.join(".anvil"))?;
+        std::fs::create_dir_all(root.join("scripts"))?;
 
         let db_path = root.join(".anvil").join("index.db");
         let conn = crate::core::index::open_or_create(&db_path)?;

@@ -12,6 +12,7 @@ import { newId } from "../../lib/id";
 import { nowMs } from "../../lib/time";
 import { StoryGraphView } from "./StoryGraphView";
 import { PlayView } from "./PlayView";
+import { ScriptPanel } from "./script/ScriptPanel";
 
 interface Props {
   scenario: Scenario;
@@ -54,7 +55,9 @@ export function ScenarioEditor({ scenario }: Props) {
     },
   );
 
-  const [tab, setTab] = useState<"settings" | "graph" | "play">("settings");
+  const [tab, setTab] = useState<"settings" | "graph" | "script" | "play">(
+    "settings",
+  );
 
   function addVariable() {
     const v: VariableDef = {
@@ -149,6 +152,9 @@ export function ScenarioEditor({ scenario }: Props) {
         </TabButton>
         <TabButton active={tab === "graph"} onClick={() => setTab("graph")}>
           节点图
+        </TabButton>
+        <TabButton active={tab === "script"} onClick={() => setTab("script")}>
+          剧本
         </TabButton>
         <TabButton active={tab === "play"} onClick={() => setTab("play")}>
           运行
@@ -473,6 +479,12 @@ export function ScenarioEditor({ scenario }: Props) {
       {tab === "graph" && (
         <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
           <StoryGraphView scenario={scenario} />
+        </div>
+      )}
+
+      {tab === "script" && (
+        <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
+          <ScriptPanel scenario={scenario} />
         </div>
       )}
 

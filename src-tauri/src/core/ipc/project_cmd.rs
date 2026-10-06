@@ -285,3 +285,31 @@ pub fn project_stats(state: State<AppState>) -> Result<ProjectStats, String> {
         images,
     })
 }
+
+#[tauri::command]
+pub fn load_script(state: State<AppState>, card_id: String) -> Result<Option<String>, String> {
+    let guard = state.project.lock().unwrap();
+    let p = guard.as_ref().ok_or("no project open")?;
+    p.load_script(&card_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn save_script(state: State<AppState>, card_id: String, content: String) -> Result<(), String> {
+    let guard = state.project.lock().unwrap();
+    let p = guard.as_ref().ok_or("no project open")?;
+    p.save_script(&card_id, &content).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn delete_script(state: State<AppState>, card_id: String) -> Result<(), String> {
+    let guard = state.project.lock().unwrap();
+    let p = guard.as_ref().ok_or("no project open")?;
+    p.delete_script(&card_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn list_script_card_ids(state: State<AppState>) -> Result<Vec<String>, String> {
+    let guard = state.project.lock().unwrap();
+    let p = guard.as_ref().ok_or("no project open")?;
+    p.list_script_card_ids().map_err(|e| e.to_string())
+}

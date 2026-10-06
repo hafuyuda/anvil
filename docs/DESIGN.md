@@ -54,12 +54,12 @@ Anvil 是一个以**卡牌为核心**的世界观创作与跑团工具。它把�
 
 ### 3.3 四大功能的统一
 
-| 功能 | 数据来源 | 主要视图 | 运行时 |
-|---|---|---|---|
-| 世界观 | Card + Relation | 卡片墙 / 图谱 / 时间线 | 无 |
-| 分支故事 | Card + Relation（条件边）+ Scenario | 节点图 / 运行视图 | 条件求值 + 效果 |
-| 棋盘 | Card + Token + Board | HTML 画布 | 坐标与状态 |
-| 跑团 | Card + Session + Token | 舞台 + 对话流 + 角色列表 | 事件日志 |
+| 功能     | 数据来源                            | 主要视图                 | 运行时          |
+| -------- | ----------------------------------- | ------------------------ | --------------- |
+| 世界观   | Card + Relation                     | 卡片墙 / 图谱 / 时间线   | 无              |
+| 分支故事 | Card + Relation（条件边）+ Scenario | 节点图 / 运行视图        | 条件求值 + 效果 |
+| 棋盘     | Card + Token + Board                | HTML 画布                | 坐标与状态      |
+| 跑团     | Card + Session + Token              | 舞台 + 对话流 + 角色列表 | 事件日志        |
 
 ### 3.4 场景卡
 
@@ -77,6 +77,28 @@ Anvil 是一个以**卡牌为核心**的世界观创作与跑团工具。它把�
 - **剧情边**：有 `scenario_id`。只在该剧情的节点图显示。
 
 **无向关系**（`directed: false`）两侧都显示在「本卡参与」，用 `⇄` 连接符。
+
+### 3.6 分支故事 = 视觉小说工具
+
+「分支故事」模块服务于**视觉小说 / 互动叙事**的作者，不是跑团工具。
+
+- 节点是**场景**，边是**剧情转移**
+- 条件、变量、效果是剧情状态的表达
+- 「运行」tab 是作者的**试玩 / 预览**
+- 可以导出为 Markdown（可读剧本）和 HTML（静态阅读器）
+
+**和跑团完全独立：**
+
+- 不绑定 Session
+- 不写跑团事件日志
+- `Scenario.variables` 和 `Session.state` 是两套东西
+- 两者共享 Card 数据，但运行时不互相操作
+
+**HTML 导出是「导出格式」，不是「游戏引擎」：**
+
+- 支持：文本、立绘、背景、点击推进、选择、条件
+- 不支持：动画、转场、音效播放、存档、成就、打包 EXE / APK
+- 想要完整演出，请把剧本导入 Ren'Py 或 Godot
 
 ---
 
@@ -181,11 +203,11 @@ pub struct Relation {
 
 `Relation.meta` 里约定的键：
 
-| 键 | 类型 | 说明 |
-|---|---|---|
-| `condition` | string | 剧情边的条件表达式 |
-| `effects` | string[] | 剧情边的效果指令 |
-| `scenario_id` | string | 剧情边归属 |
+| 键            | 类型     | 说明               |
+| ------------- | -------- | ------------------ |
+| `condition`   | string   | 剧情边的条件表达式 |
+| `effects`     | string[] | 剧情边的效果指令   |
+| `scenario_id` | string   | 剧情边归属         |
 
 ### 4.3 剧情
 
@@ -340,20 +362,20 @@ MyWorld.anvil/
 
 ### 6.1 技术栈
 
-| 层 | 选型 |
-|---|---|
-| 壳 | Tauri 2.x |
-| 后端 | Rust |
-| 持久化 | 文本文件 + SQLite 索引 |
-| 全文检索 | SQLite FTS5（trigram） |
-| 表达式求值 | evalexpr |
-| 资源包 | zip + walkdir |
-| 前端 | React + TypeScript + Vite |
-| 状态 | Zustand（slice 模式） |
-| 节点图 | React Flow |
-| 拖拽排序 | @dnd-kit |
-| 力导向布局 | d3-force |
-| 包管理器 | pnpm |
+| 层         | 选型                      |
+| ---------- | ------------------------- |
+| 壳         | Tauri 2.x                 |
+| 后端       | Rust                      |
+| 持久化     | 文本文件 + SQLite 索引    |
+| 全文检索   | SQLite FTS5（trigram）    |
+| 表达式求值 | evalexpr                  |
+| 资源包     | zip + walkdir             |
+| 前端       | React + TypeScript + Vite |
+| 状态       | Zustand（slice 模式）     |
+| 节点图     | React Flow                |
+| 拖拽排序   | @dnd-kit                  |
+| 力导向布局 | d3-force                  |
+| 包管理器   | pnpm                      |
 
 ### 6.2 目录结构
 
@@ -471,13 +493,13 @@ san -= 1d3
 
 **布局**：d3-force。
 
-| 力 | 参数 |
-|---|---|
-| `forceLink` | distance 220, strength 0.5 |
-| `forceManyBody` | strength -600 |
-| `forceCenter` | (0,0) |
-| `forceCollide` | radius 150 |
-| `forceX` / `forceY` | isolated 0.12, 其它 0.02 |
+| 力                  | 参数                       |
+| ------------------- | -------------------------- |
+| `forceLink`         | distance 220, strength 0.5 |
+| `forceManyBody`     | strength -600              |
+| `forceCenter`       | (0,0)                      |
+| `forceCollide`      | radius 150                 |
+| `forceX` / `forceY` | isolated 0.12, 其它 0.02   |
 
 **孤立节点**：少时收拢；多（>8）时排网格放右侧。
 
@@ -638,37 +660,76 @@ world.anvilpack (zip)
 
 ## 19. 待办清单
 
-按优先级：
+按优先级。
+
+**清理项（先做）**
+
+- [ ] 删除 `PlayView.tsx` 里 `currentSessionId` 写 `effect.apply` 日志的逻辑。视觉小说运行视图不写跑团日志。
+- [ ] 更新设计文档，明确「分支故事 = 视觉小说工具」的定位，与跑团完全独立。
+- [ ] （可选）左栏「分支故事」显示文字改为「视觉小说」。
 
 **P0（核心体验）**
 
-1. ~~投骰/效果写入事件日志~~ ✅
+1. ~~投骰/效果写入事件日志~~ ✅（但需要清理，见上）
 2. ~~撤销覆盖 bulk 操作~~ ✅
 3. ~~图片资源管理 + 数据统计~~ ✅
 
 **P1（体验升级）**
 
 4. 内置主题（Anvil Light / Parchment / High Contrast / Slate）
-5. Session.state 与 Scenario.variables 互通
-6. 多风格卡框（minimal / mtg / pokemon）
-7. 卡框颜色参数化
-8. 应用设置面板
+5. 多风格卡框（minimal / mtg / pokemon）
+6. 卡框颜色参数化
+7. 应用设置面板
+
+**P1.5（视觉小说）**
+
+8. 剧本编辑
+   - 场景卡加 `script` 字段（Json，剧本行数组）
+   - 角色卡加 `portraits` 字段（Json，表情 → 立绘文件）
+   - `ScenarioEditor` 加「剧本」tab
+   - 剧本行增删改、拖拽排序
+
+9. 视觉小说预览
+   - `ScenarioEditor` 的「运行」tab 改造成阅读器
+   - 显示背景、立绘、对白、旁白、动作
+   - 点击推进，结束显示选择
+   - 选择的条件实时求值
+
+10. 结局标记
+    - 场景卡加 `is_ending` / `ending_name` 字段
+    - 预览到结局时显示「结局：静默新月」
+
+11. 场景资源
+    - 场景卡加 `bg`（背景图）/ `bgm`（音乐文件名）字段
+    - 预览时切换背景，BGM 仅记录不播放
+
+12. 导出 Markdown
+    - 遍历节点图，输出可读剧本
+    - 附分支说明
+
+13. 导出 HTML（静态阅读器）
+    - 单文件 HTML（图片 base64 内嵌）+ 文件夹模式
+    - 内嵌轻量求值器（~150 行 JS）处理条件
+    - 支持：文本、立绘、背景、点击推进、选择、条件
+    - **不支持**：动画、转场、音效播放、存档、成就、打包 EXE / APK
+    - 明确写进文档：这是「导出格式」，不是「游戏引擎」
 
 **P2（提升与优化）**
 
-9. 闪卡效果（foil）
-10. 时间线功能
-11. 导入合并的 schema 版本迁移
-12. 图片缩略图
-13. 命令面板性能
-14. 图谱节点位置持久化
-15. 文件监听（notify）
+14. 闪卡效果（foil）
+15. 时间线功能
+16. 导入合并的 schema 版本迁移
+17. 图片缩略图
+18. 命令面板性能
+19. 图谱节点位置持久化
+20. 文件监听（notify）
 
 **P3（长期）**
 
-16. Session 提交回原卡
-17. 场景卡强制约束
-18. 受限插件系统
+21. Session 提交回原卡
+22. 场景卡强制约束
+23. 受限插件系统
+24. Ren'Py 脚本导出（视觉小说方向，未来）
 
 ---
 
@@ -701,4 +762,3 @@ world.anvilpack (zip)
 14. **状态单一来源。** 选中态走 store。
 15. **无向关系对等显示。**
 16. **输入密集处不挂 HTML5 DnD。** 用 Pointer Events。
-
