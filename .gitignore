@@ -8,8 +8,10 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+.pnpm-store
 dist
 dist-ssr
+target
 *.local
 
 # Editor directories and files
@@ -18,7 +20,11 @@ dist-ssr
 !.vscode/settings.json
 !.vscode/launch.json
 .idea
+
+
 .DS_Store
+Thumbs.db
+
 *.suo
 *.ntvs*
 *.njsproj
