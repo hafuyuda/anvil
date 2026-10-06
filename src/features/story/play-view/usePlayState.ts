@@ -19,7 +19,7 @@ export interface LastRoll {
 export function usePlayState(
   scenario: Scenario,
   _cards: Card[],
-  relations: Relation[]
+  relations: Relation[],
 ) {
   const [values, setValues] = useState<Record<string, unknown>>(() => {
     const init: Record<string, unknown> = {};
@@ -30,7 +30,7 @@ export function usePlayState(
   });
 
   const [currentId, setCurrentId] = useState<string | null>(
-    scenario.entry_node ?? scenario.node_ids[0] ?? null
+    scenario.entry_node ?? scenario.node_ids[0] ?? null,
   );
   const [history, setHistory] = useState<string[]>([]);
   const [edgeStates, setEdgeStates] = useState<
@@ -47,7 +47,7 @@ export function usePlayState(
 
   const nodeIds = useMemo(
     () => new Set(scenario.node_ids),
-    [scenario.node_ids]
+    [scenario.node_ids],
   );
 
   const outgoing = useMemo(
@@ -56,9 +56,9 @@ export function usePlayState(
         (r) =>
           r.from === currentId &&
           nodeIds.has(r.to) &&
-          r.meta?.scenario_id === scenario.id
+          r.meta?.scenario_id === scenario.id,
       ),
-    [relations, currentId, nodeIds, scenario.id]
+    [relations, currentId, nodeIds, scenario.id],
   );
 
   // 每次变量或关系变化，重新评估所有边的条件
@@ -70,7 +70,7 @@ export function usePlayState(
         (r) =>
           nodeIds.has(r.from) &&
           nodeIds.has(r.to) &&
-          r.meta?.scenario_id === scenario.id
+          r.meta?.scenario_id === scenario.id,
       );
       for (const r of allEdges) {
         const expr =
@@ -187,7 +187,7 @@ export function usePlayState(
               raw: a.raw,
               resolved: a.resolved,
               detail: a.rollDetail ?? [],
-            }))
+            })),
           );
         } else {
           setLastRolls([]);
@@ -247,6 +247,9 @@ export function usePlayState(
   const currentBg: string | null =
     bgAt.length > 0 ? bgAt[Math.min(lineIndex, bgAt.length - 1)] : null;
 
+  const isEnding = Boolean(script?.frontmatter.is_ending);
+  const endingName = script?.frontmatter.ending_name ?? null;
+
   return {
     values,
     setValue,
@@ -270,5 +273,7 @@ export function usePlayState(
     currentLine,
     currentBg,
     effectiveLineCount: effectiveLines.length,
+    isEnding,
+    endingName,
   };
 }

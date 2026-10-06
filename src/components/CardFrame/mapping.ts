@@ -1,6 +1,6 @@
 import type { Card, CardType } from "../../core/ipc";
 
-export interface YugiohMapping {
+export interface CardMapping {
   title: string;
   subtitle?: string;
   typeLine: string;
@@ -16,7 +16,7 @@ export interface YugiohMapping {
   image?: string;
 }
 
-export function mapCard(card: Card, cardType: CardType): YugiohMapping {
+export function mapCard(card: Card, cardType: CardType): CardMapping {
   const cfg = cardType.card_frame;
 
   if (cfg) {
@@ -117,7 +117,7 @@ function findImageField(card: Card, cardType: CardType): string | undefined {
   return undefined;
 }
 
-function fallbackMap(card: Card, cardType: CardType): YugiohMapping {
+function fallbackMap(card: Card, cardType: CardType): CardMapping {
   const fields = cardType.fields
     .filter((f) => !f.deprecated)
     .sort((a, b) => a.order - b.order);

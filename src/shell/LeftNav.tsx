@@ -2,7 +2,7 @@ import { useProjectStore, type ModuleKey } from "../stores/projectStore";
 
 const MODULES: { key: ModuleKey; label: string; glyph: string }[] = [
   { key: "world", label: "世界观", glyph: "◈" },
-  { key: "story", label: "分支故事", glyph: "❖" },
+  { key: "story", label: "视觉小说", glyph: "❖" },
   { key: "board", label: "棋盘", glyph: "▦" },
   { key: "session", label: "跑团", glyph: "✦" },
   { key: "types", label: "类型", glyph: "◇" },
@@ -47,32 +47,30 @@ export function LeftNav() {
             {m.label}
           </NavButton>
 
-          {m.key === "world" &&
-            activeModule === "world" &&
-            projectPath && (
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 1,
-                  marginTop: 2,
-                  paddingLeft: 14,
-                }}
+          {m.key === "world" && activeModule === "world" && projectPath && (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 1,
+                marginTop: 2,
+                paddingLeft: 14,
+              }}
+            >
+              <SubNavButton
+                active={worldSubView === "cards"}
+                onClick={() => setWorldSubView("cards")}
               >
-                <SubNavButton
-                  active={worldSubView === "cards"}
-                  onClick={() => setWorldSubView("cards")}
-                >
-                  卡片
-                </SubNavButton>
-                <SubNavButton
-                  active={worldSubView === "graph"}
-                  onClick={() => setWorldSubView("graph")}
-                >
-                  图谱
-                </SubNavButton>
-              </div>
-            )}
+                卡片
+              </SubNavButton>
+              <SubNavButton
+                active={worldSubView === "graph"}
+                onClick={() => setWorldSubView("graph")}
+              >
+                图谱
+              </SubNavButton>
+            </div>
+          )}
         </div>
       ))}
 
@@ -184,7 +182,9 @@ function Stat({ label, value }: { label: string; value: number }) {
       }}
     >
       <span>{label}</span>
-      <span style={{ color: "var(--fg-primary)", fontFamily: "var(--font-mono)" }}>
+      <span
+        style={{ color: "var(--fg-primary)", fontFamily: "var(--font-mono)" }}
+      >
         {value}
       </span>
     </div>

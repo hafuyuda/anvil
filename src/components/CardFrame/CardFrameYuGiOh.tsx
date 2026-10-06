@@ -1,6 +1,6 @@
 import type { Card, CardType } from "../../core/ipc";
 import { SIZE_MAP, type CardFrameSize } from "./types";
-import { mapCard } from "./yugioh";
+import { mapCard } from "./mapping";
 import { useImageUrl } from "../../hooks/useImageUrl";
 
 interface Props {
@@ -20,11 +20,18 @@ export function CardFrameYuGiOh({
 }: Props) {
   const spec = SIZE_MAP[size];
   const m = mapCard(card, cardType);
-  const accent = cardType.color ?? "var(--accent-copper)";
+  const accent = cardType.color ?? "var(--card-frame-default-accent)";
 
   const displayBody = m.body.length > 0 ? m.body : (cardType.description ?? "");
   const stars = m.level ? "★".repeat(Math.min(m.level, 12)) : "";
   const imageUrl = useImageUrl(m.image);
+
+  // 由强调色派生出的描边/加深色，统一走 color-mix，兼容 hex 与 CSS 变量
+  const accentSoft = `color-mix(in srgb, ${accent} 40%, transparent)`;
+  const accentStrong = `color-mix(in srgb, ${accent} 55%, transparent)`;
+  const accentTitleTop = accent;
+  const accentTitleBottom = shade(accent, 80);
+  const accentTitleBorder = shade(accent, 70);
 
   return (
     <div
@@ -50,6 +57,7 @@ export function CardFrameYuGiOh({
       <div
         style={{
           flex: 1,
+          minHeight: 0,
           border: `1px solid ${accent}`,
           borderRadius: spec.borderRadius - 2,
           padding: spec.padding,
@@ -67,9 +75,10 @@ export function CardFrameYuGiOh({
             alignItems: "center",
             justifyContent: "space-between",
             padding: "2px 6px",
-            background: `linear-gradient(180deg, ${accent} 0%, ${darken(accent)} 100%)`,
+            flexShrink: 0,
+            background: `linear-gradient(180deg, ${accentTitleTop} 0%, ${accentTitleBottom} 100%)`,
             borderRadius: 3,
-            border: `1px solid ${darken(accent, 0.3)}`,
+            border: `1px solid ${accentTitleBorder}`,
           }}
         >
           <span
@@ -109,26 +118,59 @@ export function CardFrameYuGiOh({
               textAlign: "center",
               padding: "0 4px",
               fontStyle: "italic",
+              flexShrink: 0,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
             }}
+            title={m.subtitle}
           >
             {m.subtitle}
           </div>
         )}
 
-        <div style={{/* 图像区容器样式 */}}>
+        {/* 图像区 */}
+        <div
+          style={{
+            height: spec.imageHeight,
+            flexShrink: 0,
+            borderRadius: spec.borderRadius - 3,
+            overflow: "hidden",
+            border: `1px solid ${accentStrong}`,
+            background: `color-mix(in srgb, ${accent} 22%, var(--card-yugioh-inner-bg-2))`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            position: "relative",
+          }}
+        >
           {imageUrl ? (
             <img
               src={imageUrl}
               alt=""
+              draggable={false}
               style={{
                 width: "100%",
                 height: "100%",
                 objectFit: "cover",
                 display: "block",
+                userSelect: "none",
               }}
             />
           ) : (
-            <div style={{/* 色块 + 首字 */}}>{m.title.slice(0, 2)}</div>
+            <div
+              style={{
+                fontSize: spec.titleSize * 2.4,
+                fontFamily: "var(--font-title)",
+                fontWeight: 700,
+                color: `color-mix(in srgb, ${accent} 70%, #000)`,
+                textShadow: "0 1px 0 rgba(255,255,255,0.35)",
+                letterSpacing: 2,
+                userSelect: "none",
+              }}
+            >
+              {m.title.slice(0, 2) || "?"}
+            </div>
           )}
         </div>
 
@@ -144,6 +186,7 @@ export function CardFrameYuGiOh({
               color: "var(--card-yugioh-star)",
               padding: "0 4px",
               textShadow: "0 0 1px #fff",
+              flexShrink: 0,
             }}
           >
             {m.levelLabel && (
@@ -168,11 +211,16 @@ export function CardFrameYuGiOh({
             textAlign: "center",
             color: "var(--card-yugioh-text-dim)",
             padding: "1px 0",
-            borderTop: `1px solid ${accent}66`,
-            borderBottom: `1px solid ${accent}66`,
+            borderTop: `1px solid ${accentSoft}`,
+            borderBottom: `1px solid ${accentSoft}`,
             fontStyle: "italic",
             letterSpacing: 0.3,
+            flexShrink: 0,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
           }}
+          title={m.typeLine}
         >
           {m.typeLine}
         </div>
@@ -184,7 +232,7 @@ export function CardFrameYuGiOh({
             flex: 1,
             minHeight: 0,
             background: "var(--card-yugioh-parchment)",
-            border: `1px solid ${accent}88`,
+            border: `1px solid ${accentStrong}`,
             borderRadius: 3,
             padding: `${spec.padding}px ${spec.padding + 2}px`,
             fontSize: spec.bodySize,
@@ -220,7 +268,7 @@ export function CardFrameYuGiOh({
             }}
           />
 
-          {/* ATK/DEF */}
+          {/* ATK/DEF/HP */}
           {(m.atk !== undefined ||
             m.def !== undefined ||
             m.hp !== undefined) && (
@@ -262,17 +310,11 @@ export function CardFrameYuGiOh({
   );
 }
 
-/** 简易颜色加深，仅当 accent 是 hex 时有效 */
-function darken(hex: string, amount = 0.2): string {
-  const clean = hex.replace("#", "");
-  if (clean.length !== 6) return hex;
-  const n = parseInt(clean, 16);
-  if (Number.isNaN(n)) return hex;
-  let r = (n >> 16) & 0xff;
-  let g = (n >> 8) & 0xff;
-  let b = n & 0xff;
-  r = Math.max(0, Math.floor(r * (1 - amount)));
-  g = Math.max(0, Math.floor(g * (1 - amount)));
-  b = Math.max(0, Math.floor(b * (1 - amount)));
-  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, "0")}`;
+/**
+ * 把颜色按比例向黑色混合。
+ * 输出 CSS color-mix，输入可为 hex 或 CSS 变量，由浏览器求值。
+ * pct 为保留的亮色百分比：80 表示加深 20%。
+ */
+function shade(color: string, pct: number): string {
+  return `color-mix(in srgb, ${color} ${pct}%, #000)`;
 }

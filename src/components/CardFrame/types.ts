@@ -1,5 +1,17 @@
 export type CardFrameSize = "small" | "medium" | "large";
-export type CardFrameStyle = "yugioh" | "generic";
+
+export type CardFrameStyle =
+  "yugioh" | "generic" | "minimal" | "mtg" | "pokemon";
+
+export const DEFAULT_CARD_FRAME_STYLE: CardFrameStyle = "yugioh";
+
+export const CARD_FRAME_STYLE_LABELS: Record<CardFrameStyle, string> = {
+  yugioh: "游戏王",
+  generic: "通用",
+  minimal: "极简",
+  mtg: "万智牌",
+  pokemon: "宝可梦",
+};
 
 export interface SizeSpec {
   w: number;
@@ -11,6 +23,7 @@ export interface SizeSpec {
   typeSize: number;
   statSize: number;
   borderRadius: number;
+  imageHeight: number;
 }
 
 export const SIZE_MAP: Record<CardFrameSize, SizeSpec> = {
@@ -24,6 +37,7 @@ export const SIZE_MAP: Record<CardFrameSize, SizeSpec> = {
     typeSize: 8,
     statSize: 9,
     borderRadius: 6,
+    imageHeight: 84,
   },
   medium: {
     w: 190,
@@ -35,6 +49,7 @@ export const SIZE_MAP: Record<CardFrameSize, SizeSpec> = {
     typeSize: 10,
     statSize: 11,
     borderRadius: 8,
+    imageHeight: 116,
   },
   large: {
     w: 260,
@@ -46,5 +61,6 @@ export const SIZE_MAP: Record<CardFrameSize, SizeSpec> = {
     typeSize: 12,
     statSize: 14,
     borderRadius: 10,
+    imageHeight: 160,
   },
 };

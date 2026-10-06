@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { ipc, type Theme } from "../../core/ipc";
-import { useProjectStore } from "../../stores/projectStore";
 import { applyTheme, resetTheme } from "../../lib/theme";
+import { BUILTIN_THEMES, type BuiltinTheme } from "../../themes";
 import { newId } from "../../lib/id";
 import { nowMs } from "../../lib/time";
 
@@ -37,9 +37,14 @@ interface Props {
   onChangeThemeId: (id: string | null) => void;
 }
 
+type Selection =
+  | { type: "builtin"; theme: BuiltinTheme }
+  | { type: "project"; theme: Theme }
+  | null;
+
 export function ThemePanel({ manifestThemeId, onChangeThemeId }: Props) {
   const [themes, setThemes] = useState<Theme[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selection, setSelection] = useState<Selection>(null);
   const [draft, setDraft] = useState<Theme | null>(null);
   const [dirty, setDirty] = useState(false);
 
@@ -50,9 +55,21 @@ export function ThemePanel({ manifestThemeId, onChangeThemeId }: Props) {
       .catch(() => setThemes([]));
   }, []);
 
-  const selected = themes.find((t) => t.id === selectedId) ?? null;
+  function selectBuiltin(t: BuiltinTheme) {
+    setSelection({ type: "builtin", theme: t });
+    setDraft(null);
+    setDirty(false);
+    applyTheme(t.variables);
+  }
 
-  function newTheme() {
+  function selectProjectTheme(t: Theme) {
+    setSelection({ type: "project", theme: t });
+    setDraft({ ...t });
+    setDirty(false);
+    applyTheme(t.variables);
+  }
+
+  function newThemeFromCurrent() {
     const t: Theme = {
       id: newId(),
       name: "新主题",
@@ -61,16 +78,9 @@ export function ThemePanel({ manifestThemeId, onChangeThemeId }: Props) {
       created_at: nowMs(),
       updated_at: nowMs(),
     };
+    setSelection({ type: "project", theme: t });
     setDraft(t);
-    setSelectedId(null);
     setDirty(true);
-  }
-
-  function selectTheme(t: Theme) {
-    setSelectedId(t.id);
-    setDraft({ ...t });
-    setDirty(false);
-    applyTheme(t.variables);
   }
 
   function updateVar(key: string, value: string) {
@@ -94,7 +104,7 @@ export function ThemePanel({ manifestThemeId, onChangeThemeId }: Props) {
       await ipc.upsertTheme(draft);
       const list = await ipc.listThemes();
       setThemes(list);
-      setSelectedId(draft.id);
+      setSelection({ type: "project", theme: draft });
       setDirty(false);
     } catch (e) {
       alert("保存失败: " + e);
@@ -107,8 +117,8 @@ export function ThemePanel({ manifestThemeId, onChangeThemeId }: Props) {
       await ipc.deleteTheme(id);
       const list = await ipc.listThemes();
       setThemes(list);
-      if (selectedId === id) {
-        setSelectedId(null);
+      if (selection?.type === "project" && selection.theme.id === id) {
+        setSelection(null);
         setDraft(null);
         resetTheme();
       }
@@ -123,8 +133,17 @@ export function ThemePanel({ manifestThemeId, onChangeThemeId }: Props) {
   function applyAsProjectTheme(id: string | null) {
     onChangeThemeId(id);
     if (id) {
+      const builtin = BUILTIN_THEMES.find((t) => t.id === id);
+      if (builtin) {
+        resetTheme();
+        applyTheme(builtin.variables);
+        return;
+      }
       const t = themes.find((x) => x.id === id);
-      if (t) applyTheme(t.variables);
+      if (t) {
+        resetTheme();
+        applyTheme(t.variables);
+      }
     } else {
       resetTheme();
     }
@@ -136,14 +155,8 @@ export function ThemePanel({ manifestThemeId, onChangeThemeId }: Props) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <div
-        style={{
-          display: "flex",
-          gap: 8,
-          alignItems: "center",
-        }}
-      >
-        <button className="btn btn-primary" onClick={newTheme}>
+      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <button className="btn btn-primary" onClick={newThemeFromCurrent}>
           + 从当前配色新建
         </button>
         <button className="btn" onClick={reset}>
@@ -151,81 +164,81 @@ export function ThemePanel({ manifestThemeId, onChangeThemeId }: Props) {
         </button>
       </div>
 
-      <div
-        style={{
-          fontSize: 12,
-          color: "var(--fg-muted)",
-        }}
-      >
+      <div style={{ fontSize: 12, color: "var(--fg-muted)" }}>
         当前项目主题：
         <select
           className="select"
           value={manifestThemeId ?? ""}
           onChange={(e) => applyAsProjectTheme(e.target.value || null)}
-          style={{ marginLeft: 8, width: 200 }}
+          style={{ marginLeft: 8, width: 220 }}
         >
-          <option value="">默认（Anvil Dark）</option>
-          {themes.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.name}
-            </option>
-          ))}
+          <option value="">默认（跟随所选主题）</option>
+          <optgroup label="内置">
+            {BUILTIN_THEMES.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </optgroup>
+          {themes.length > 0 && (
+            <optgroup label="项目主题">
+              {themes.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </optgroup>
+          )}
         </select>
       </div>
 
       <div style={{ display: "flex", gap: 12 }}>
-        <div style={{ minWidth: 160 }}>
-          <div
-            style={{
-              fontSize: 10,
-              color: "var(--fg-muted)",
-              textTransform: "uppercase",
-              letterSpacing: 1,
-              marginBottom: 4,
-            }}
-          >
-            主题列表（{themes.length}）
-          </div>
+        {/* 左：主题列表 */}
+        <div style={{ minWidth: 180 }}>
+          <SectionLabel>内置</SectionLabel>
           <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-            {themes.map((t) => (
-              <li
+            {BUILTIN_THEMES.map((t) => (
+              <ThemeItem
                 key={t.id}
-                onClick={() => selectTheme(t)}
+                name={t.name}
+                selected={
+                  selection?.type === "builtin" && selection.theme.id === t.id
+                }
+                onSelect={() => selectBuiltin(t)}
+              />
+            ))}
+          </ul>
+
+          <SectionLabel style={{ marginTop: 12 }}>
+            项目主题（{themes.length}）
+          </SectionLabel>
+          <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+            {themes.length === 0 && (
+              <li
                 style={{
-                  display: "flex",
-                  alignItems: "center",
+                  fontSize: 11,
+                  color: "var(--fg-muted)",
                   padding: "4px 8px",
-                  cursor: "pointer",
-                  borderRadius: "var(--radius-sm)",
-                  background:
-                    selectedId === t.id ? "var(--bg-raised)" : "transparent",
-                  borderLeft:
-                    selectedId === t.id
-                      ? "2px solid var(--accent-gold)"
-                      : "2px solid transparent",
                 }}
               >
-                <span style={{ flex: 1, fontSize: 12 }}>{t.name}</span>
-                <button
-                  className="btn btn-ghost"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    remove(t.id);
-                  }}
-                  style={{
-                    color: "var(--danger)",
-                    padding: "0 6px",
-                    fontSize: 12,
-                  }}
-                  title="删除"
-                >
-                  ×
-                </button>
+                无
               </li>
+            )}
+            {themes.map((t) => (
+              <ThemeItem
+                key={t.id}
+                name={t.name}
+                selected={
+                  selection?.type === "project" && selection.theme.id === t.id
+                }
+                onSelect={() => selectProjectTheme(t)}
+                onDelete={() => remove(t.id)}
+              />
             ))}
           </ul>
         </div>
 
+        {/* 右：编辑 / 预览 */}
         {draft && (
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
@@ -256,7 +269,11 @@ export function ThemePanel({ manifestThemeId, onChangeThemeId }: Props) {
                 return (
                   <label
                     key={key}
-                    style={{ display: "flex", flexDirection: "column", gap: 2 }}
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 2,
+                    }}
                   >
                     <span style={{ fontSize: 11, color: "var(--fg-muted)" }}>
                       {label}
@@ -307,5 +324,77 @@ export function ThemePanel({ manifestThemeId, onChangeThemeId }: Props) {
         )}
       </div>
     </div>
+  );
+}
+
+function SectionLabel({
+  children,
+  style,
+}: {
+  children: React.ReactNode;
+  style?: React.CSSProperties;
+}) {
+  return (
+    <div
+      style={{
+        fontSize: 10,
+        color: "var(--fg-muted)",
+        textTransform: "uppercase",
+        letterSpacing: 1,
+        marginBottom: 4,
+        ...style,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function ThemeItem({
+  name,
+  selected,
+  onSelect,
+  onDelete,
+}: {
+  name: string;
+  selected: boolean;
+  onSelect: () => void;
+  onDelete?: () => void;
+}) {
+  return (
+    <li
+      onClick={onSelect}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        padding: "4px 8px",
+        cursor: "pointer",
+        borderRadius: "var(--radius-sm)",
+        background: selected ? "var(--bg-raised)" : "transparent",
+        borderLeft: selected
+          ? "2px solid var(--accent-gold)"
+          : "2px solid transparent",
+        fontSize: 12,
+      }}
+    >
+      <span style={{ flex: 1 }}>{name}</span>
+      {onDelete && (
+        <button
+          className="btn btn-ghost"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+          style={{
+            color: "var(--danger)",
+            padding: "0 6px",
+            fontSize: 12,
+          }}
+          title="删除"
+        >
+          ×
+        </button>
+      )}
+    </li>
   );
 }

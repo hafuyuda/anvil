@@ -31,6 +31,8 @@ export function PlayView({ scenario }: Props) {
     hasScript,
     currentLine,
     currentBg,
+    isEnding,
+    endingName,
   } = usePlayState(scenario, cards, relations);
 
   const [showVariables, setShowVariables] = useState(false);
@@ -77,6 +79,8 @@ export function PlayView({ scenario }: Props) {
         onAdvance={advance}
         fallbackCard={currentCard}
         scenario={scenario}
+        isEnding={isEnding}
+        endingName={endingName}
       />
 
       {/* 右上角工具栏 */}

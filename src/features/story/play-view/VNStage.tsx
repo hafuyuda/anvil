@@ -3,6 +3,7 @@ import type { Card, Relation, RelationKind, Scenario } from "../../../core/ipc";
 import type { ScriptLine } from "../script/types";
 import { parseEffects } from "../effects";
 import { loadImage } from "../../../lib/imageCache";
+import { useTypewriter } from "./useTypeWriter";
 
 interface Props {
   scriptLoading: boolean;
@@ -20,6 +21,9 @@ interface Props {
 
   fallbackCard: Card | null;
   scenario: Scenario;
+
+  isEnding: boolean;
+  endingName: string | null;
 }
 
 export function VNStage({
@@ -36,6 +40,8 @@ export function VNStage({
   onAdvance,
   fallbackCard,
   scenario,
+  isEnding,
+  endingName,
 }: Props) {
   if (scriptLoading) {
     return (
@@ -81,6 +87,11 @@ export function VNStage({
         {currentBg && <BackgroundImage path={currentBg} />}
       </div>
 
+      {/* 立绘层 */}
+      {hasScript && currentLine && (
+        <PortraitLayer line={currentLine} cards={cards} />
+      )}
+
       {/* 内容层 */}
       <div
         style={{
@@ -103,13 +114,16 @@ export function VNStage({
             />
 
             {atEnd ? (
-              <ChoicePanel
-                outgoing={outgoing}
-                edgeStates={edgeStates}
-                cards={cards}
-                relationKinds={relationKinds}
-                onAdvance={onAdvance}
-              />
+              <>
+                {isEnding && <EndingBadge name={endingName} />}
+                <ChoicePanel
+                  outgoing={outgoing}
+                  edgeStates={edgeStates}
+                  cards={cards}
+                  relationKinds={relationKinds}
+                  onAdvance={onAdvance}
+                />
+              </>
             ) : (
               <DialogueBox line={currentLine} onAdvance={onAdvanceLine} />
             )}
@@ -177,15 +191,30 @@ function DialogueBox({
   line: ScriptLine;
   onAdvance: () => void;
 }) {
-  // 防御：指令行不该出现在这里（预处理已抽掉）
+  // 防御：指令行不该出现在这里
   if (line.type === "bg" || line.type === "bgm" || line.type === "sfx") {
     return null;
   }
 
-  // 到这里 line 收窄为 narration | say | action
+  const text = line.text;
+  // 旁白不打字机（通常较长，逐字反而慢）；对白和动作打字机
+  const enabled = line.type !== "narration";
+  const { displayed, done, skip } = useTypewriter(text, {
+    speed: 35,
+    enabled,
+  });
+
+  function handleClick() {
+    if (!done) {
+      skip();
+      return;
+    }
+    onAdvance();
+  }
+
   return (
     <div
-      onClick={onAdvance}
+      onClick={handleClick}
       style={{
         margin: 16,
         padding: "16px 20px",
@@ -228,7 +257,19 @@ function DialogueBox({
           textAlign: line.type === "narration" ? "center" : "left",
         }}
       >
-        {line.text}
+        {displayed}
+        {!done && (
+          <span
+            style={{
+              display: "inline-block",
+              width: 8,
+              marginLeft: 2,
+              animation: "vn-blink 1s step-end infinite",
+            }}
+          >
+            ▌
+          </span>
+        )}
       </div>
 
       <div
@@ -240,12 +281,11 @@ function DialogueBox({
           color: "var(--fg-muted)",
         }}
       >
-        点击继续 ▼
+        {done ? "点击继续 ▼" : "点击跳过"}
       </div>
     </div>
   );
 }
-
 // ── 选择面板 ──
 
 function ChoicePanel({
@@ -470,6 +510,133 @@ function FallbackScene({
         relationKinds={relationKinds}
         onAdvance={onAdvance}
       />
+    </div>
+  );
+}
+
+// ── 立绘层 ──
+
+function PortraitLayer({ line, cards }: { line: ScriptLine; cards: Card[] }) {
+  // 只有 say 行且指定了说话人有立绘
+  if (line.type !== "say") return null;
+
+  const speaker = line.speaker;
+  const portrait = line.portrait;
+  if (!portrait) return null;
+
+  // 找卡
+  const card = cards.find((c) => c.name === speaker);
+  if (!card) return null;
+
+  // 找 portrait_<表情> 字段
+  const key = `portrait_${portrait}`;
+  const value = card.values[key];
+  if (typeof value !== "string" || !value.trim()) return null;
+
+  return <PortraitImage path={value} />;
+}
+
+function PortraitImage({ path }: { path: string }) {
+  const [url, setUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    loadImage(path)
+      .then((u) => {
+        if (!cancelled) setUrl(u);
+      })
+      .catch(() => {
+        if (!cancelled) setUrl(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [path]);
+
+  if (!url) return null;
+
+  return (
+    <div
+      style={{
+        position: "absolute",
+        bottom: 180,
+        left: "50%",
+        transform: "translateX(-50%)",
+        maxHeight: "60%",
+        maxWidth: "60%",
+        zIndex: 2,
+        pointerEvents: "none",
+        display: "flex",
+        alignItems: "flex-end",
+        justifyContent: "center",
+      }}
+    >
+      <img
+        src={url}
+        alt=""
+        draggable={false}
+        style={{
+          maxHeight: "100%",
+          maxWidth: "100%",
+          display: "block",
+          userSelect: "none",
+          filter: "drop-shadow(0 8px 24px rgba(0,0,0,0.6))",
+        }}
+      />
+    </div>
+  );
+}
+
+// ── 结局徽章 ──
+
+function EndingBadge({ name }: { name: string | null }) {
+  return (
+    <div
+      style={{
+        margin: "16px 16px 0",
+        padding: "16px 20px",
+        background: "linear-gradient(135deg, #3d3427 0%, #2a231a 100%)",
+        border: "1px solid var(--accent-gold)",
+        borderRadius: "var(--radius-lg)",
+        boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
+        textAlign: "center",
+      }}
+    >
+      <div
+        style={{
+          fontSize: 11,
+          color: "var(--accent-gold)",
+          textTransform: "uppercase",
+          letterSpacing: 2,
+          marginBottom: 6,
+          fontFamily: "var(--font-mono)",
+        }}
+      >
+        — 结局 —
+      </div>
+      {name ? (
+        <div
+          style={{
+            fontSize: 22,
+            fontFamily: "var(--font-title)",
+            fontWeight: 600,
+            color: "var(--fg-primary)",
+            letterSpacing: 1,
+          }}
+        >
+          {name}
+        </div>
+      ) : (
+        <div
+          style={{
+            fontSize: 18,
+            fontFamily: "var(--font-title)",
+            color: "var(--fg-secondary)",
+          }}
+        >
+          故事到此结束
+        </div>
+      )}
     </div>
   );
 }

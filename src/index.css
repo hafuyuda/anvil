@@ -54,6 +54,9 @@
 
   color-scheme: dark;
 
+    /* 卡牌：共用 */
+  --card-frame-default-accent: var(--accent-copper);
+  
   /* 卡牌（游戏王风格） */
   --card-yugioh-outer-1: #d4c5a0;
   --card-yugioh-outer-2: #b8a678;
@@ -68,6 +71,49 @@
   --card-yugioh-image-2: rgba(0, 0, 0, 0);
   --card-yugioh-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
   --card-yugioh-shadow-selected: 0 4px 14px rgba(0, 0, 0, 0.6);
+
+  /* 卡牌：通用（generic） */
+  --card-generic-outer: #1f1b16;
+  --card-generic-bg: #2a2520;
+  --card-generic-title: #e8dcc5;
+  --card-generic-text: #c8bda6;
+  --card-generic-text-dim: #7a6f5e;
+  --card-generic-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+  --card-generic-shadow-selected: 0 4px 14px rgba(0, 0, 0, 0.6);
+
+  /* 卡牌：极简（minimal） */
+  --card-minimal-bg: #221d17;
+  --card-minimal-title: #e8dcc5;
+  --card-minimal-text: #c8bda6;
+  --card-minimal-text-dim: #7a6f5e;
+  --card-minimal-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  --card-minimal-shadow-selected: 0 4px 12px rgba(0, 0, 0, 0.55);
+
+  /* 卡牌：万智牌（mtg） */
+  --card-mtg-outer-1: #2a2520;
+  --card-mtg-outer-2: #1a1612;
+  --card-mtg-bg: #322b23;
+  --card-mtg-inner-border: #4a4033;
+  --card-mtg-art-bg: #3d3428;
+  --card-mtg-parchment: #e8dcc5;
+  --card-mtg-parchment-border: #a89880;
+  --card-mtg-text: #2a1f10;
+  --card-mtg-text-dim: #5a4a30;
+  --card-mtg-shadow: 0 2px 6px rgba(0, 0, 0, 0.55);
+  --card-mtg-shadow-selected: 0 4px 14px rgba(0, 0, 0, 0.65);
+
+  /* 卡牌：宝可梦（pokemon） */
+  --card-pokemon-outer-1: #d8cfb8;
+  --card-pokemon-outer-2: #b8a678;
+  --card-pokemon-bg: #f4ebd4;
+  --card-pokemon-inner-border: #a89880;
+  --card-pokemon-art-bg: #e8dcc5;
+  --card-pokemon-title: #2a1f10;
+  --card-pokemon-text: #3a2a10;
+  --card-pokemon-text-dim: #6a5a40;
+  --card-pokemon-hp: #c8401f;
+  --card-pokemon-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+  --card-pokemon-shadow-selected: 0 4px 14px rgba(0, 0, 0, 0.55);
 
   /* 对话气泡 */
   --chat-bubble-bg: #2f2922;
@@ -254,4 +300,15 @@ h4 {
   background: var(--accent-gold) !important;
   border-color: var(--accent-gold) !important;
   transform: scale(1.3);
+}
+
+@keyframes vn-blink {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  50.1%,
+  100% {
+    opacity: 0;
+  }
 }

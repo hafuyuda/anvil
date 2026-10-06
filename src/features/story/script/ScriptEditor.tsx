@@ -123,10 +123,25 @@ export function ScriptEditor({ cardId, cardName }: Props) {
           borderBottom: "1px solid var(--border-subtle)",
           fontFamily: "var(--font-mono)",
           flexShrink: 0,
+          lineHeight: 1.6,
         }}
       >
         {"> 旁白"} · {"**角色**（表情）：对白"} · {"*动作*"} · {"@bg 路径"} ·{" "}
         {"@bgm 文件"}
+        <div style={{ color: "var(--fg-muted)", fontSize: 10 }}>
+          顶部 frontmatter 可写：
+          <span style={{ color: "var(--fg-secondary)" }}>
+            {" "}
+            bg · bgm · is_ending · ending_name
+          </span>
+        </div>
+        <div style={{ color: "var(--fg-muted)", fontSize: 10 }}>
+          说话人按名字匹配项目中的卡。立绘从卡的{" "}
+          <span style={{ color: "var(--fg-secondary)" }}>
+            portrait_&lt;表情&gt;
+          </span>{" "}
+          image 字段读取。
+        </div>
       </div>
 
       {/* 主体：源码 + 预览 */}
