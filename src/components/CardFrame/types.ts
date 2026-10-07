@@ -13,6 +13,10 @@ export const CARD_FRAME_STYLE_LABELS: Record<CardFrameStyle, string> = {
   pokemon: "宝可梦",
 };
 
+export function isCardFrameStyle(v: unknown): v is CardFrameStyle {
+  return typeof v === "string" && v in CARD_FRAME_STYLE_LABELS;
+}
+
 export interface SizeSpec {
   w: number;
   h: number;
@@ -64,3 +68,12 @@ export const SIZE_MAP: Record<CardFrameSize, SizeSpec> = {
     imageHeight: 160,
   },
 };
+
+export const CARD_ACCENT_PRESETS: { value: string; label: string }[] = [
+  { value: "var(--accent-copper)", label: "铜" },
+  { value: "var(--accent-gold)", label: "金" },
+  { value: "var(--accent-ember)", label: "暗红" },
+  { value: "var(--accent-flame)", label: "火" },
+  { value: "var(--accent-steel)", label: "钢" },
+  { value: "var(--accent-iron)", label: "铁" },
+];

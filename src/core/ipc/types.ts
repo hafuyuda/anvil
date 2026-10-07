@@ -53,6 +53,8 @@ export interface CardFrameConfig {
   def_label?: string | null;
   hp?: string | null;
   hp_label?: string | null;
+  foil_field?: string | null;
+  foil_values: string[];
 }
 
 export interface CardType {
@@ -92,6 +94,17 @@ export interface Relation {
   label?: string | null;
   meta: Record<string, unknown>;
   created_at: number;
+}
+
+// ============ CardGroup ============
+
+export interface CardGroup {
+  id: string;
+  name: string;
+  description?: string | null;
+  card_ids: string[];
+  created_at: number;
+  updated_at: number;
 }
 
 // ============ Scenario ============
@@ -235,6 +248,7 @@ export interface ProjectSnapshot {
   scenarios: Scenario[];
   boards: Board[];
   sessions: Session[];
+  card_groups: CardGroup[];
 }
 
 // ============ 资源包合并 ============
@@ -260,6 +274,7 @@ export interface PackInspection {
   scenarios: InspectNamed[];
   boards: InspectNamed[];
   sessions: InspectNamed[];
+  card_groups: InspectNamed[];
   total_cards: number;
   total_relations: number;
 }
@@ -271,6 +286,7 @@ export interface MergeOptions {
   include_scenarios?: string[];
   include_boards?: string[];
   include_sessions?: string[];
+  include_card_groups?: string[];
 }
 
 export interface MergeResult {
@@ -280,6 +296,7 @@ export interface MergeResult {
   imported_scenarios: number;
   imported_boards: number;
   imported_sessions: number;
+  imported_card_groups: number;
   imported_assets: number;
   skipped_types: string[];
 }

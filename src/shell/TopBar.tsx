@@ -10,10 +10,10 @@ import { useUIStore } from "../stores/uiStore";
 import { resetTheme } from "../lib/theme";
 import { setLastOpenPath } from "../lib/recentProjects";
 import { clearImageCache } from "../lib/imageCache";
+import { AppSettingsDialog } from "../features/app/AppSettingsDialog";
 
 export function TopBar() {
   const projectPath = useProjectStore((s) => s.projectPath);
-  const setProject = useProjectStore((s) => s.setProject);
   const closeProject = useProjectStore((s) => s.closeProject);
   const pendingSaves = useProjectStore((s) => s.pendingSaves);
   const undoStack = useProjectStore((s) => s.undoStack) ?? [];
@@ -24,10 +24,10 @@ export function TopBar() {
   const createProject = useCreateProject();
   const exportPack = useExportPack();
   const importPack = useImportPack();
-  const [paletteOpen, setPaletteOpen] = useState(false);
 
   const openPalette = useUIStore((s) => s.openPalette);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [appSettingsOpen, setAppSettingsOpen] = useState(false);
 
   const openMergePack = useUIStore((s) => s.openMergePack);
 
@@ -57,6 +57,7 @@ export function TopBar() {
         scenarios: snap.scenarios,
         boards: snap.boards,
         sessions: snap.sessions,
+        cardGroups: snap.card_groups,
       });
     } catch (e) {
       alert("刷新失败: " + e);
@@ -174,6 +175,9 @@ export function TopBar() {
           </span>
         </button>
 
+        <button className="btn" onClick={() => setAppSettingsOpen(true)}>
+          应用设置
+        </button>
         <button
           className="btn"
           onClick={() => setSettingsOpen(true)}
@@ -190,6 +194,9 @@ export function TopBar() {
 
       {settingsOpen && (
         <ProjectSettingsDialog onClose={() => setSettingsOpen(false)} />
+      )}
+      {appSettingsOpen && (
+        <AppSettingsDialog onClose={() => setAppSettingsOpen(false)} />
       )}
     </>
   );

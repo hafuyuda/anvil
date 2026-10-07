@@ -3,6 +3,7 @@ interface Props {
   visibleCount: number;
   onSelectAllVisible: () => void;
   onClearSelection: () => void;
+  onAddToGroup: () => void;
   onAddToBoard: () => void;
   onDelete: () => void;
 }
@@ -12,6 +13,7 @@ export function BulkActionBar({
   visibleCount,
   onSelectAllVisible,
   onClearSelection,
+  onAddToGroup,
   onAddToBoard,
   onDelete,
 }: Props) {
@@ -48,6 +50,9 @@ export function BulkActionBar({
         取消选择
       </button>
       <div style={{ flex: 1 }} />
+      <button className="btn" onClick={onAddToGroup} style={{ fontSize: 11 }}>
+        → 加入卡组
+      </button>
       <button className="btn" onClick={onAddToBoard} style={{ fontSize: 11 }}>
         → 添加到棋盘
       </button>

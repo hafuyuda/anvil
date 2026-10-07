@@ -23,7 +23,7 @@ export function ImageField({ value, onChange }: Props) {
 
         setDataUrl(u);
       })
-      .catch((e) => {
+      .catch(() => {
         if (cancelled) return;
         setDataUrl(null);
       });

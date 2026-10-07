@@ -58,6 +58,7 @@ export function AppShell() {
             scenarios: snap.scenarios,
             boards: snap.boards,
             sessions: snap.sessions,
+            cardGroups: snap.card_groups,
           });
         } catch {
           // 忽略
@@ -78,7 +79,7 @@ export function AppShell() {
     autoOpenTriedRef.current = true;
     void tryAutoOpenLastProject();
   }, []);
-  
+
   return (
     <div
       style={{

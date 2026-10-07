@@ -12,6 +12,7 @@ pub struct PackInspection {
     pub scenarios: Vec<InspectNamed>,
     pub boards: Vec<InspectNamed>,
     pub sessions: Vec<InspectNamed>,
+    pub card_groups: Vec<InspectNamed>,
     pub total_cards: usize,
     pub total_relations: usize,
 }
@@ -43,6 +44,8 @@ pub struct MergeOptions {
     pub include_boards: Vec<String>,
     #[serde(default)]
     pub include_sessions: Vec<String>,
+    #[serde(default)]
+    pub include_card_groups: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -61,6 +64,7 @@ pub struct MergeResult {
     pub imported_scenarios: usize,
     pub imported_boards: usize,
     pub imported_sessions: usize,
+    pub imported_card_groups: usize,
     pub imported_assets: usize,
     pub skipped_types: Vec<String>,
 }
@@ -86,6 +90,7 @@ impl Project {
             "boards",
             "scenarios",
             "sessions",
+            "card_groups",
             "assets",
         ];
 
@@ -264,6 +269,7 @@ impl Project {
                 imported_scenarios: 0,
                 imported_boards: 0,
                 imported_sessions: 0,
+                imported_card_groups: 0,
                 imported_assets: 0,
                 skipped_types: skipped_type_names,
             });
@@ -518,7 +524,48 @@ impl Project {
             }
         }
 
-        // ── 10. Assets ──
+        // ── 10. CardGroup ──
+        let mut imported_card_groups = 0usize;
+        let cg_dir = temp.join("card_groups");
+        if cg_dir.exists() {
+            let existing_ids: std::collections::HashSet<String> =
+                self.load_card_groups()?.into_iter().map(|g| g.id).collect();
+
+            for entry in std::fs::read_dir(&cg_dir)? {
+                let entry = entry?;
+                let p = entry.path();
+                if p.extension().and_then(|s| s.to_str()) != Some("json") {
+                    continue;
+                }
+                let bytes = std::fs::read(&p)?;
+                let mut group: crate::core::model::card_group::CardGroup =
+                    match serde_json::from_slice(&bytes) {
+                        Ok(g) => g,
+                        Err(_) => continue,
+                    };
+
+                if !options.include_card_groups.is_empty()
+                    && !options.include_card_groups.contains(&group.id)
+                {
+                    continue;
+                }
+
+                if existing_ids.contains(&group.id) {
+                    continue;
+                }
+
+                // 过滤掉未导入的卡
+                group.card_ids.retain(|id| imported_card_ids.contains(id));
+                if group.card_ids.is_empty() {
+                    continue;
+                }
+
+                self.save_card_group(&group)?;
+                imported_card_groups += 1;
+            }
+        }
+
+        // ── 11. Assets ──
         let mut imported_assets = 0usize;
         let remote_assets = temp.join("assets").join("images");
         if remote_assets.exists() {
@@ -546,6 +593,7 @@ impl Project {
             imported_scenarios,
             imported_boards,
             imported_sessions,
+            imported_card_groups,
             imported_assets,
             skipped_types: skipped_type_names,
         })
@@ -639,6 +687,8 @@ fn inspect_pack_dir(temp: &Path) -> anyhow::Result<PackInspection> {
     let scenarios = list_named_json(&temp.join("scenarios"))?;
     let boards = list_named_json(&temp.join("boards"))?;
 
+    let card_groups = list_named_json(&temp.join("card_groups"))?;
+
     // sessions
     let mut sessions = Vec::new();
     let sessions_dir = temp.join("sessions");
@@ -680,6 +730,7 @@ fn inspect_pack_dir(temp: &Path) -> anyhow::Result<PackInspection> {
         scenarios,
         boards,
         sessions,
+        card_groups,
         total_cards,
         total_relations,
     })

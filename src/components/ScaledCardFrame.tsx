@@ -14,6 +14,8 @@ interface Props {
   maxScale?: number;
   /** 是否居中 */
   center?: boolean;
+  /** 视图是否启用闪卡渲染 */
+  foil?: boolean;
 }
 
 export function ScaledCardFrame({
@@ -23,6 +25,7 @@ export function ScaledCardFrame({
   minScale = 1,
   maxScale = 2.5,
   center = true,
+  foil = false,
 }: Props) {
   const spec = SIZE_MAP[baseSize];
   const baseW = spec.w;
@@ -70,7 +73,12 @@ export function ScaledCardFrame({
             transformOrigin: "top left",
           }}
         >
-          <CardFrame card={card} cardType={cardType} size={baseSize} />
+          <CardFrame
+            card={card}
+            cardType={cardType}
+            size={baseSize}
+            foil={foil}
+          />
         </div>
       </div>
     </div>

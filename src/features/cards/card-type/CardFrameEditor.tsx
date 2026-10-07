@@ -1,13 +1,29 @@
 import type { CardType, FieldDef } from "../../../core/ipc";
+import {
+  CARD_ACCENT_PRESETS,
+  CARD_FRAME_STYLE_LABELS,
+  DEFAULT_CARD_FRAME_STYLE,
+  isCardFrameStyle,
+  type CardFrameStyle,
+} from "../../../components/CardFrame";
 
 interface Props {
   cardType: CardType;
   onChange: (cfg: CardType["card_frame"]) => void;
+  onChangeColor: (color: string | null) => void;
 }
 
-export function CardFrameEditor({ cardType, onChange }: Props) {
-  const cfg = cardType.card_frame ?? { body: [] };
+const STYLE_OPTIONS: { value: CardFrameStyle; label: string }[] = (
+  Object.keys(CARD_FRAME_STYLE_LABELS) as CardFrameStyle[]
+).map((v) => ({ value: v, label: CARD_FRAME_STYLE_LABELS[v] }));
+
+export function CardFrameEditor({ cardType, onChange, onChangeColor }: Props) {
+  const cfg = cardType.card_frame ?? { body: [], foil_values: [] };
   const fields = cardType.fields.filter((f) => !f.deprecated);
+
+  const styleValue: CardFrameStyle | null = isCardFrameStyle(cfg.style)
+    ? cfg.style
+    : null;
 
   function set<K extends keyof NonNullable<CardType["card_frame"]>>(
     key: K,
@@ -33,6 +49,18 @@ export function CardFrameEditor({ cardType, onChange }: Props) {
         <br />
         右侧检查器显示实时预览。
       </div>
+
+      {/* 卡框风格 */}
+      <LabeledSelect
+        label="卡框风格"
+        value={styleValue}
+        onChange={(v) => set("style", v)}
+        options={STYLE_OPTIONS}
+        placeholder={`默认（${CARD_FRAME_STYLE_LABELS[DEFAULT_CARD_FRAME_STYLE]}）`}
+      />
+
+      {/* 强调色 */}
+      <AccentColorRow value={cardType.color ?? null} onChange={onChangeColor} />
 
       <div
         style={{
@@ -208,6 +236,14 @@ export function CardFrameEditor({ cardType, onChange }: Props) {
         </div>
       </div>
 
+      {/* 闪卡触发 */}
+      <FoilTriggerRow
+        cardType={cardType}
+        fieldKey={cfg.foil_field ?? null}
+        values={cfg.foil_values ?? []}
+        onChange={(patch) => onChange({ ...cfg, ...patch })}
+      />
+
       <div style={{ display: "flex", gap: 8 }}>
         <button
           className="btn btn-danger"
@@ -289,5 +325,307 @@ function LabeledInput({
         placeholder={placeholder}
       />
     </label>
+  );
+}
+
+function LabeledSelect({
+  label,
+  value,
+  onChange,
+  options,
+  placeholder,
+}: {
+  label: string;
+  value: string | null | undefined;
+  onChange: (v: string | null) => void;
+  options: { value: string; label: string }[];
+  placeholder: string;
+}) {
+  return (
+    <label
+      style={{
+        fontSize: 12,
+        display: "flex",
+        flexDirection: "column",
+        gap: 2,
+      }}
+    >
+      <span style={{ color: "var(--fg-muted)" }}>{label}</span>
+      <select
+        className="select"
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value || null)}
+      >
+        <option value="">— {placeholder} —</option>
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function AccentColorRow({
+  value,
+  onChange,
+}: {
+  value: string | null;
+  onChange: (v: string | null) => void;
+}) {
+  const isHex = typeof value === "string" && value.startsWith("#");
+  const colorPickerValue =
+    isHex && value.length >= 7 ? value.slice(0, 7) : "#a05a2c";
+
+  const presetValue = CARD_ACCENT_PRESETS.some((p) => p.value === value)
+    ? (value as string)
+    : "";
+
+  return (
+    <div>
+      <div
+        style={{
+          fontSize: 12,
+          color: "var(--fg-muted)",
+          marginBottom: 4,
+        }}
+      >
+        强调色（标题栏、描边、选中环。留空跟随主题）
+      </div>
+      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+        <input
+          className="input"
+          value={value ?? ""}
+          onChange={(e) => onChange(e.target.value || null)}
+          placeholder="var(--accent-copper) 或 #a05a2c"
+          style={{
+            flex: 1,
+            fontFamily: "var(--font-mono)",
+            fontSize: 11,
+          }}
+        />
+        <input
+          type="color"
+          value={colorPickerValue}
+          onChange={(e) => onChange(e.target.value)}
+          title="选色（写入 hex）"
+          style={{
+            width: 32,
+            height: 24,
+            padding: 0,
+            border: "1px solid var(--border-default)",
+            borderRadius: "var(--radius-md)",
+            background: "var(--bg-surface)",
+            cursor: "pointer",
+            flexShrink: 0,
+          }}
+        />
+        <select
+          className="select"
+          value={presetValue}
+          onChange={(e) => onChange(e.target.value || null)}
+          title="从预设变量选择"
+          style={{ width: 80, flexShrink: 0, fontSize: 12 }}
+        >
+          <option value="">预设…</option>
+          {CARD_ACCENT_PRESETS.map((p) => (
+            <option key={p.value} value={p.value}>
+              {p.label}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
+  );
+}
+
+function FoilTriggerRow({
+  cardType,
+  fieldKey,
+  values,
+  onChange,
+}: {
+  cardType: CardType;
+  fieldKey: string | null;
+  values: string[];
+  onChange: (patch: {
+    foil_field?: string | null;
+    foil_values?: string[];
+  }) => void;
+}) {
+  const fields = cardType.fields.filter((f) => !f.deprecated);
+
+  const field = fieldKey ? fields.find((f) => f.key === fieldKey) : null;
+  const fieldMissing = Boolean(fieldKey) && !field;
+
+  const options: string[] | null =
+    field && (field.ty.kind === "enum" || field.ty.kind === "multi_enum")
+      ? field.ty.options
+      : null;
+
+  return (
+    <div
+      style={{
+        padding: 10,
+        border: "1px solid var(--border-subtle)",
+        borderRadius: "var(--radius-md)",
+        background: "var(--bg-surface)",
+        display: "flex",
+        flexDirection: "column",
+        gap: 6,
+      }}
+    >
+      <div style={{ fontSize: 12, color: "var(--fg-secondary)" }}>闪卡触发</div>
+      <div
+        style={{
+          fontSize: 11,
+          color: "var(--fg-muted)",
+          lineHeight: 1.5,
+        }}
+      >
+        指定某字段命中某些值时，卡片呈现闪卡效果。
+        <br />
+        需视图层显式启用（卡片墙、检查器预览）。
+      </div>
+
+      {fields.length === 0 ? (
+        <div
+          style={{
+            fontSize: 11,
+            color: "var(--fg-muted)",
+            padding: "6px 0",
+            lineHeight: 1.5,
+          }}
+        >
+          该类型暂无字段。先去「字段」tab 添加，再回来配置闪卡触发。
+        </div>
+      ) : (
+        <>
+          <label
+            style={{
+              fontSize: 12,
+              display: "flex",
+              flexDirection: "column",
+              gap: 2,
+            }}
+          >
+            <span style={{ color: "var(--fg-muted)" }}>触发字段</span>
+            <select
+              className="select"
+              value={fieldKey ?? ""}
+              onChange={(e) => {
+                const v = e.target.value || null;
+                // 一次调用同时写两个字段，避免第二次覆盖第一次
+                onChange({ foil_field: v, foil_values: [] });
+              }}
+            >
+              <option value="">— 不启用 —</option>
+              {fields.map((f) => (
+                <option key={f.key} value={f.key}>
+                  {f.label}（{f.key}）
+                </option>
+              ))}
+              {fieldMissing && fieldKey && (
+                <option value={fieldKey}>（已失效：{fieldKey}）</option>
+              )}
+            </select>
+          </label>
+
+          {fieldKey && (
+            <>
+              {options ? (
+                <div>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      color: "var(--fg-muted)",
+                      marginBottom: 4,
+                    }}
+                  >
+                    触发值（勾选）
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    {options.length === 0 && (
+                      <span style={{ fontSize: 12, color: "var(--fg-muted)" }}>
+                        该字段没有选项
+                      </span>
+                    )}
+                    {options.map((o) => (
+                      <label
+                        key={o}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 4,
+                          fontSize: 12,
+                          color: "var(--fg-secondary)",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={values.includes(o)}
+                          onChange={(e) => {
+                            if (e.target.checked)
+                              onChange({ foil_values: [...values, o] });
+                            else
+                              onChange({
+                                foil_values: values.filter((x) => x !== o),
+                              });
+                          }}
+                          style={{ accentColor: "var(--accent-gold)" }}
+                        />
+                        {o}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <label
+                  style={{
+                    fontSize: 12,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 2,
+                  }}
+                >
+                  <span style={{ color: "var(--fg-muted)" }}>
+                    触发值（逗号分隔）
+                  </span>
+                  <input
+                    className="input"
+                    value={values.join(", ")}
+                    onChange={(e) =>
+                      onChange({
+                        foil_values: e.target.value
+                          .split(",")
+                          .map((s) => s.trim())
+                          .filter(Boolean),
+                      })
+                    }
+                    placeholder="例如：传说, 稀有"
+                    style={{ fontFamily: "var(--font-mono)", fontSize: 11 }}
+                  />
+                </label>
+              )}
+
+              {fieldMissing && (
+                <div
+                  style={{
+                    fontSize: 11,
+                    color: "var(--warning)",
+                    lineHeight: 1.5,
+                  }}
+                >
+                  字段「{fieldKey}
+                  」已失效（被删除或改名）。闪卡不会触发，可清空映射或改选其它字段。
+                </div>
+              )}
+            </>
+          )}
+        </>
+      )}
+    </div>
   );
 }

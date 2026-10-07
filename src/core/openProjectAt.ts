@@ -22,6 +22,7 @@ export async function openProjectAt(path: string): Promise<void> {
     scenarios,
     boards,
     sessions,
+    cardGroups,
   ] = await Promise.all([
     ipc.listCards(),
     ipc.listCardTypes(),
@@ -30,6 +31,7 @@ export async function openProjectAt(path: string): Promise<void> {
     ipc.listScenarios(),
     ipc.listBoards(),
     ipc.listSessions(),
+    ipc.listCardGroups(),
   ]);
 
   useProjectStore
@@ -43,6 +45,7 @@ export async function openProjectAt(path: string): Promise<void> {
       scenarios,
       boards,
       sessions,
+      cardGroups,
     );
 
   addRecentProject(path);

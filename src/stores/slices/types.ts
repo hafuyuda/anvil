@@ -1,6 +1,7 @@
 import type {
   Board,
   Card,
+  CardGroup,
   CardType,
   Relation,
   RelationKind,
@@ -8,7 +9,8 @@ import type {
   Session,
 } from "../../core/ipc";
 
-export type ModuleKey = "world" | "story" | "board" | "session" | "types";
+export type ModuleKey =
+  "world" | "story" | "board" | "cardGroups" | "session" | "types";
 export type WorldSubView = "cards" | "graph";
 export type CardWallView = "card" | "list";
 
@@ -31,6 +33,7 @@ export interface ProjectState {
     scenarios: Scenario[],
     boards: Board[],
     sessions: Session[],
+    cardGroups: CardGroup[],
   ) => void;
   refreshProject: (data: {
     cards: Card[];
@@ -40,6 +43,7 @@ export interface ProjectState {
     scenarios: Scenario[];
     boards: Board[];
     sessions: Session[];
+    cardGroups: CardGroup[];
   }) => void;
   closeProject: () => void;
 
@@ -75,6 +79,11 @@ export interface ProjectState {
   sessions: Session[];
   upsertSession: (s: Session) => void;
   removeSession: (id: string) => void;
+
+  // ── card groups ──
+  cardGroups: CardGroup[];
+  upsertCardGroup: (g: CardGroup) => void;
+  removeCardGroup: (id: string) => void;
 
   // ── undo ──
   undoStack: UndoEntry[];

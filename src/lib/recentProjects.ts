@@ -1,6 +1,13 @@
+import { getAppSettings } from "./appSettings";
+
 const KEY_LIST = "anvil.recentProjects";
 const KEY_LAST = "anvil.lastOpenPath";
-const MAX_ITEMS = 10;
+
+function maxItems(): number {
+  const n = getAppSettings().recentProjectsMax;
+  if (!Number.isFinite(n) || n <= 0) return 10;
+  return Math.floor(n);
+}
 
 function safeParse(json: string | null): string[] {
   if (!json) return [];
@@ -23,7 +30,7 @@ export function addRecentProject(path: string): void {
   if (!path) return;
   const list = getRecentProjects().filter((p) => p !== path);
   list.unshift(path);
-  localStorage.setItem(KEY_LIST, JSON.stringify(list.slice(0, MAX_ITEMS)));
+  localStorage.setItem(KEY_LIST, JSON.stringify(list.slice(0, maxItems())));
 }
 
 export function removeRecentProject(path: string): void {

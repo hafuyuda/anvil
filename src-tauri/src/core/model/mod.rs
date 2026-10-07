@@ -1,5 +1,6 @@
 pub mod board;
 pub mod card;
+pub mod card_group;
 pub mod card_type;
 pub mod helpers;
 pub mod manifest;

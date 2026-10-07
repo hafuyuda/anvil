@@ -2,14 +2,15 @@ import { useState } from "react";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import {
   ipc,
-  type CardType,
   type MergeOptions,
   type PackInspection,
-  type RelationKind,
   type TypeMapAction,
 } from "../../core/ipc";
 import { Modal } from "../../components/Modal";
 import { useProjectStore } from "../../stores/projectStore";
+import { MergePackInfoCard } from "./MergePackInfoCard";
+import { TypeMapRow, KindMapRow } from "./MergePackMappingRows";
+import { MergePackIncludeList } from "./MergePackIncludeList";
 
 interface Props {
   onClose: () => void;
@@ -36,6 +37,7 @@ export function MergePackDialog({ onClose }: Props) {
   const [includeScenarios, setIncludeScenarios] = useState<string[]>([]);
   const [includeBoards, setIncludeBoards] = useState<string[]>([]);
   const [includeSessions, setIncludeSessions] = useState<string[]>([]);
+  const [includeCardGroups, setIncludeCardGroups] = useState<string[]>([]);
 
   const [typesOnly, setTypesOnly] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -77,6 +79,7 @@ export function MergePackDialog({ onClose }: Props) {
       setIncludeScenarios(insp.scenarios.map((s) => s.id));
       setIncludeBoards(insp.boards.map((b) => b.id));
       setIncludeSessions(insp.sessions.map((s) => s.id));
+      setIncludeCardGroups(insp.card_groups.map((g) => g.id));
     } catch (e) {
       alert("读取资源包失败: " + e);
       setSrc(null);
@@ -95,6 +98,7 @@ export function MergePackDialog({ onClose }: Props) {
       include_scenarios: includeScenarios,
       include_boards: includeBoards,
       include_sessions: includeSessions,
+      include_card_groups: includeCardGroups,
     };
 
     setMerging(true);
@@ -110,6 +114,7 @@ export function MergePackDialog({ onClose }: Props) {
           `导入剧情 ${result.imported_scenarios}`,
           `导入棋盘 ${result.imported_boards}`,
           `导入会话 ${result.imported_sessions}`,
+          `导入卡组 ${result.imported_card_groups}`,
           `导入图片 ${result.imported_assets}`,
         );
       }
@@ -129,6 +134,7 @@ export function MergePackDialog({ onClose }: Props) {
             scenarios: snap.scenarios,
             boards: snap.boards,
             sessions: snap.sessions,
+            cardGroups: snap.card_groups,
           });
         } catch {
           // 忽略
@@ -162,7 +168,6 @@ export function MergePackDialog({ onClose }: Props) {
         </>
       }
     >
-      {/* 选择文件 */}
       {!inspection && (
         <div
           style={{
@@ -189,51 +194,13 @@ export function MergePackDialog({ onClose }: Props) {
 
       {inspection && (
         <>
-          {/* 包信息 */}
-          <div
-            style={{
-              padding: 10,
-              background: "var(--bg-surface)",
-              border: "1px solid var(--border-subtle)",
-              borderRadius: "var(--radius-md)",
-              fontSize: 12,
-            }}
-          >
-            <div
-              style={{
-                fontSize: 14,
-                fontFamily: "var(--font-title)",
-                fontWeight: 600,
-                color: "var(--accent-gold)",
-                marginBottom: 4,
-              }}
-            >
-              {inspection.manifest.name}
-            </div>
-            <div style={{ color: "var(--fg-secondary)" }}>
-              {inspection.total_cards} 张卡 · {inspection.total_relations}{" "}
-              条关系 · {inspection.card_types.length} 个类型
-            </div>
-            {inspection.manifest.author && (
-              <div style={{ color: "var(--fg-muted)", marginTop: 2 }}>
-                作者：{inspection.manifest.author}
-              </div>
-            )}
-          </div>
+          <MergePackInfoCard inspection={inspection} />
 
           {/* 卡牌类型映射 */}
           <div>
-            <div
-              style={{
-                fontSize: 10,
-                color: "var(--fg-muted)",
-                textTransform: "uppercase",
-                letterSpacing: 1,
-                marginBottom: 6,
-              }}
-            >
+            <SectionLabel>
               卡牌类型映射（{inspection.card_types.length}）
-            </div>
+            </SectionLabel>
             <div
               style={{
                 border: "1px solid var(--border-subtle)",
@@ -260,17 +227,9 @@ export function MergePackDialog({ onClose }: Props) {
           {/* 关系类型映射 */}
           {inspection.relation_kinds.length > 0 && (
             <div>
-              <div
-                style={{
-                  fontSize: 10,
-                  color: "var(--fg-muted)",
-                  textTransform: "uppercase",
-                  letterSpacing: 1,
-                  marginBottom: 6,
-                }}
-              >
+              <SectionLabel>
                 关系类型映射（{inspection.relation_kinds.length}）
-              </div>
+              </SectionLabel>
               <div
                 style={{
                   border: "1px solid var(--border-subtle)",
@@ -342,23 +301,29 @@ export function MergePackDialog({ onClose }: Props) {
                   marginTop: 10,
                 }}
               >
-                <IncludeList
+                <MergePackIncludeList
                   label="剧情"
                   items={inspection.scenarios}
                   selected={includeScenarios}
                   onChange={setIncludeScenarios}
                 />
-                <IncludeList
+                <MergePackIncludeList
                   label="棋盘"
                   items={inspection.boards}
                   selected={includeBoards}
                   onChange={setIncludeBoards}
                 />
-                <IncludeList
+                <MergePackIncludeList
                   label="会话"
                   items={inspection.sessions}
                   selected={includeSessions}
                   onChange={setIncludeSessions}
+                />
+                <MergePackIncludeList
+                  label="卡组"
+                  items={inspection.card_groups}
+                  selected={includeCardGroups}
+                  onChange={setIncludeCardGroups}
                 />
               </div>
             </details>
@@ -369,192 +334,18 @@ export function MergePackDialog({ onClose }: Props) {
   );
 }
 
-function TypeMapRow({
-  sourceName,
-  sourceCount,
-  action,
-  localTypes,
-  onChange,
-}: {
-  sourceName: string;
-  sourceCount: number;
-  action: TypeMapAction;
-  localTypes: CardType[];
-  onChange: (a: TypeMapAction) => void;
-}) {
-  const value =
-    action.action === "existing"
-      ? `existing:${action.target_id}`
-      : action.action;
-
-  function handleChange(v: string) {
-    if (v === "new") onChange({ action: "new" });
-    else if (v === "skip") onChange({ action: "skip" });
-    else if (v.startsWith("existing:")) {
-      onChange({ action: "existing", target_id: v.slice(9) });
-    }
-  }
-
+function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <div
       style={{
-        display: "grid",
-        gridTemplateColumns: "1fr auto 1fr",
-        gap: 8,
-        alignItems: "center",
-        padding: "6px 10px",
-        borderBottom: "1px solid var(--border-subtle)",
-        fontSize: 12,
+        fontSize: 10,
+        color: "var(--fg-muted)",
+        textTransform: "uppercase",
+        letterSpacing: 1,
+        marginBottom: 6,
       }}
     >
-      <span style={{ color: "var(--fg-primary)" }}>
-        {sourceName}{" "}
-        <span style={{ color: "var(--fg-muted)", fontSize: 11 }}>
-          ({sourceCount} 张)
-        </span>
-      </span>
-      <span style={{ color: "var(--fg-muted)" }}>→</span>
-      <select
-        className="select"
-        value={value}
-        onChange={(e) => handleChange(e.target.value)}
-        style={{ fontSize: 12 }}
-      >
-        <option value="new">新建类型</option>
-        <option value="skip">跳过</option>
-        {localTypes.length > 0 && (
-          <optgroup label="映射到现有类型">
-            {localTypes.map((t) => (
-              <option key={t.id} value={`existing:${t.id}`}>
-                {t.name}
-              </option>
-            ))}
-          </optgroup>
-        )}
-      </select>
-    </div>
-  );
-}
-
-function KindMapRow({
-  sourceName,
-  action,
-  localKinds,
-  onChange,
-}: {
-  sourceName: string;
-  action: TypeMapAction;
-  localKinds: RelationKind[];
-  onChange: (a: TypeMapAction) => void;
-}) {
-  const value =
-    action.action === "existing"
-      ? `existing:${action.target_id}`
-      : action.action;
-
-  function handleChange(v: string) {
-    if (v === "new") onChange({ action: "new" });
-    else if (v === "skip") onChange({ action: "skip" });
-    else if (v.startsWith("existing:")) {
-      onChange({ action: "existing", target_id: v.slice(9) });
-    }
-  }
-
-  return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "1fr auto 1fr",
-        gap: 8,
-        alignItems: "center",
-        padding: "6px 10px",
-        borderBottom: "1px solid var(--border-subtle)",
-        fontSize: 12,
-      }}
-    >
-      <span style={{ color: "var(--fg-primary)" }}>{sourceName}</span>
-      <span style={{ color: "var(--fg-muted)" }}>→</span>
-      <select
-        className="select"
-        value={value}
-        onChange={(e) => handleChange(e.target.value)}
-        style={{ fontSize: 12 }}
-      >
-        <option value="new">新建</option>
-        <option value="skip">跳过</option>
-        {localKinds.length > 0 && (
-          <optgroup label="映射到现有">
-            {localKinds.map((k) => (
-              <option key={k.id} value={`existing:${k.id}`}>
-                {k.name}
-              </option>
-            ))}
-          </optgroup>
-        )}
-      </select>
-    </div>
-  );
-}
-
-function IncludeList({
-  label,
-  items,
-  selected,
-  onChange,
-}: {
-  label: string;
-  items: { id: string; name: string }[];
-  selected: string[];
-  onChange: (v: string[]) => void;
-}) {
-  if (items.length === 0) return null;
-  return (
-    <div>
-      <div
-        style={{
-          fontSize: 11,
-          color: "var(--fg-muted)",
-          marginBottom: 4,
-        }}
-      >
-        {label}（{selected.length} / {items.length}）
-      </div>
-      <div
-        style={{
-          border: "1px solid var(--border-subtle)",
-          borderRadius: "var(--radius-md)",
-          padding: 6,
-          background: "var(--bg-surface)",
-          maxHeight: 120,
-          overflowY: "auto",
-        }}
-      >
-        {items.map((it) => (
-          <label
-            key={it.id}
-            style={{
-              display: "flex",
-              gap: 6,
-              alignItems: "center",
-              fontSize: 12,
-              color: "var(--fg-secondary)",
-              cursor: "pointer",
-              padding: "2px 0",
-            }}
-          >
-            <input
-              type="checkbox"
-              checked={selected.includes(it.id)}
-              onChange={(e) => {
-                if (e.target.checked) onChange([...selected, it.id]);
-                else onChange(selected.filter((x) => x !== it.id));
-              }}
-              style={{ accentColor: "var(--accent-gold)" }}
-            />
-            {it.name}
-          </label>
-        ))}
-      </div>
+      {children}
     </div>
   );
 }

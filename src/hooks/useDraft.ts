@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useProjectStore } from "../stores/projectStore";
 import { registerFlusher } from "../lib/saveRegistry";
+import { useAppSettings } from "./useAppSettings";
 
 interface HasId {
   id: string;
@@ -21,8 +22,9 @@ export function useDraft<T extends HasId>(
   const [draft, setDraft] = useState<T>(source);
   const [dirty, setDirty] = useState(false);
 
+  const appSettings = useAppSettings();
   const autoSave = options?.autoSave ?? true;
-  const delay = options?.autoSaveDelay ?? 800;
+  const delay = options?.autoSaveDelay ?? appSettings.autoSaveDelayMs;
   const label = options?.undoLabel ?? "编辑";
   const onDraftChange = options?.onDraftChange;
 

@@ -78,6 +78,7 @@ impl Project {
                 def_label: Some("体质".into()),
                 hp: None,
                 hp_label: None,
+                ..Default::default()
             }),
             created_at: now,
             updated_at: now,
@@ -151,6 +152,9 @@ impl Project {
                 def_label: Some("价值".into()),
                 hp: None,
                 hp_label: None,
+                foil_field: Some("rarity".into()),
+                foil_values: vec!["稀有".into(), "传说".into()],
+                ..Default::default()
             }),
             created_at: now,
             updated_at: now,

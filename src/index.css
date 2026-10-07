@@ -115,6 +115,12 @@
   --card-pokemon-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
   --card-pokemon-shadow-selected: 0 4px 14px rgba(0, 0, 0, 0.55);
 
+    /* 卡牌：闪卡（foil） */
+  --card-foil-base: #c9a961;
+  --card-foil-shine: rgba(255, 248, 208, 0.85);
+  --card-foil-edge: #c9a961;
+  --card-foil-duration: 6s;
+
   /* 对话气泡 */
   --chat-bubble-bg: #2f2922;
   --chat-bubble-border: #4a4033;
@@ -134,6 +140,8 @@
   --chat-system-text: #6d6252;
   --chat-system-line: #3a3226;
   --chat-panel-bg: #1f1a14;
+
+
 }
 
 * {
@@ -310,5 +318,21 @@ h4 {
   50.1%,
   100% {
     opacity: 0;
+  }
+}
+
+@keyframes card-foil-sweep {
+  0% {
+    background-position: -100% -100%;
+  }
+  100% {
+    background-position: 200% 200%;
+  }
+}
+
+/* 尊重系统「减少动态效果」偏好 */
+@media (prefers-reduced-motion: reduce) {
+  .card-foil-shine {
+    animation: none !important;
   }
 }

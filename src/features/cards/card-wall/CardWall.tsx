@@ -11,6 +11,7 @@ import { BulkActionBar } from "./BulkActionBar";
 import { CardGridView } from "./CardGridView";
 import { CardListView } from "./CardListView";
 import { useCardWallFilters } from "./useCardWallFilters";
+import { AddToGroupDialog } from "../../card-groups/AddtoGroupDialog";
 
 export function CardWall() {
   const {
@@ -39,6 +40,8 @@ export function CardWall() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pendingCards, setPendingCards] = useState<Card[]>([]);
   const [typePickerOpen, setTypePickerOpen] = useState(false);
+
+  const [addToGroupOpen, setAddToGroupOpen] = useState(false);
 
   // ── 新建卡牌 ──
 
@@ -88,6 +91,7 @@ export function CardWall() {
         newScenarios,
         newBoards,
         newSessions,
+        newCardGroups,
       ] = await Promise.all([
         ipc.listCards(),
         ipc.listCardTypes(),
@@ -96,6 +100,7 @@ export function CardWall() {
         ipc.listScenarios(),
         ipc.listBoards(),
         ipc.listSessions(),
+        ipc.listCardGroups(),
       ]);
       setProject(
         projectPath,
@@ -106,6 +111,7 @@ export function CardWall() {
         newScenarios,
         newBoards,
         newSessions,
+        newCardGroups,
       );
     } catch (e) {
       alert("载入示例失败: " + e);
@@ -306,6 +312,7 @@ export function CardWall() {
           setCardSelection(filters.visible.map((c) => c.id))
         }
         onClearSelection={clearCardSelection}
+        onAddToGroup={() => setAddToGroupOpen(true)}
         onAddToBoard={() => {
           const cardsToAdd = (cards ?? []).filter((c) =>
             selectedCardIds.includes(c.id),
@@ -392,6 +399,18 @@ export function CardWall() {
             void createCardOfType(id);
           }}
           onClose={() => setTypePickerOpen(false)}
+        />
+      )}
+
+      {addToGroupOpen && (
+        <AddToGroupDialog
+          cardIds={selectedCardIds}
+          onClose={() => setAddToGroupOpen(false)}
+          onDone={(groupName, added) => {
+            setAddToGroupOpen(false);
+            clearCardSelection();
+            alert(`已把 ${added} 张卡加入「${groupName}」。`);
+          }}
         />
       )}
     </div>

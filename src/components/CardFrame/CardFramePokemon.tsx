@@ -33,9 +33,6 @@ export function CardFramePokemon({
   const accentStrong = `color-mix(in srgb, ${accent} 70%, #000)`;
   const titleBarBg = `linear-gradient(180deg, color-mix(in srgb, ${accent} 85%, #fff) 0%, ${accent} 100%)`;
 
-  const hasStats =
-    m.atk !== undefined || m.def !== undefined || m.hp !== undefined;
-
   // 宝可梦风格：右上角显示 HP
   const hpText = m.hp !== undefined ? `${m.hpLabel ?? "HP"} ${m.hp}` : null;
 

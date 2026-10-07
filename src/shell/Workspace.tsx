@@ -4,13 +4,14 @@ import { useOpenProject } from "../core/useOpenProject";
 import { useCreateProject } from "../core/useCreateProject";
 import { openProjectAt } from "../core/openProjectAt";
 import { getRecentProjects, removeRecentProject } from "../lib/recentProjects";
-import { CardWall } from "../features/cards/CardWall";
-import { CardTypeList } from "../features/cards/CardTypeList";
+import { CardWall } from "../features/cards/card-wall/CardWall";
+import { CardTypeList } from "../features/cards/card-type/CardTypeList";
 import { GraphView } from "../features/world/GraphView";
-import { ScenarioList } from "../features/story/ScenarioList";
+import { ScenarioList } from "../features/story/scenario/ScenarioList";
 import { BoardList } from "../features/board/BoardList";
 import { SessionList } from "../features/session/SessionList";
 import { ErrorBoundary } from "./ErrorBoundary";
+import { CardGroupList } from "../features/card-groups/CardGroupList";
 
 export function Workspace() {
   const projectPath = useProjectStore((s) => s.projectPath);
@@ -235,6 +236,11 @@ export function Workspace() {
       {activeModule === "board" && (
         <ErrorBoundary>
           <BoardList />
+        </ErrorBoundary>
+      )}
+      {activeModule === "cardGroups" && (
+        <ErrorBoundary>
+          <CardGroupList />
         </ErrorBoundary>
       )}
       {activeModule === "session" && (

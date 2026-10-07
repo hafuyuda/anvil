@@ -33,6 +33,9 @@ pub struct CardFrameConfig {
     pub hp: Option<String>,
     #[serde(default)]
     pub hp_label: Option<String>,
+    pub foil_field: Option<String>,
+    #[serde(default)]
+    pub foil_values: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

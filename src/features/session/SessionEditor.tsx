@@ -15,8 +15,8 @@ import { DEFAULT_GRID } from "../board/constants";
 import { nowMs } from "../../lib/time";
 import { newId } from "../../lib/id";
 import { SaveInput } from "../../components/SaveInput";
-import { ChatLog } from "./ChatLog";
-import { ChatInput } from "./ChatInput";
+import { ChatLog } from "./chat/ChatLog";
+import { ChatInput } from "./chat/ChatInput";
 import { PartyPanel } from "./PartyPanel";
 import { EventEditorDialog } from "./EventEditorDialog";
 

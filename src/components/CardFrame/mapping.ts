@@ -14,6 +14,7 @@ export interface CardMapping {
   hpLabel?: string;
   body: string;
   image?: string;
+  foil: boolean;
 }
 
 export function mapCard(card: Card, cardType: CardType): CardMapping {
@@ -84,6 +85,14 @@ export function mapCard(card: Card, cardType: CardType): CardMapping {
       }
     }
 
+    let foil = false;
+    if (cfg.foil_field && cfg.foil_values.length > 0) {
+      const v = card.values[cfg.foil_field];
+      if (typeof v === "string" && cfg.foil_values.includes(v)) {
+        foil = true;
+      }
+    }
+
     return {
       title,
       subtitle,
@@ -98,6 +107,7 @@ export function mapCard(card: Card, cardType: CardType): CardMapping {
       hpLabel,
       body: bodyParts.join("\n"),
       image,
+      foil,
     };
   }
 
@@ -206,5 +216,6 @@ function fallbackMap(card: Card, cardType: CardType): CardMapping {
     hp,
     body: bodyParts.join("\n"),
     image,
+    foil: false,
   };
 }

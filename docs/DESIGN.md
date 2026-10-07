@@ -1,6 +1,6 @@
 # Anvil 设计文档
 
-版本 0.8 · 单人创作工具 · 桌面优先 · 开源
+版本 0.9 · 单人创作工具 · 桌面优先 · 开源
 
 > 本文档反映当前实现。M1–M5 完成，M6 打磨进行中。
 
@@ -39,7 +39,8 @@ Anvil 是一个以**卡牌为核心**的世界观创作与跑团工具。它把�
 │  CardType · FieldDef · RelationKind · VariableDef│
 ├─────────────────────────────────────────────────┤
 │  实例层 (Project)                                │
-│  Card · Relation · Board · Scenario · Theme     │
+│  Card · Relation · Board · Scenario · CardGroup │
+│  Theme                                           │
 ├─────────────────────────────────────────────────┤
 │  运行层 (Runtime)                                │
 │  Session · Token · Event                        │
@@ -60,6 +61,8 @@ Anvil 是一个以**卡牌为核心**的世界观创作与跑团工具。它把�
 | 分支故事 | Card + Relation（条件边）+ Scenario | 节点图 / 运行视图        | 条件求值 + 效果 |
 | 棋盘     | Card + Token + Board                | HTML 画布                | 坐标与状态      |
 | 跑团     | Card + Session + Token              | 舞台 + 对话流 + 角色列表 | 事件日志        |
+
+**CardGroup** 是辅助索引，服务于「管理一组卡」和「批量铺开」，不属于四大功能之一。
 
 ### 3.4 场景卡
 
@@ -133,7 +136,7 @@ pub struct FieldDef {
 }
 
 pub struct CardFrameConfig {
-    pub style: Option<String>,
+    pub style: Option<String>,   // "yugioh" | "generic" | "minimal" | "mtg" | "pokemon"
     pub title: Option<String>,
     pub subtitle: Option<String>,
     pub image: Option<String>,
@@ -164,6 +167,8 @@ Ref { target_types } · Image · Url · Json
 - `name` 是保留字段
 - `card_frame` 为空时走启发式映射
 - `*_label` 为空时用默认（ATK / DEF / HP / 星号）
+- `style` 为空时走默认（yugioh），合法值见 `CardFrameStyle`
+- 只设 `style` 不设字段映射是合法状态：走启发式映射 + 指定风格的皮
 
 ### 4.2 实例层
 
@@ -316,6 +321,28 @@ pub struct Theme {
 }
 ```
 
+### 4.7 卡组
+
+卡组是**卡 ID 的有序引用列表**。不拥有卡，多对多，顺序即铺开顺序。
+
+```rust
+pub struct CardGroup {
+    pub id: String,
+    pub name: String,
+    pub description: Option<String>,
+    pub card_ids: Vec<CardId>,   // 有序
+    pub created_at: i64,
+    pub updated_at: i64,
+}
+```
+
+约束：
+
+- 卡组只是引用，删卡组不影响卡
+- 删卡时同步从所有卡组里移除该卡 ID
+- 卡组的 `card_ids` 顺序就是棋盘导入时的铺开顺序
+- 不做快照、不做类型区分
+
 ---
 
 ## 5. 存储
@@ -335,9 +362,11 @@ MyWorld.anvil/
 ├── relations/from/<card_uuid>.jsonl
 ├── boards/<uuid>.json
 ├── scenarios/<uuid>.json
+├── card_groups/<uuid>.json
 ├── sessions/<uuid>/
 │   ├── session.json
 │   └── events.jsonl
+├── scripts/<card_uuid>.md
 ├── assets/images/<uuid>.<ext>
 └── .anvil/index.db
 ```
@@ -354,7 +383,7 @@ MyWorld.anvil/
 
 ### 5.4 最近项目
 
-`localStorage` 存 `anvil.recentProjects`（最多 10）和 `anvil.lastOpenPath`。**启动时尝试自动打开上次项目**。主动关闭项目清 `lastOpenPath`。
+`localStorage` 存 `anvil.recentProjects`（上限读应用设置）和 `anvil.lastOpenPath`。**启动时尝试自动打开上次项目**。主动关闭项目清 `lastOpenPath`。
 
 ---
 
@@ -383,7 +412,7 @@ MyWorld.anvil/
 anvil/
 ├── src-tauri/src/
 │   ├── core/
-│   │   ├── model/          # 数据模型
+│   │   ├── model/          # Card / CardType / Relation / CardGroup / Scenario / Board / Session
 │   │   ├── store/          # 文本文件读写 + 索引 + 资源包
 │   │   ├── index/          # SQLite 索引 + FTS
 │   │   ├── eval/           # 条件求值
@@ -391,24 +420,37 @@ anvil/
 │   │   └── ipc/            # Tauri 命令
 │   └── lib.rs
 ├── src/
-│   ├── core/
-│   │   ├── ipc/            # 类型 + invoke 封装
-│   │   └── use*.ts         # 打开/创建/导入/导出 hook
-│   ├── lib/                # id / time / theme / imageCache / commands
-│   ├── hooks/              # useDraft / useKeyboard / useDeleteUndo
+│   ├── core/               # IPC 类型与封装 + 项目级动作
+│   │   ├── ipc/
+│   │   └── use*.ts
+│   ├── lib/                # id / time / theme / imageCache / commands / appSettings
+│   ├── hooks/              # useDraft / useKeyboard / useAppSettings / ...
 │   ├── components/         # Modal / Toolbar / CardFrame / CommandPalette
 │   ├── shell/              # AppShell / TopBar / LeftNav / Workspace / Inspector / StatusBar
+│   ├── themes/             # 内置主题定义
 │   ├── features/
 │   │   ├── cards/          # ★ 共享核心
+│   │   │   ├── card/
+│   │   │   ├── card-type/
+│   │   │   ├── card-wall/
+│   │   │   └── relation/
+│   │   ├── card-groups/    # 卡组
 │   │   ├── world/          # 图谱
-│   │   ├── story/          # 剧情（节点图 + 运行）
+│   │   ├── story/
+│   │   │   ├── scenario/   # 剧情设计
+│   │   │   ├── play/       # 视觉小说运行
+│   │   │   ├── script/     # 剧本解析、编辑、序列化
+│   │   │   └── effects.ts
 │   │   ├── board/          # 棋盘
-│   │   ├── session/        # 跑团
+│   │   ├── session/
+│   │   │   ├── chat/       # 对话流、掷骰
+│   │   │   └── ...
 │   │   ├── project/        # 项目设置 / 主题 / 合并
-│   │   └── commands/       # 命令注册
+│   │   ├── app/            # 应用设置
+│   │   └── commands/
 │   └── stores/
-│       ├── projectStore.ts # 组合 slices
-│       └── slices/         # 按领域拆分的 Zustand slice
+│       ├── projectStore.ts
+│       └── slices/
 └── package.json
 ```
 
@@ -457,7 +499,7 @@ san -= 1d3
 
 ```text
 ┌──────────────────────────────────────────────────────────────────────┐
-│ 顶栏：项目 · 打开/新建/导入/合并 · 刷新 · 导出 · 撤销/重做 · 设置     │
+│ 顶栏：项目 · 打开/新建/导入/合并 · 刷新 · 导出 · 撤销/重做 · 应用设置 · 设置 │
 ├────────────┬──────────────────────────────────────┬──────────────────┤
 │            │                                      │                  │
 │  左侧导航   │           中间工作区                  │   右侧检查器      │
@@ -465,10 +507,11 @@ san -= 1d3
 │  世界观     │   卡片墙（卡牌/列表视图）              │   types 模块：   │
 │    ├ 卡片   │   图谱（CardFrame 节点 + 连线）        │     卡框预览      │
 │    └ 图谱   │   剧情（设置/节点图/运行）             │                  │
-│  分支故事   │   棋盘（HTML + 缩放 + 背景 + 加卡）    │   其他模块：      │
-│  棋盘       │   跑团（舞台 + 对话流 + 角色列表）     │     卡片编辑      │
-│  跑团       │   类型（字段/卡框 tab）               │     边编辑        │
-│  类型       │                                      │     Token 编辑    │
+│  视觉小说   │   棋盘（HTML + 缩放 + 背景 + 加卡）    │   其他模块：      │
+│  棋盘       │   卡组（列表 + 编辑器）                │     卡片编辑      │
+│  卡组       │   跑团（舞台 + 对话流 + 角色列表）     │     边编辑        │
+│  跑团       │   类型（字段/卡框 tab）               │     Token 编辑    │
+│  类型       │                                      │                  │
 │            │                                      │                  │
 ├────────────┴──────────────────────────────────────┴──────────────────┤
 │ 底栏：卡牌数 · 类型数 · 撤销/重做数 · 保存中 · 项目路径              │
@@ -524,7 +567,14 @@ san -= 1d3
 - **Alt + 拖拽旋转**：Shift 吸附 15°
 - 多选：Ctrl/Cmd 点击加入集合，拖动任意一个带动全部
 
-**工具栏**：名称、网格开关、吸附开关、格大小、宽高、背景、加卡、缩放、批量操作。
+**工具栏**：名称、网格开关、吸附开关、格大小、宽高、背景、从卡组导入、加卡、缩放、批量操作。
+
+**从卡组导入**：
+
+- 选卡组 → 选顺序（原序 / 随机）→ 网格铺开
+- 网格：从左上角开始，8 列，每格 180×240
+- 失效卡（已删除）自动跳过
+- 导入即拷贝，之后卡组和棋盘互不影响
 
 ---
 
@@ -562,27 +612,37 @@ san -= 1d3
 
 ---
 
-## 12. TCG 卡牌
+## 12. 卡牌渲染
 
-**游戏王风格**（`CardFrameYuGiOh`）：
+**五风格，共用 mapping 与尺寸。** 每种风格是一个组件，`CardFrame` 按优先级分派：
 
-- 金属渐变外框
-- 标题栏用 CardType 颜色
-- 图像区（有图显示图，无图显示首字）
-- 等级星、类型行、描述框
-- ATK / DEF / HP 右下角
+1. 显式传入的 `style` prop
+2. `cardType.card_frame.style`
+3. `DEFAULT_CARD_FRAME_STYLE`（yugioh）
+
+| 风格   | key       | 视觉定位                                     |
+| ------ | --------- | -------------------------------------------- |
+| 游戏王 | `yugioh`  | 金属渐变外框 + 羊皮纸描述框 + 星号等级       |
+| 通用   | `generic` | 深底细描边 + 顶部色条 + 底部属性行           |
+| 极简   | `minimal` | 无外框 + 左竖条 + 大留白                     |
+| 万智牌 | `mtg`     | 深色石质外框 + 顶部标题条 + 底部羊皮纸文字栏 |
+| 宝可梦 | `pokemon` | 浅色圆角 + 顶部标题 + HP + 艺术图            |
 
 **尺寸**：small 140×205 · medium 190×280 · large 260×385
 
-**正文字体**：small 7 · medium 9 · large 11，行高 1.3。
+**图像区**：固定像素高（small 84 / medium 116 / large 160），锁定 `flexShrink`，`objectFit: cover`。
 
-**描述框**：底部渐隐 + `title` 属性（鼠标悬浮显示完整正文）。
+**颜色**：全部走 CSS 变量。类型级强调色 `CardType.color` 支持 hex 与 CSS 变量，推荐后者（随主题变化）。透明度与加深统一用 `color-mix()`。
+
+**字段映射**：`mapping.ts` 是共享逻辑，所有风格共用一套 `CardMapping`，`card_frame` 为空时走启发式识别。
+
+**Accent 参数化**：类型编辑器可指定强调色，派生标题栏、描边、选中环。空则跟随 `--card-frame-default-accent`。
 
 **标签自定义**：`atk_label` / `def_label` / `hp_label` / `level_label`。
 
-**`ScaledCardFrame`**：按容器宽度等比缩放。
-
 **渲染统一**：卡片墙、图谱节点、棋盘 token、跑团角色面板、检查器预览都走 `CardFrame`。
+
+**`ScaledCardFrame`**：按容器宽度等比缩放。
 
 ---
 
@@ -594,7 +654,8 @@ san -= 1d3
 world.anvilpack (zip)
 ├── manifest.json
 ├── themes/ · types/ · cards/ · relations/
-├── boards/ · scenarios/ · sessions/ · assets/
+├── boards/ · scenarios/ · sessions/ · card_groups/
+└── assets/
 ```
 
 ### 13.2 导入（覆盖式）
@@ -605,13 +666,19 @@ world.anvilpack (zip)
 
 把另一个包合并进**当前打开的项目**。类型映射、只导类型、选择性导入、字段合并。ID 都是 UUID 不撞。
 
+合并卡组时：
+
+- 卡组 ID 原样保留，已存在则跳过
+- 卡组内引用只保留本次导入的卡
+- 若某卡组引用的卡全部被跳过，该卡组整体跳过
+
 ---
 
 ## 14. 撤销 / 重做 / 自动保存
 
 **撤销栈**：内存中，上限 100 条，关项目清空。
 
-**自动保存**：`useDraft` 监听 draft 变化，800ms 落盘。
+**自动保存**：`useDraft` 监听 draft 变化，默认 800ms 落盘（延迟可在应用设置里改）。
 
 **快捷键**：`Ctrl+Z` / `Ctrl+Shift+Z` / `Ctrl+S` / `Ctrl+K` / `Ctrl+1..5`
 
@@ -631,14 +698,41 @@ world.anvilpack (zip)
 
 **项目级主题**：`themes/<uuid>.json` 存 `variables`。项目设置 → 主题 tab。`Manifest.theme_id` 记录。
 
+**内置主题**：Anvil Dark / Anvil Light / Parchment / High Contrast / Slate。
+
+**卡牌变量也可被主题覆盖**：`--card-frame-default-accent`、`--card-yugioh-*`、`--card-generic-*`、`--card-minimal-*`、`--card-mtg-*`、`--card-pokemon-*` 都在 `:root` 定义，主题覆盖即可。
+
+**预设强调色**：`--accent-copper` / `--accent-gold` / `--accent-ember` / `--accent-flame` / `--accent-steel` / `--accent-iron`，类型编辑器可直接选。
+
 ---
 
 ## 17. 最近项目
 
-- `localStorage` 存 `anvil.recentProjects`（最多 10）和 `anvil.lastOpenPath`
+- `localStorage` 存 `anvil.recentProjects`（上限读应用设置）和 `anvil.lastOpenPath`
 - 空状态显示最近项目列表
 - 启动时尝试自动打开上次项目
 - 主动关闭项目清 `lastOpenPath`
+
+---
+
+## 17.5 应用设置
+
+跨项目偏好，存 `localStorage`（`anvil.appSettings`）。与项目设置并列，TopBar 独立入口，不依赖是否打开项目。
+
+| 键                      | 默认       | 说明                             |
+| ----------------------- | ---------- | -------------------------------- |
+| `defaultCardFrameStyle` | `"yugioh"` | 新建卡牌类型时用                 |
+| `typewriterSpeed`       | `35`       | 毫秒 / 字                        |
+| `typewriterEnabled`     | `true`     | 全局开关                         |
+| `typewriterNarration`   | `false`    | 旁白是否也打字机                 |
+| `autoSaveDelayMs`       | `800`      | `useDraft` 自动保存延迟          |
+| `recentProjectsMax`     | `10`       | 最近项目记录上限，只影响后续写入 |
+
+**响应式**：`useAppSettings` 基于 `useSyncExternalStore`，设置变更立刻作用于正在运行的打字机、自动保存等。
+
+**恢复默认**：设置面板提供一键重置。
+
+**与项目设置的分工**：应用设置管跨项目偏好，项目设置管 `manifest.json` / 主题 / 图片 / 统计。两者不重叠。
 
 ---
 
@@ -652,7 +746,11 @@ world.anvilpack (zip)
 
 **M6 — 打磨与生态** 🚧
 
-已完成：CardFrame 视觉统一、检查器联动、最近项目、棋盘缩放/背景/旋转、卡框标签自定义、图谱连线、无向关系显示、效果支持骰子、场景对白直接显示、字段拖拽排序、批量选择、投骰日志、撤销覆盖 bulk、图片资源管理、数据统计。
+已完成：CardFrame 视觉统一、检查器联动、最近项目、棋盘缩放/背景/旋转、卡框标签自定义、图谱连线、无向关系显示、效果支持骰子、场景对白直接显示、字段拖拽排序、批量选择、投骰日志、撤销覆盖 bulk、图片资源管理、数据统计、内置主题（5 套）、多风格卡框（yugioh / generic / minimal / mtg / pokemon）、卡框强调色参数化、应用设置面板、目录结构整理、卡组功能。
+
+**M6.5 — 视觉小说** 🚧
+
+已完成：阅读器（打字机 / 背景切换 / 结局标记）、剧本编辑（增删改）、立绘多表情、剧本解析与序列化。
 
 待做：见下一节。
 
@@ -662,74 +760,53 @@ world.anvilpack (zip)
 
 按优先级。
 
-**清理项（先做）**
+**清理项**
 
-- [ ] 删除 `PlayView.tsx` 里 `currentSessionId` 写 `effect.apply` 日志的逻辑。视觉小说运行视图不写跑团日志。
-- [ ] 更新设计文档，明确「分支故事 = 视觉小说工具」的定位，与跑团完全独立。
-- [ ] （可选）左栏「分支故事」显示文字改为「视觉小说」。
-
-**P0（核心体验）**
-
-1. ~~投骰/效果写入事件日志~~ ✅（但需要清理，见上）
-2. ~~撤销覆盖 bulk 操作~~ ✅
-3. ~~图片资源管理 + 数据统计~~ ✅
+- [x] 删除 `PlayView.tsx` 里 `currentSessionId` 写 `effect.apply` 日志的逻辑。
+- [x] 更新设计文档，明确「分支故事 = 视觉小说工具」的定位，与跑团完全独立。
+- [x] 左栏「分支故事」显示文字改为「视觉小说」。
 
 **P1（体验升级）**
 
-4. 内置主题（Anvil Light / Parchment / High Contrast / Slate）
-5. 多风格卡框（minimal / mtg / pokemon）
-6. 卡框颜色参数化
-7. 应用设置面板
+- [x] 4. 内置主题（5 套）
+- [x] 5. 多风格卡框（yugioh / generic / minimal / mtg / pokemon）
+- [x] 6. 卡框强调色参数化
+- [x] 7. 应用设置面板
 
 **P1.5（视觉小说）**
 
-8. 剧本编辑
-   - 场景卡加 `script` 字段（Json，剧本行数组）
-   - 角色卡加 `portraits` 字段（Json，表情 → 立绘文件）
-   - `ScenarioEditor` 加「剧本」tab
-   - 剧本行增删改、拖拽排序
-
-9. 视觉小说预览
-   - `ScenarioEditor` 的「运行」tab 改造成阅读器
-   - 显示背景、立绘、对白、旁白、动作
-   - 点击推进，结束显示选择
-   - 选择的条件实时求值
-
-10. 结局标记
-    - 场景卡加 `is_ending` / `ending_name` 字段
-    - 预览到结局时显示「结局：静默新月」
-
-11. 场景资源
-    - 场景卡加 `bg`（背景图）/ `bgm`（音乐文件名）字段
-    - 预览时切换背景，BGM 仅记录不播放
-
-12. 导出 Markdown
-    - 遍历节点图，输出可读剧本
-    - 附分支说明
-
-13. 导出 HTML（静态阅读器）
-    - 单文件 HTML（图片 base64 内嵌）+ 文件夹模式
-    - 内嵌轻量求值器（~150 行 JS）处理条件
-    - 支持：文本、立绘、背景、点击推进、选择、条件
-    - **不支持**：动画、转场、音效播放、存档、成就、打包 EXE / APK
-    - 明确写进文档：这是「导出格式」，不是「游戏引擎」
+- [x] 8. 剧本编辑
+  - [x] 场景卡 `script` 字段
+  - [x] 角色卡 `portraits` 字段
+  - [x] `ScenarioEditor` 加「剧本」tab
+  - [x] 剧本行增删改
+  - [ ] 剧本行拖拽排序
+- [x] 9. 视觉小说预览
+  - [x] 阅读器（打字机、背景切换）
+  - [x] 结局标记
+  - [x] 立绘表情切换
+- [ ] 10. 场景资源 · `bgm` 播放（当前仅记录不播放）
+- [ ] 11. 导出 Markdown
+- [ ] 12. 导出 HTML（静态阅读器）
 
 **P2（提升与优化）**
 
-14. 闪卡效果（foil）
-15. 时间线功能
-16. 导入合并的 schema 版本迁移
-17. 图片缩略图
-18. 命令面板性能
-19. 图谱节点位置持久化
-20. 文件监听（notify）
+- [ ] 闪卡效果（foil）
+- [ ] 时间线功能
+- [ ] 导入合并的 schema 版本迁移
+- [ ] 图片缩略图
+- [ ] 命令面板性能
+- [ ] 图谱节点位置持久化
+- [ ] 文件监听（notify）
+- [x] 大文件拆分（`VNStage` / `ScenarioEditor` / `MergePackDialog`）
+- [ ] 卡组同步到棋盘（只补不删，看实际需要）
 
 **P3（长期）**
 
-21. Session 提交回原卡
-22. 场景卡强制约束
-23. 受限插件系统
-24. Ren'Py 脚本导出（视觉小说方向，未来）
+- [ ] Session 提交回原卡
+- [ ] 场景卡强制约束
+- [ ] 受限插件系统
+- [ ] Ren'Py 脚本导出（视觉小说方向，未来）
 
 ---
 
@@ -741,6 +818,7 @@ world.anvilpack (zip)
 - 不做账号系统
 - 不做 Web 服务端
 - 不做完全无 SQLite 的纯文件系统
+- 不做视觉小说的完整演出引擎（动画、转场、音效播放、存档、打包 EXE）
 
 ---
 
@@ -762,3 +840,4 @@ world.anvilpack (zip)
 14. **状态单一来源。** 选中态走 store。
 15. **无向关系对等显示。**
 16. **输入密集处不挂 HTML5 DnD。** 用 Pointer Events。
+17. **引用是快照，不自动同步。** CardGroup → Board 是导入即拷贝；Card 改字段不回写 Scenario 节点位置。

@@ -9,6 +9,9 @@ import { PickerDialog } from "../../components/PickerDialog";
 import { invalidateImage } from "../../lib/imageCache";
 import { newId } from "../../lib/id";
 import { useDeleteUndo } from "../../hooks/useDeleteUndo";
+import { AddFromGroupDialog } from "./AddFromGroupDialog";
+import { gridPosition, shuffle } from "./tokenPlacement";
+import type { CardGroup } from "../../core/ipc";
 
 interface Props {
   board: Board;
@@ -34,6 +37,8 @@ export function BoardEditor({ board }: Props) {
   >([]);
 
   const [zoom, setZoom] = useState(1);
+
+  const [addFromGroupOpen, setAddFromGroupOpen] = useState(false);
 
   useEffect(() => {
     setZoom(1);
@@ -128,16 +133,15 @@ export function BoardEditor({ board }: Props) {
   async function addCardToBoard(cardId: string) {
     const tokens = normalized.tokens ?? [];
     const count = tokens.length;
-    const gx = 100 + (count % 8) * 180;
-    const gy = 100 + Math.floor(count / 8) * 240;
+    const pos = gridPosition(count);
 
     const newToken: Token = {
       id: Math.random().toString(36).slice(2) + Date.now().toString(36),
       card_id: cardId,
       name_override: null,
       value_overrides: {},
-      x: gx,
-      y: gy,
+      x: pos.x,
+      y: pos.y,
       w: 140,
       h: 205,
       rotation: 0,
@@ -152,6 +156,50 @@ export function BoardEditor({ board }: Props) {
     };
     await ipc.upsertBoard(next);
     upsertBoard(next);
+  }
+
+  async function handleImportFromGroup(group: CardGroup, shuffleOn: boolean) {
+    const valid = group.card_ids.filter((id) => cards.some((c) => c.id === id));
+    if (valid.length === 0) {
+      alert("该卡组里没有可用的卡牌。");
+      return;
+    }
+
+    const ordered = shuffleOn ? shuffle(valid) : valid;
+
+    const existing = normalized.tokens ?? [];
+    const startIdx = existing.length;
+
+    const newTokens: Token[] = ordered.map((cardId, i) => {
+      const pos = gridPosition(startIdx + i);
+      return {
+        id: newId(),
+        card_id: cardId,
+        name_override: null,
+        value_overrides: {},
+        x: pos.x,
+        y: pos.y,
+        w: 140,
+        h: 205,
+        rotation: 0,
+        layer: startIdx + i,
+        visible: true,
+      };
+    });
+
+    const next: Board = {
+      ...normalized,
+      tokens: [...existing, ...newTokens],
+      updated_at: nowMs(),
+    };
+
+    try {
+      await ipc.upsertBoard(next);
+      upsertBoard(next);
+      setAddFromGroupOpen(false);
+    } catch (e) {
+      alert("导入失败: " + e);
+    }
   }
 
   const cards = useProjectStore((s) => s.cards) ?? [];
@@ -287,6 +335,13 @@ export function BoardEditor({ board }: Props) {
           {normalized.background ? "更换背景" : "设置背景"}
         </button>
         <button
+          className="btn"
+          onClick={() => setAddFromGroupOpen(true)}
+          style={{ fontSize: 12 }}
+        >
+          从卡组导入
+        </button>
+        <button
           className="btn btn-primary"
           onClick={() => setCardPickerOpen(true)}
           style={{ fontSize: 12 }}
@@ -380,6 +435,14 @@ export function BoardEditor({ board }: Props) {
         />
       )}
 
+      {addFromGroupOpen && (
+        <AddFromGroupDialog
+          onClose={() => setAddFromGroupOpen(false)}
+          onImport={(group, shuffleOn) => {
+            void handleImportFromGroup(group, shuffleOn);
+          }}
+        />
+      )}
       {cardPickerOpen && (
         <PickerDialog
           title="添加卡片到棋盘"

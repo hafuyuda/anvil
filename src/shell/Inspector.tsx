@@ -1,10 +1,10 @@
 import { useCallback, useRef } from "react";
 import { ipc, type Board, type Session, type Token } from "../core/ipc";
 import { useProjectStore } from "../stores/projectStore";
-import { CardEditor } from "../features/cards/CardEditor";
+import { CardEditor } from "../features/cards/card/CardEditor";
 import { TokenInspector } from "../features/board/TokenInspector";
-import { EdgeEditorPanel } from "../features/story/EdgeEditorPanel";
-import { CardTypePreview } from "../features/cards/CardTypePreview";
+import { EdgeEditorPanel } from "../features/story/scenario/EdgeEditorPanel";
+import { CardTypePreview } from "../features/cards/card-type/CardTypePreview";
 import { nowMs } from "../lib/time";
 
 export function Inspector() {

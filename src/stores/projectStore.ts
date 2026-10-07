@@ -6,6 +6,7 @@ import { createRelationsSlice } from "./slices/relationsSlice";
 import { createScenariosSlice } from "./slices/scenariosSlice";
 import { createBoardsSlice } from "./slices/boardsSlice";
 import { createSessionsSlice } from "./slices/sessionsSlice";
+import { createCardGroupsSlice } from "./slices/cardGroupsSlice";
 import { createUndoSlice } from "./slices/undoSlice";
 import { createUISlice } from "./slices/uiSlice";
 
@@ -24,6 +25,7 @@ export const useProjectStore = create<ProjectState>()((...a) => ({
   ...createScenariosSlice(...a),
   ...createBoardsSlice(...a),
   ...createSessionsSlice(...a),
+  ...createCardGroupsSlice(...a),
   ...createUndoSlice(...a),
   ...createUISlice(...a),
 }));

@@ -247,6 +247,7 @@ export function CardTypeEditor({ cardType }: Props) {
           <CardFrameEditor
             cardType={draft}
             onChange={(card_frame) => update({ card_frame })}
+            onChangeColor={(color) => update({ color })}
           />
         )}
       </div>

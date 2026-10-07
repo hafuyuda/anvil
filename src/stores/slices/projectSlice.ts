@@ -20,6 +20,7 @@ export const createProjectSlice: StateCreator<ProjectState, [], [], Slice> = (
     scenarios,
     boards,
     sessions,
+    cardGroups,
   ) =>
     set({
       projectPath,
@@ -30,6 +31,7 @@ export const createProjectSlice: StateCreator<ProjectState, [], [], Slice> = (
       scenarios: scenarios ?? [],
       boards: boards ?? [],
       sessions: sessions ?? [],
+      cardGroups: cardGroups ?? [],
       selectedCardId: null,
       selectedTokenId: null,
       currentBoardId: null,
@@ -64,6 +66,7 @@ export const createProjectSlice: StateCreator<ProjectState, [], [], Slice> = (
         scenarios: data.scenarios ?? [],
         boards: data.boards ?? [],
         sessions: data.sessions ?? [],
+        cardGroups: data.cardGroups ?? [],
         selectedCardId,
         selectedTokenId,
         currentBoardId,
@@ -80,6 +83,7 @@ export const createProjectSlice: StateCreator<ProjectState, [], [], Slice> = (
       scenarios: [],
       boards: [],
       sessions: [],
+      cardGroups: [],
       selectedCardId: null,
       selectedTokenId: null,
       currentBoardId: null,

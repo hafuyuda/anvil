@@ -1,6 +1,7 @@
 pub mod assets;
 pub mod atomic;
 pub mod boards;
+pub mod card_groups;
 pub mod cards;
 pub mod manifest;
 pub mod pack;

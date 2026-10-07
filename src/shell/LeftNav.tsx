@@ -4,6 +4,7 @@ const MODULES: { key: ModuleKey; label: string; glyph: string }[] = [
   { key: "world", label: "世界观", glyph: "◈" },
   { key: "story", label: "视觉小说", glyph: "❖" },
   { key: "board", label: "棋盘", glyph: "▦" },
+  { key: "cardGroups", label: "卡组", glyph: "▤" },
   { key: "session", label: "跑团", glyph: "✦" },
   { key: "types", label: "类型", glyph: "◇" },
 ];

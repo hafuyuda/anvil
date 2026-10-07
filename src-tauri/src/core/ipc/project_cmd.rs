@@ -27,13 +27,14 @@ pub struct ProjectSnapshot {
     pub scenarios: Vec<crate::core::model::scenario::Scenario>,
     pub boards: Vec<crate::core::model::board::Board>,
     pub sessions: Vec<crate::core::model::session::Session>,
+    pub card_groups: Vec<crate::core::model::card_group::CardGroup>,
 }
 
 #[tauri::command]
 pub fn reload_project(state: State<AppState>) -> Result<ProjectSnapshot, String> {
     let guard = state.project.lock().unwrap();
     let p = guard.as_ref().ok_or("no project open")?;
-    let (cards, card_types, relation_kinds, relations, scenarios, boards, sessions) =
+    let (cards, card_types, relation_kinds, relations, scenarios, boards, sessions, card_groups) =
         p.reload().map_err(|e| e.to_string())?;
     Ok(ProjectSnapshot {
         cards,
@@ -43,6 +44,7 @@ pub fn reload_project(state: State<AppState>) -> Result<ProjectSnapshot, String>
         scenarios,
         boards,
         sessions,
+        card_groups,
     })
 }
 

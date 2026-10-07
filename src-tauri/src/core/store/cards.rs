@@ -70,8 +70,12 @@ impl Project {
         if path.exists() {
             std::fs::remove_file(&path)?;
         }
-        let conn = self.index.lock().unwrap();
-        crate::core::index::delete_card(&conn, id)?;
+        {
+            let conn = self.index.lock().unwrap();
+            crate::core::index::delete_card(&conn, id)?;
+        }
+        // 同步清理卡组引用
+        self.remove_card_from_all_groups(id)?;
         Ok(())
     }
 

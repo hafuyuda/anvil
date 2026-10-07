@@ -2,8 +2,8 @@ mod core;
 //mod features;
 
 use core::ipc::{
-    board_cmd::*, card_cmd::*, project_cmd::*, relation_cmd::*, scenario_cmd::*, session_cmd::*,
-    AppState,
+    board_cmd::*, card_cmd::*, card_group_cmd::*, project_cmd::*, relation_cmd::*, scenario_cmd::*,
+    session_cmd::*, AppState,
 };
 use std::sync::Mutex;
 
@@ -51,6 +51,10 @@ pub fn run() {
             list_card_types,
             upsert_card_type,
             delete_card_type,
+            // card groups
+            list_card_groups,
+            upsert_card_group,
+            delete_card_group,
             // relations
             list_relation_kinds,
             upsert_relation_kind,

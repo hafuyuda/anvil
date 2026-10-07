@@ -1,5 +1,4 @@
 import type { StateCreator } from "zustand";
-import type { Card, CardType } from "../../core/ipc";
 import type { ProjectState } from "./types";
 
 type Slice = Pick<

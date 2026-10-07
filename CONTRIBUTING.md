@@ -130,18 +130,30 @@ src-tauri/src/
 └── lib.rs
 
 src/
-├── core/ipc/           # 前端 IPC 类型 + invoke 封装
+├── core/               # IPC 类型 + 项目级动作
+│   ├── ipc/            # 前端 IPC 类型 + invoke 封装
+│   └── use*.ts         # 打开/创建/导入/导出等
 ├── lib/                # 通用工具
 ├── hooks/              # React hooks
 ├── components/         # 通用组件
 ├── shell/              # 五段布局
+├── themes/             # 内置主题
 ├── features/
 │   ├── cards/          # ★ 共享核心
+│   │   ├── card/       # 单卡编辑 + 关系面板
+│   │   ├── card-wall/  # 卡片墙
+│   │   ├── card-type/  # 卡牌类型与卡框
+│   │   └── relation/   # 关系类型与表单
 │   ├── world/          # 图谱
 │   ├── story/          # 剧情
+│   │   ├── scenario/   # 设计
+│   │   ├── play/       # 运行
+│   │   └── script/     # 剧本
 │   ├── board/          # 棋盘
 │   ├── session/        # 跑团
+│   │   └── chat/       # 对话流
 │   ├── project/        # 项目设置
+│   ├── app/            # 应用设置
 │   └── commands/       # 命令注册
 └── stores/
     ├── projectStore.ts # 组合 slices
@@ -149,6 +161,18 @@ src/
 ```
 
 **关键**：`features/cards/` 是共享核心，所有功能都通过它读写卡牌。**不要绕过它私建卡模型。**
+
+---
+
+## 目录约定
+
+- **每个 feature 一个目录**，内部按子领域再分组（`card/`、`card-wall/`、`card-type/`、`relation/`）。
+- **feature 顶层不放散文件**，要么是容器组件（`XxxList`、`XxxEditor`），要么是子目录。
+- **子目录内不放转发文件**。旧式的 `Xxx.tsx` 转发 + `xxx/` 实现的模式已废弃，直接指向子目录版本。
+- **`components/` 放跨 feature 通用组件**（`CardFrame`、`Modal`、`Toolbar`）。若某组件只被一个 feature 用，它应该在那个 feature 里。
+- **`features/` 之间不互相引用内部文件**。需要共享，提升到 `components/` 或 `lib/`。
+  - 已知例外：`session/SessionEditor` 引 `board/BoardCanvas`，`story/scenario/StoryGraphView` 引 `world/GraphNode`。这两处是历史遗留，改动时如能顺手清理更好，但不强求。
+- **新增文件时先问：半年后的自己打开这个目录，能否一眼猜到它在这里。** 猜不到就换个位置。
 
 ---
 

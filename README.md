@@ -104,18 +104,35 @@ anvil/
 │   │   └── ipc/            # Tauri 命令（按领域拆分）
 │   └── lib.rs
 ├── src/
-│   ├── core/ipc/           # 前端 IPC 类型与封装
-│   ├── lib/                # 通用工具
-│   ├── hooks/              # useDraft / useKeyboard / ...
+│   ├── core/               # IPC 类型与封装 + 项目级动作 hook
+│   │   ├── ipc/            # 前端 IPC 类型与 invoke 封装
+│   │   ├── openProjectAt.ts
+│   │   ├── applyProjectTheme.ts
+│   │   └── use*.ts         # 打开/创建/导入/导出
+│   ├── lib/                # 通用工具（id / time / theme / imageCache / commands / appSettings）
+│   ├── hooks/              # 通用 hook（useDraft / useKeyboard / useAppSettings / ...）
 │   ├── components/         # 通用组件（CardFrame / Toolbar / Modal / ...）
 │   ├── shell/              # 五段布局（TopBar / LeftNav / Workspace / Inspector / StatusBar）
+│   ├── themes/             # 内置主题定义
 │   ├── features/
 │   │   ├── cards/          # ★ 共享核心
+│   │   │   ├── card/       # 单卡编辑 + 关系面板
+│   │   │   ├── card-wall/  # 卡片墙（网格 / 列表 / 批量）
+│   │   │   ├── card-type/  # 卡牌类型、字段、卡框配置
+│   │   │   └── relation/   # 关系类型与关系表单
 │   │   ├── world/          # 图谱
-│   │   ├── story/          # 剧情（节点图 + 运行）
+│   │   ├── story/
+│   │   │   ├── scenario/   # 剧情设计（节点图、连线、条件、效果）
+│   │   │   ├── play/       # 视觉小说运行
+│   │   │   ├── script/     # 剧本解析、编辑、序列化
+│   │   │   └── effects.ts  # 共享条件与效果
 │   │   ├── board/          # 棋盘
-│   │   ├── session/        # 跑团
-│   │   └── project/        # 项目设置 / 主题 / 合并
+│   │   ├── session/
+│   │   │   ├── chat/       # 对话流、掷骰、消息编辑
+│   │   │   └── ...         # 会话容器、角色面板、事件日志
+│   │   ├── project/        # 项目设置 / 主题 / 合并
+│   │   ├── app/            # 应用设置
+│   │   └── commands/       # 全局命令注册
 │   └── stores/             # Zustand（slice 模式）
 └── package.json
 ```

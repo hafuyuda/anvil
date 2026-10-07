@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import type {
   Board,
   Card,
+  CardGroup,
   CardType,
   GameEvent,
   Manifest,
@@ -58,6 +59,12 @@ export const ipc = {
   upsertCardType: (cardType: CardType) =>
     invoke<void>("upsert_card_type", { cardType }),
   deleteCardType: (id: string) => invoke<void>("delete_card_type", { id }),
+
+  // ── 卡组 ──
+  listCardGroups: () => invoke<CardGroup[]>("list_card_groups"),
+  upsertCardGroup: (cardGroup: CardGroup) =>
+    invoke<void>("upsert_card_group", { cardGroup }),
+  deleteCardGroup: (id: string) => invoke<void>("delete_card_group", { id }),
 
   // ── 关系类型 ──
   listRelationKinds: () => invoke<RelationKind[]>("list_relation_kinds"),

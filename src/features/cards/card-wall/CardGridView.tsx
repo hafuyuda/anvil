@@ -63,6 +63,7 @@ export function CardGridView({
               cardType={ct}
               size="medium"
               selected={selected}
+              foil={true}
             />
             <button
               className="btn btn-icon"

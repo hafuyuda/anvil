@@ -20,6 +20,7 @@ impl Project {
         std::fs::create_dir_all(root.join("sessions"))?;
         std::fs::create_dir_all(root.join(".anvil"))?;
         std::fs::create_dir_all(root.join("scripts"))?;
+        std::fs::create_dir_all(root.join("card_groups"))?;
 
         let db_path = root.join(".anvil").join("index.db");
         let conn = crate::core::index::open_or_create(&db_path)?;
@@ -58,6 +59,7 @@ impl Project {
         Vec<crate::core::model::scenario::Scenario>,
         Vec<crate::core::model::board::Board>,
         Vec<crate::core::model::session::Session>,
+        Vec<crate::core::model::card_group::CardGroup>,
     )> {
         let cards = self.load_all_cards()?;
         let card_types = self.load_card_types()?;
@@ -66,6 +68,7 @@ impl Project {
         let scenarios = self.load_scenarios()?;
         let boards = self.load_boards()?;
         let sessions = self.load_sessions()?;
+        let card_groups = self.load_card_groups()?;
         {
             let mut conn = self.index.lock().unwrap();
             crate::core::index::rebuild(&mut conn, &cards, &relations)?;
@@ -78,6 +81,7 @@ impl Project {
             scenarios,
             boards,
             sessions,
+            card_groups,
         ))
     }
 

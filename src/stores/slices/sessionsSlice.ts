@@ -1,5 +1,4 @@
 import type { StateCreator } from "zustand";
-import type { Session } from "../../core/ipc";
 import type { ProjectState } from "./types";
 
 type Slice = Pick<ProjectState, "sessions" | "upsertSession" | "removeSession">;
