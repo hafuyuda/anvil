@@ -93,10 +93,10 @@ git checkout -b fix/your-bugfix
 **例子**：
 
 ```text
-feat: add timeline view for event cards
+feat: add card pile drawing on board
 
-支持按数字字段排序展示事件卡。
-支持过滤和搜索。
+支持从卡盒抽 1 张或 N 张，抽出的牌扣着排布。
+支持洗牌与重置，操作进撤销栈。
 ```
 
 ### 5. 推送并开 PR
@@ -123,7 +123,7 @@ git push -u origin feat/your-feature
 src-tauri/src/
 ├── core/
 │   ├── model/          # 数据模型（Card / CardType / Relation / ...）
-│   ├── store/          # 文本文件读写
+│   ├── store/          # 文本文件读写 + 索引 + 资源包
 │   ├── index/          # SQLite 索引 + FTS
 │   ├── eval/           # 条件求值
 │   └── ipc/            # Tauri 命令
@@ -133,17 +133,18 @@ src/
 ├── core/               # IPC 类型 + 项目级动作
 │   ├── ipc/            # 前端 IPC 类型 + invoke 封装
 │   └── use*.ts         # 打开/创建/导入/导出等
-├── lib/                # 通用工具
+├── lib/                # 通用工具（id / time / theme / dice / ...）
 ├── hooks/              # React hooks
-├── components/         # 通用组件
+├── components/         # 跨 feature 通用组件
 ├── shell/              # 五段布局
 ├── themes/             # 内置主题
 ├── features/
 │   ├── cards/          # ★ 共享核心
 │   │   ├── card/       # 单卡编辑 + 关系面板
-│   │   ├── card-wall/  # 卡片墙
 │   │   ├── card-type/  # 卡牌类型与卡框
+│   │   ├── card-wall/  # 卡片墙
 │   │   └── relation/   # 关系类型与表单
+│   ├── card-groups/    # 卡组
 │   ├── world/          # 图谱
 │   ├── story/          # 剧情
 │   │   ├── scenario/   # 设计
@@ -207,7 +208,7 @@ src/
 
 ### 1. 卡牌是唯一内容实体
 
-世界观 NPC、剧情节点、棋盘角色都是同一张卡。Board、Scenario、Session 是容器。
+世界观 NPC、剧情节点、棋盘角色都是同一张卡。Board、Scenario、Session 是容器。CardGroup 是辅助索引，CardPile 是 Token 的变体。
 
 ### 2. 关系是一等公民
 
@@ -239,6 +240,14 @@ Windows 上 Tauri 的 WebView2 会拦截 HTML5 拖放，破坏 IME。用 `@dnd-k
 ### 7. 颜色走 CSS 变量
 
 不要硬编码颜色值。所有颜色在 `src/index.css` 定义。`theme.ts` 是 JS 侧镜像。
+
+### 8. `serde(default)` 保护旧数据
+
+新增 Rust 结构体字段时用 `#[serde(default)]`，保证旧项目文件能读。seed 里的结构体字面量用 `..Default::default()` 收尾。
+
+### 9. 弹窗里的 onClose 用 ref 稳定
+
+Modal、对话框等组件的 `onClose` prop 经常是父组件内联箭头函数。effect 里用 ref 模式读，避免 effect 重跑冲掉用户编辑。
 
 ---
 
@@ -274,13 +283,14 @@ pnpm prettier --write src/
 
 1. 打开项目 → 载入示例世界 → 数据完整
 2. 卡片墙 → 搜索、筛选、多选、批量操作
-3. 类型 → 字段编辑、拖拽排序、卡框映射
+3. 类型 → 字段编辑、拖拽排序、卡框映射、闪卡触发、裁剪
 4. 图谱 → 拖拽、连线、过滤、点击节点/边
 5. 剧情 → 节点图、运行、条件、效果、骰子
-6. 棋盘 → 拖拽、缩放、旋转、背景
-7. 跑团 → 对话、掷骰、消息编辑、事件日志
-8. 项目设置 → 主题、图片资源、数据统计
-9. 导出 → 导入 → 合并
+6. 棋盘 → 拖拽、缩放、旋转、背景、卡盒抽牌、翻牌
+7. 卡组 → 新建、加卡、导入棋盘、加卡盒
+8. 跑团 → 对话、掷骰、消息编辑、事件日志
+9. 项目设置 → 主题、图片资源、数据统计、默认卡背
+10. 导出 → 导入 → 合并
 
 如果你加了新功能，请在 PR 描述里说明验证步骤。
 
@@ -307,6 +317,14 @@ DevTools（Tauri 窗口右键 → Inspect）看 Console 报错。多半是某个
 ### 中文搜索无效
 
 FTS 用 trigram，短查询（< 3 字符）走内存过滤。这是设计。
+
+### 对话框里改的状态被外部冲掉
+
+如果对话框内部有 effect 依赖 `onClose` 等不稳定引用，父组件重渲染会导致 effect 重跑。用 ref 稳定回调，effect 依赖数组尽量空。
+
+### Rust 编译报 `missing field XXX`
+
+新增结构体字段后，所有结构体字面量都要补。`seed.rs` 里通常用 `..Default::default()` 收尾。
 
 ---
 

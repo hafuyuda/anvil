@@ -1,8 +1,8 @@
 # Anvil 设计文档
 
-版本 0.9 · 单人创作工具 · 桌面优先 · 开源
+版本 0.10 · 单人创作工具 · 桌面优先 · 开源
 
-> 本文档反映当前实现。M1–M5 完成，M6 打磨进行中。
+> 本文档反映当前实现。M1–M6 完成，M6.5 视觉小说与卡牌扩展进行中。
 
 ---
 
@@ -34,17 +34,17 @@ Anvil 是一个以**卡牌为核心**的世界观创作与跑团工具。它把�
 ### 3.1 三层数据
 
 ```text
-┌─────────────────────────────────────────────────┐
-│  类型层 (Schema)                                 │
-│  CardType · FieldDef · RelationKind · VariableDef│
-├─────────────────────────────────────────────────┤
-│  实例层 (Project)                                │
-│  Card · Relation · Board · Scenario · CardGroup │
-│  Theme                                           │
-├─────────────────────────────────────────────────┤
-│  运行层 (Runtime)                                │
-│  Session · Token · Event                        │
-└─────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────┐
+│  类型层 (Schema)                                  │
+│  CardType · FieldDef · RelationKind · VariableDef │
+├──────────────────────────────────────────────────┤
+│  实例层 (Project)                                 │
+│  Card · Relation · Board · Scenario · CardGroup  │
+│  Theme                                            │
+├──────────────────────────────────────────────────┤
+│  运行层 (Runtime)                                 │
+│  Session · Token · Event                         │
+└──────────────────────────────────────────────────┘
 ```
 
 ### 3.2 三条铁律
@@ -63,6 +63,8 @@ Anvil 是一个以**卡牌为核心**的世界观创作与跑团工具。它把�
 | 跑团     | Card + Session + Token              | 舞台 + 对话流 + 角色列表 | 事件日志        |
 
 **CardGroup** 是辅助索引，服务于「管理一组卡」和「批量铺开」，不属于四大功能之一。
+
+**CardPile** 是 Token 的变体，在棋盘上以堆叠形式存在，支持抽牌与洗牌。
 
 ### 3.4 场景卡
 
@@ -120,6 +122,7 @@ pub struct CardType {
     pub allowed_relation_kinds: Vec<String>,
     pub views: Vec<String>,
     pub card_frame: Option<CardFrameConfig>,
+    pub card_back: Option<String>,
     pub created_at: i64,
     pub updated_at: i64,
 }
@@ -135,11 +138,27 @@ pub struct FieldDef {
     pub deprecated: bool,
 }
 
+pub struct CropRect {
+    pub x: f64,  // 0–1，从左边起
+    pub y: f64,  // 0–1，从上边起
+    pub w: f64,  // 0–1，占原图宽度的比例
+    pub h: f64,  // 0–1，占原图高度的比例
+}
+
+pub struct ImageExtend {
+    pub top: f64,     // 0–1，相对图像区高度的比例
+    pub bottom: f64,
+    pub left: f64,    // 0–1，相对图像区宽度的比例
+    pub right: f64,
+}
+
 pub struct CardFrameConfig {
     pub style: Option<String>,   // "yugioh" | "generic" | "minimal" | "mtg" | "pokemon"
     pub title: Option<String>,
     pub subtitle: Option<String>,
     pub image: Option<String>,
+    pub image_crop: Option<CropRect>,
+    pub image_extend: Option<ImageExtend>,
     pub level: Option<String>,
     pub level_label: Option<String>,
     pub type_line: Option<String>,
@@ -150,6 +169,8 @@ pub struct CardFrameConfig {
     pub def_label: Option<String>,
     pub hp: Option<String>,
     pub hp_label: Option<String>,
+    pub foil_field: Option<String>,
+    pub foil_values: Vec<String>,
 }
 ```
 
@@ -169,6 +190,8 @@ Ref { target_types } · Image · Url · Json
 - `*_label` 为空时用默认（ATK / DEF / HP / 星号）
 - `style` 为空时走默认（yugioh），合法值见 `CardFrameStyle`
 - 只设 `style` 不设字段映射是合法状态：走启发式映射 + 指定风格的皮
+- `image_crop` / `image_extend` 为空时不做裁剪、不出框
+- `foil_field` / `foil_values` 为空时不触发闪卡
 
 ### 4.2 实例层
 
@@ -178,6 +201,8 @@ pub struct Card {
     pub type_id: TypeId,
     pub name: String,
     pub values: BTreeMap<String, Value>,
+    pub image_crop_override: Option<CropRect>,
+    pub image_extend_override: Option<ImageExtend>,
     pub created_at: i64,
     pub updated_at: i64,
 }
@@ -253,6 +278,14 @@ pub struct Board {
     pub updated_at: i64,
 }
 
+pub struct PileData {
+    pub group_id: String,        // 来源卡组 ID
+    pub label: String,           // 显示名
+    pub remaining: Vec<CardId>,  // 还没抽出的卡，头部 = 下一张
+    pub initial: Vec<CardId>,    // 初始完整列表，用于重置
+    pub total: usize,            // 初始总张数
+}
+
 pub struct Token {
     pub id: TokenId,
     pub card_id: Option<CardId>,
@@ -263,6 +296,8 @@ pub struct Token {
     pub rotation: f64,
     pub layer: i32,
     pub visible: bool,
+    pub face_down: bool,
+    pub pile: Option<PileData>,  // Some 时此 token 是卡盒
 }
 ```
 
@@ -307,6 +342,7 @@ pub struct Manifest {
     pub author: Option<String>,
     pub description: Option<String>,
     pub theme_id: Option<String>,
+    pub default_card_back: Option<String>,
     pub created_at: i64,
     pub updated_at: i64,
 }
@@ -423,7 +459,7 @@ anvil/
 │   ├── core/               # IPC 类型与封装 + 项目级动作
 │   │   ├── ipc/
 │   │   └── use*.ts
-│   ├── lib/                # id / time / theme / imageCache / commands / appSettings
+│   ├── lib/                # id / time / theme / imageCache / commands / appSettings / dice
 │   ├── hooks/              # useDraft / useKeyboard / useAppSettings / ...
 │   ├── components/         # Modal / Toolbar / CardFrame / CommandPalette
 │   ├── shell/              # AppShell / TopBar / LeftNav / Workspace / Inspector / StatusBar
@@ -488,6 +524,8 @@ san -= 1d3
 三种操作符：`=` / `+=` / `-=`。
 
 **骰子支持**：`1d3` / `2d6+3` / `1d20-2`。前端本地随机，执行时记录明细。运行视图在场景卡片下方显示。
+
+**骰子逻辑统一在 `src/lib/dice.ts`**：`rollDice` 掷骰，`validateDiceExpression` 只校验不掷。跑团、视觉小说效果、RollDialog 都调它。
 
 **效果写入事件日志**：当有会话打开时，效果执行会写入 `effect.apply` 事件。
 
@@ -566,15 +604,38 @@ san -= 1d3
 - **Ctrl/Cmd + 滚轮缩放**：0.25× – 4×
 - **Alt + 拖拽旋转**：Shift 吸附 15°
 - 多选：Ctrl/Cmd 点击加入集合，拖动任意一个带动全部
+- **双击 token**：翻转 `face_down`（显示卡背）
+- **单击卡盒**：弹出抽牌面板
 
-**工具栏**：名称、网格开关、吸附开关、格大小、宽高、背景、从卡组导入、加卡、缩放、批量操作。
+**工具栏**：名称、网格开关、吸附开关、格大小、宽高、背景、从卡组导入、从卡组加卡盒、加卡、缩放、批量操作。
 
-**从卡组导入**：
+**从卡组导入（铺开）**：
 
 - 选卡组 → 选顺序（原序 / 随机）→ 网格铺开
 - 网格：从左上角开始，8 列，每格 180×240
 - 失效卡（已删除）自动跳过
 - 导入即拷贝，之后卡组和棋盘互不影响
+
+**卡盒**：
+
+- 从卡组生成，落为一个特殊 Token（`pile` 字段非空）
+- 视觉：底卡背 + 双层错位叠影 + 右下角 `N / M` 徽章
+- 单击 → 弹 `PileDrawDialog`：抽 1 / 抽 N / 洗牌 / 重置
+- 抽出的牌扣着放在卡盒右侧，自动网格排布
+- 抽牌 / 洗牌 / 重置进撤销栈
+- 卡盒与源卡组解耦：卡组改了不影响已有卡盒
+
+**卡背**：
+
+- 解析优先级：`Token.card_id` 所属类型的 `card_back` → `Manifest.default_card_back` → 内置图案
+- 内置图案：双层菱形描边 + "Anvil" 字样
+- 可被主题覆盖 `--card-back-*` 变量
+
+**翻牌**：
+
+- 双击 `face_down` 取反
+- 检查器有「扣着」勾选框
+- 卡盒不参与翻牌
 
 ---
 
@@ -610,6 +671,8 @@ san -= 1d3
 
 **存储**：消息写入 `events.jsonl`。
 
+**卡盒**：会话的 token 是 Board 的副本。会话里可以单击卡盒抽牌，**只影响会话副本，不动 Board**。
+
 ---
 
 ## 12. 卡牌渲染
@@ -630,13 +693,32 @@ san -= 1d3
 
 **尺寸**：small 140×205 · medium 190×280 · large 260×385
 
-**图像区**：固定像素高（small 84 / medium 116 / large 160），锁定 `flexShrink`，`objectFit: cover`。
+**图像区**：
+
+- 固定像素高（small 84 / medium 116 / large 160）
+- 统一走 `CardImage` 组件
+- **裁剪**：`image_crop` 类型级，`Card.image_crop_override` 卡级覆盖
+- **出框**：`image_extend` 四方向独立数值，最多撑满内层
+- 无图时显示类型色系首字
 
 **颜色**：全部走 CSS 变量。类型级强调色 `CardType.color` 支持 hex 与 CSS 变量，推荐后者（随主题变化）。透明度与加深统一用 `color-mix()`。
 
 **字段映射**：`mapping.ts` 是共享逻辑，所有风格共用一套 `CardMapping`，`card_frame` 为空时走启发式识别。
 
-**Accent 参数化**：类型编辑器可指定强调色，派生标题栏、描边、选中环。空则跟随 `--card-frame-default-accent`。
+**闪卡**：
+
+- 类型级配置：`foil_field` 指定触发字段，`foil_values` 指定命中的值
+- 支持的字段类型：字符串、数字、布尔、数组（多选枚举 / 标签 / 引用）
+- 渲染：`FoilOverlay` 覆盖层，暗金基色 + 斜向流光 + 边缘描边
+- 需视图层显式启用：`<CardFrame foil={true} />`
+- 卡片墙和检查器预览启用，图谱 / 棋盘 / 跑团不启用
+
+**卡背**：
+
+- `CardType.card_back` 类型级
+- `Manifest.default_card_back` 项目级
+- 内置默认：双层菱形描边 + "Anvil" 字样
+- 渲染由 `CardBack` 组件负责
 
 **标签自定义**：`atk_label` / `def_label` / `hp_label` / `level_label`。
 
@@ -666,11 +748,16 @@ world.anvilpack (zip)
 
 把另一个包合并进**当前打开的项目**。类型映射、只导类型、选择性导入、字段合并。ID 都是 UUID 不撞。
 
-合并卡组时：
+合并规则：
 
-- 卡组 ID 原样保留，已存在则跳过
-- 卡组内引用只保留本次导入的卡
-- 若某卡组引用的卡全部被跳过，该卡组整体跳过
+- **卡牌类型**：字段逐 key 合并（本地无则新增）。本地无卡背时，用对方的
+- **关系类型**：ID 映射表，同名可选映射到现有
+- **卡片**：仅在类型映射非 Skip 且卡 ID 不冲突时导入
+- **关系**：仅在 from / to 都已导入时导入
+- **剧情 / 棋盘 / 会话**：选择性导入，ID 冲突跳过
+- **卡组**：保留原 ID，卡组内引用只保留本次导入的卡，空卡组跳过
+- **图片**：同名跳过，不同名复制
+- **Manifest**：目标项目的元数据不被覆盖（包括 `default_card_back`）
 
 ---
 
@@ -682,7 +769,7 @@ world.anvilpack (zip)
 
 **快捷键**：`Ctrl+Z` / `Ctrl+Shift+Z` / `Ctrl+S` / `Ctrl+K` / `Ctrl+1..5`
 
-**批量操作进撤销栈**：删除卡片、关系、token、剧情、棋盘、会话、类型都支持撤销。
+**批量操作进撤销栈**：删除卡片、关系、token、剧情、棋盘、会话、类型、卡组都支持撤销。卡盒抽牌 / 洗牌 / 重置也支持。
 
 ---
 
@@ -700,9 +787,17 @@ world.anvilpack (zip)
 
 **内置主题**：Anvil Dark / Anvil Light / Parchment / High Contrast / Slate。
 
-**卡牌变量也可被主题覆盖**：`--card-frame-default-accent`、`--card-yugioh-*`、`--card-generic-*`、`--card-minimal-*`、`--card-mtg-*`、`--card-pokemon-*` 都在 `:root` 定义，主题覆盖即可。
+**所有视觉变量都可被主题覆盖**：
+
+- 背景 / 文字 / 边框 / 强调色 / 语义色
+- 卡牌：`--card-frame-default-accent`、`--card-yugioh-*`、`--card-generic-*`、`--card-minimal-*`、`--card-mtg-*`、`--card-pokemon-*`
+- 卡背：`--card-back-*`
+- 对话气泡：`--chat-*`（全部派生自主变量，自动跟随）
+- 主按钮：派生自 `--accent-copper`（`color-mix` 生成深浅色）
 
 **预设强调色**：`--accent-copper` / `--accent-gold` / `--accent-ember` / `--accent-flame` / `--accent-steel` / `--accent-iron`，类型编辑器可直接选。
+
+**原则**：不硬编码颜色。JS 里的 `theme.ts` 只是镜像，实际值始终从 CSS 变量来。
 
 ---
 
@@ -744,13 +839,13 @@ world.anvilpack (zip)
 **M4 — 棋盘与跑团** ✅
 **M5 — 分享与扩展** ✅
 
-**M6 — 打磨与生态** 🚧
+**M6 — 打磨与生态** ✅
 
-已完成：CardFrame 视觉统一、检查器联动、最近项目、棋盘缩放/背景/旋转、卡框标签自定义、图谱连线、无向关系显示、效果支持骰子、场景对白直接显示、字段拖拽排序、批量选择、投骰日志、撤销覆盖 bulk、图片资源管理、数据统计、内置主题（5 套）、多风格卡框（yugioh / generic / minimal / mtg / pokemon）、卡框强调色参数化、应用设置面板、目录结构整理、卡组功能。
+已完成：CardFrame 视觉统一、检查器联动、最近项目、棋盘缩放/背景/旋转、卡框标签自定义、图谱连线、无向关系显示、效果支持骰子、场景对白直接显示、字段拖拽排序、批量选择、投骰日志、撤销覆盖 bulk、图片资源管理、数据统计、内置主题（5 套）、多风格卡框（yugioh / generic / minimal / mtg / pokemon）、卡框强调色参数化、应用设置面板、目录结构整理、卡组功能、闪卡、卡背、翻牌、卡盒抽牌、骰子重构。
 
-**M6.5 — 视觉小说** 🚧
+**M6.5 — 视觉小说与卡牌扩展** 🚧
 
-已完成：阅读器（打字机 / 背景切换 / 结局标记）、剧本编辑（增删改）、立绘多表情、剧本解析与序列化。
+已完成：阅读器（打字机 / 背景切换 / 结局标记）、剧本编辑（增删改）、立绘多表情、剧本解析与序列化、类型复制、卡图裁剪、卡图出框（数据层）。
 
 待做：见下一节。
 
@@ -763,42 +858,47 @@ world.anvilpack (zip)
 **清理项**
 
 - [x] 删除 `PlayView.tsx` 里 `currentSessionId` 写 `effect.apply` 日志的逻辑。
-- [x] 更新设计文档，明确「分支故事 = 视觉小说工具」的定位，与跑团完全独立。
-- [x] 左栏「分支故事」显示文字改为「视觉小说」。
+- [x] 更新设计文档。
+- [x] 左栏「分支故事」改为「视觉小说」。
+- [x] 骰子逻辑统一到 `lib/dice.ts`。
 
 **P1（体验升级）**
 
-- [x] 4. 内置主题（5 套）
-- [x] 5. 多风格卡框（yugioh / generic / minimal / mtg / pokemon）
-- [x] 6. 卡框强调色参数化
-- [x] 7. 应用设置面板
+- [x] 内置主题（5 套）
+- [x] 多风格卡框
+- [x] 卡框强调色参数化
+- [x] 应用设置面板
+- [x] 类型复制
 
 **P1.5（视觉小说）**
 
-- [x] 8. 剧本编辑
-  - [x] 场景卡 `script` 字段
-  - [x] 角色卡 `portraits` 字段
-  - [x] `ScenarioEditor` 加「剧本」tab
-  - [x] 剧本行增删改
-  - [ ] 剧本行拖拽排序
-- [x] 9. 视觉小说预览
-  - [x] 阅读器（打字机、背景切换）
-  - [x] 结局标记
-  - [x] 立绘表情切换
-- [ ] 10. 场景资源 · `bgm` 播放（当前仅记录不播放）
-- [ ] 11. 导出 Markdown
-- [ ] 12. 导出 HTML（静态阅读器）
+- [x] 剧本编辑
+- [x] 视觉小说预览（打字机、背景、结局、立绘）
+- [ ] 场景资源 · `bgm` 播放（当前仅记录不播放）
+- [ ] 导出 Markdown
+- [ ] 导出 HTML（静态阅读器）
+
+**P1.8（卡牌扩展）**
+
+- [x] 闪卡（暗金流光）
+- [x] 卡背（内置 + 类型级 + 项目级）
+- [x] 翻牌（双击 / 检查器）
+- [x] 卡盒 + 抽牌 + 洗牌 + 重置
+- [x] 骰子重构
+- [ ] 卡图裁剪（UI 已做，卡级 override UI 待做）
+- [ ] 卡图出框（数据层已就绪，UI 和渲染待做）
+- [ ] 闪卡扩展（银箔 / 全息 / 鼠标跟随）
+- [ ] 第二种卡背风格
 
 **P2（提升与优化）**
 
-- [ ] 闪卡效果（foil）
 - [ ] 时间线功能
 - [ ] 导入合并的 schema 版本迁移
 - [ ] 图片缩略图
 - [ ] 命令面板性能
 - [ ] 图谱节点位置持久化
 - [ ] 文件监听（notify）
-- [x] 大文件拆分（`VNStage` / `ScenarioEditor` / `MergePackDialog`）
+- [ ] 大文件拆分（见批次计划）
 - [ ] 卡组同步到棋盘（只补不删，看实际需要）
 
 **P3（长期）**
@@ -806,7 +906,7 @@ world.anvilpack (zip)
 - [ ] Session 提交回原卡
 - [ ] 场景卡强制约束
 - [ ] 受限插件系统
-- [ ] Ren'Py 脚本导出（视觉小说方向，未来）
+- [ ] Ren'Py 脚本导出
 
 ---
 
@@ -819,6 +919,7 @@ world.anvilpack (zip)
 - 不做 Web 服务端
 - 不做完全无 SQLite 的纯文件系统
 - 不做视觉小说的完整演出引擎（动画、转场、音效播放、存档、打包 EXE）
+- 不做 TCG 卡组（对战用）
 
 ---
 
@@ -832,7 +933,7 @@ world.anvilpack (zip)
 6. **可读的开源项目。** 命名清晰，注释写「为什么」而不是「是什么」。
 7. **内置模块 > 插件。** 四大功能是产品本身，插件只做受限扩展。
 8. **高频操作不过 IPC。** 棋盘拖拽、节点图移动在前端内存跑。
-9. **颜色走 CSS 变量。**
+9. **颜色走 CSS 变量。** 不硬编码颜色值。
 10. **每个领域一个文件。**
 11. **边有归属。** 世界观边和剧情边严格分离。
 12. **场景是故事的基本单位。**
@@ -840,4 +941,7 @@ world.anvilpack (zip)
 14. **状态单一来源。** 选中态走 store。
 15. **无向关系对等显示。**
 16. **输入密集处不挂 HTML5 DnD。** 用 Pointer Events。
-17. **引用是快照，不自动同步。** CardGroup → Board 是导入即拷贝；Card 改字段不回写 Scenario 节点位置。
+17. **引用是快照，不自动同步。** CardGroup → Board 导入即拷贝；Card 改字段不回写 Scenario 节点位置。
+18. **一次性逻辑不拆。** `seed.rs` 这类特殊文件保持整块。
+19. **大文件优先拆组件，不拆数据。** 目标：单文件 400 行内可读。
+20. **子组件放同一 feature 目录，不进 `components/`。** `components/` 只放跨 feature 通用组件。

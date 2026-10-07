@@ -13,14 +13,17 @@ Anvil 把世界观搭建、分支故事、棋盘推演、跑团记录统一在�
 - **卡牌核心** — 自定义卡牌类型与字段，从文本、数字到图片、引用、枚举，字段只增不减，旧数据永不丢失。
 - **关系图谱** — 卡与卡之间的边是一等公民，独立于卡片字段。图谱视图用 d3-force 力导向布局，支持连线、过滤、搜索。
 - **分支故事** — 场景卡 + 条件边 + 变量 + 效果。跑图时自动求值，条件满足才可通行。
-- **棋盘推演** — HTML 层渲染，支持拖拽、缩放、旋转、背景图。Token 用同一套卡框渲染。
+- **视觉小说** — 剧本编辑、打字机对白、立绘表情、背景切换、结局标记。
+- **棋盘推演** — HTML 层渲染，支持拖拽、缩放、旋转、背景图、卡盒抽牌、翻牌。Token 用同一套卡框渲染。
 - **跑团对话** — 舞台 + 对话流 + 角色面板。消息写入 JSONL，可回放、可编辑、可删除。
-- **TCG 卡牌渲染** — 游戏王风格卡框，ATK/DEF/HP/等级标签可自定义。
+- **卡组管理** — 有序的卡 ID 集合。一键铺开到棋盘，或作为卡盒抽牌。
+- **TCG 卡牌渲染** — 五种卡框风格（游戏王 / 通用 / 极简 / 万智牌 / 宝可梦），ATK / DEF / HP / 等级标签可自定义。支持图像裁剪、出框、闪卡、卡背。
 - **本地优先** — 项目是一个文件夹，文本真相源，可用 git 管理。SQLite 只是可删除、可重建的索引。
 - **资源包** — 导出 / 导入 / 合并 `.anvilpack`，类型映射、只导类型、选择性导入。
 - **项目级主题** — 所有颜色走 CSS 变量，可切换、可自定义、可导出。
+- **应用设置** — 跨项目偏好独立存储：默认卡框风格、打字机速度、自动保存延迟等。
 - **命令面板** — `Ctrl+K` 打开，所有操作可搜可执行。
-- **撤销 / 重做 / 自动保存** — 覆盖单卡编辑、删除、批量操作。
+- **撤销 / 重做 / 自动保存** — 覆盖单卡编辑、删除、批量操作、卡盒抽牌。
 
 ---
 
@@ -28,7 +31,7 @@ Anvil 把世界观搭建、分支故事、棋盘推演、跑团记录统一在�
 
 ![alt text](docs/start-menu.png)
 
-```
+```text
 docs/
 ├── screenshot-card-wall.png
 ├── screenshot-graph.png
@@ -73,7 +76,7 @@ docs/
 ### 开发
 
 ```bash
-git clone https://github.com/<your-username>/anvil.git
+git clone https://github.com/hafuyuda/anvil.git
 cd anvil
 pnpm install
 pnpm tauri dev
@@ -97,19 +100,19 @@ pnpm tauri build
 anvil/
 ├── src-tauri/src/
 │   ├── core/
-│   │   ├── model/          # Card / CardType / Relation / Scenario / Board / Session
-│   │   ├── store/          # 文本文件读写（按领域拆分）
+│   │   ├── model/          # Card / CardType / Relation / Scenario / Board / Session / CardGroup
+│   │   ├── store/          # 文本文件读写 + 索引 + 资源包（按领域拆分）
 │   │   ├── index/          # SQLite 索引 + FTS
 │   │   ├── eval/           # 条件求值
 │   │   └── ipc/            # Tauri 命令（按领域拆分）
 │   └── lib.rs
 ├── src/
-│   ├── core/               # IPC 类型与封装 + 项目级动作 hook
+│   ├── core/               # IPC 类型与封装 + 项目级动作
 │   │   ├── ipc/            # 前端 IPC 类型与 invoke 封装
 │   │   ├── openProjectAt.ts
 │   │   ├── applyProjectTheme.ts
 │   │   └── use*.ts         # 打开/创建/导入/导出
-│   ├── lib/                # 通用工具（id / time / theme / imageCache / commands / appSettings）
+│   ├── lib/                # 通用工具（id / time / theme / imageCache / dice / commands / appSettings）
 │   ├── hooks/              # 通用 hook（useDraft / useKeyboard / useAppSettings / ...）
 │   ├── components/         # 通用组件（CardFrame / Toolbar / Modal / ...）
 │   ├── shell/              # 五段布局（TopBar / LeftNav / Workspace / Inspector / StatusBar）
@@ -120,6 +123,7 @@ anvil/
 │   │   │   ├── card-wall/  # 卡片墙（网格 / 列表 / 批量）
 │   │   │   ├── card-type/  # 卡牌类型、字段、卡框配置
 │   │   │   └── relation/   # 关系类型与关系表单
+│   │   ├── card-groups/    # 卡组
 │   │   ├── world/          # 图谱
 │   │   ├── story/
 │   │   │   ├── scenario/   # 剧情设计（节点图、连线、条件、效果）
@@ -154,9 +158,11 @@ MyWorld.anvil/
 ├── relations/from/<uuid>.jsonl # 一行一边
 ├── boards/<uuid>.json
 ├── scenarios/<uuid>.json
+├── card_groups/<uuid>.json
 ├── sessions/<uuid>/
 │   ├── session.json
 │   └── events.jsonl
+├── scripts/<uuid>.md
 ├── assets/images/
 └── .anvil/index.db             # 索引，不提交 git
 ```
@@ -174,7 +180,7 @@ MyWorld.anvil/
 5. **本地优先。** 不引入网络依赖就能完整工作。
 6. **颜色走 CSS 变量。** 为主题系统留路。
 
-完整设计文档见 [`docs/DESIGN.md`](docs/DESIGN.md)（如已添加）。
+完整设计文档见 [`docs/DESIGN.md`](docs/DESIGN.md)。
 
 ---
 
@@ -187,6 +193,7 @@ MyWorld.anvil/
 - **不做 VTT 级别的自动化。** 骰子、测距、光照属于虚拟桌面，不是创作工具。
 - **不做账号系统。** 本地文件，无云同步。
 - **不做 Web 服务端。** 桌面应用，无后端。
+- **不做 TCG 卡组（对战用）。** 卡组是引用集合，不是牌组策略。
 
 ---
 
