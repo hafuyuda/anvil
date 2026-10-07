@@ -13,10 +13,6 @@ impl Project {
         self.sessions_dir().join(id)
     }
 
-    pub fn session_path(&self, id: &str) -> PathBuf {
-        self.session_dir(id).join("session.json")
-    }
-
     pub fn events_path(&self, id: &str) -> PathBuf {
         self.session_dir(id).join("events.jsonl")
     }

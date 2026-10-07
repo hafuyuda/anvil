@@ -13,10 +13,6 @@ impl Project {
         self.assets_dir().join("images")
     }
 
-    pub fn image_path(&self, filename: &str) -> PathBuf {
-        self.images_dir().join(filename)
-    }
-
     /// 把外部图片复制进项目，返回相对路径 `assets/images/<uuid>.<ext>`
     pub fn import_image(&self, src: &std::path::Path) -> anyhow::Result<String> {
         if !src.exists() || !src.is_file() {

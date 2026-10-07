@@ -206,9 +206,7 @@ pub fn read_image_data_url(state: State<AppState>, relative: String) -> Result<S
     p.read_image_data_url(&relative).map_err(|e| e.to_string())
 }
 
-use crate::core::store::pack::{
-    inspect_pack, InspectNamed, MergeOptions, MergeResult, PackInspection,
-};
+use crate::core::store::pack::{inspect_pack, MergeOptions, MergeResult, PackInspection};
 
 #[tauri::command]
 pub fn inspect_pack_cmd(src: String) -> Result<PackInspection, String> {

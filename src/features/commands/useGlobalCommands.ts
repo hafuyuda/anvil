@@ -152,6 +152,7 @@ export function useGlobalCommands() {
             scenarios: snap.scenarios,
             boards: snap.boards,
             sessions: snap.sessions,
+            cardGroups: snap.card_groups,
           });
         },
       });

@@ -11,7 +11,7 @@ import { BulkActionBar } from "./BulkActionBar";
 import { CardGridView } from "./CardGridView";
 import { CardListView } from "./CardListView";
 import { useCardWallFilters } from "./useCardWallFilters";
-import { AddToGroupDialog } from "../../card-groups/AddtoGroupDialog";
+import { AddToGroupDialog } from "../../card-groups/AddToGroupDialog";
 
 export function CardWall() {
   const {

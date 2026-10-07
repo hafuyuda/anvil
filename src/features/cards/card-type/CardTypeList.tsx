@@ -105,7 +105,7 @@ function CardTypeSection() {
       card_frame:
         defaultStyle === "yugioh"
           ? null
-          : { style: defaultStyle, body: [] },
+          : { style: defaultStyle, body: [], foil_values: [] },
       created_at: now,
       updated_at: now,
     };
