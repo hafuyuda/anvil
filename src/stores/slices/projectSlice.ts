@@ -3,13 +3,21 @@ import type { ProjectState } from "./types";
 
 type Slice = Pick<
   ProjectState,
-  "projectPath" | "setProject" | "refreshProject" | "closeProject"
+  | "projectPath"
+  | "manifest"
+  | "setManifest"
+  | "setProject"
+  | "refreshProject"
+  | "closeProject"
 >;
 
 export const createProjectSlice: StateCreator<ProjectState, [], [], Slice> = (
   set,
 ) => ({
   projectPath: null,
+  manifest: null,
+
+  setManifest: (manifest) => set({ manifest }),
 
   setProject: (
     projectPath,
@@ -76,6 +84,7 @@ export const createProjectSlice: StateCreator<ProjectState, [], [], Slice> = (
   closeProject: () =>
     set({
       projectPath: null,
+      manifest: null,
       cards: [],
       cardTypes: [],
       relationKinds: [],

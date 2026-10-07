@@ -7,10 +7,6 @@ import {
   setLastOpenPath,
 } from "../lib/recentProjects";
 
-/**
- * 按路径打开项目。
- * 成功返回 true，失败抛异常。
- */
 export async function openProjectAt(path: string): Promise<void> {
   await ipc.openProject(path);
 
@@ -23,6 +19,7 @@ export async function openProjectAt(path: string): Promise<void> {
     boards,
     sessions,
     cardGroups,
+    manifest,
   ] = await Promise.all([
     ipc.listCards(),
     ipc.listCardTypes(),
@@ -32,6 +29,7 @@ export async function openProjectAt(path: string): Promise<void> {
     ipc.listBoards(),
     ipc.listSessions(),
     ipc.listCardGroups(),
+    ipc.loadManifest(),
   ]);
 
   useProjectStore
@@ -48,15 +46,14 @@ export async function openProjectAt(path: string): Promise<void> {
       cardGroups,
     );
 
+  useProjectStore.getState().setManifest(manifest);
+
   addRecentProject(path);
   setLastOpenPath(path);
 
   await applyProjectTheme();
 }
 
-/**
- * 尝试自动打开上次的项目。失败时静默清理记录。
- */
 export async function tryAutoOpenLastProject(): Promise<boolean> {
   const last = localStorage.getItem("anvil.lastOpenPath");
   if (!last) return false;
@@ -65,7 +62,6 @@ export async function tryAutoOpenLastProject(): Promise<boolean> {
     await openProjectAt(last);
     return true;
   } catch {
-    // 路径不存在或项目损坏，清理
     removeRecentProject(last);
     setLastOpenPath(null);
     return false;

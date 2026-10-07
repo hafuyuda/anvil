@@ -1,7 +1,7 @@
 import type { Card, CardType } from "../../core/ipc";
 import { SIZE_MAP, type CardFrameSize } from "./types";
 import { mapCard } from "./mapping";
-import { useImageUrl } from "../../hooks/useImageUrl";
+import { CardImage } from "./CardImage";
 
 interface Props {
   card: Card;
@@ -27,8 +27,6 @@ export function CardFrameMTG({
   const accent = cardType.color ?? "var(--card-frame-default-accent)";
 
   const displayBody = m.body.length > 0 ? m.body : (cardType.description ?? "");
-  const imageUrl = useImageUrl(m.image);
-
   const accentSoft = `color-mix(in srgb, ${accent} 40%, transparent)`;
   const accentStrong = `color-mix(in srgb, ${accent} 65%, transparent)`;
   const titleBarBg = `linear-gradient(180deg, ${accent} 0%, color-mix(in srgb, ${accent} 70%, #000) 100%)`;
@@ -139,34 +137,15 @@ export function CardFrameMTG({
         </div>
 
         {/* 艺术图 */}
-        <div
-          style={{
-            height: spec.imageHeight,
-            flexShrink: 0,
-            borderRadius: 2,
-            overflow: "hidden",
-            border: `1px solid ${accentSoft}`,
-            background: `color-mix(in srgb, ${accent} 18%, var(--card-mtg-art-bg))`,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            position: "relative",
-          }}
-        >
-          {imageUrl ? (
-            <img
-              src={imageUrl}
-              alt=""
-              draggable={false}
-              style={{
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
-                display: "block",
-                userSelect: "none",
-              }}
-            />
-          ) : (
+        <CardImage
+          path={m.image}
+          crop={m.crop}
+          extend={m.extend}
+          height={spec.imageHeight}
+          borderRadius={2}
+          border={`1px solid ${accentSoft}`}
+          background={`color-mix(in srgb, ${accent} 18%, var(--card-mtg-art-bg))`}
+          fallback={
             <div
               style={{
                 fontSize: spec.titleSize * 2.4,
@@ -179,9 +158,8 @@ export function CardFrameMTG({
             >
               {m.title.slice(0, 2) || "?"}
             </div>
-          )}
-        </div>
-
+          }
+        />
         {/* 底部文字栏 */}
         <div
           style={{

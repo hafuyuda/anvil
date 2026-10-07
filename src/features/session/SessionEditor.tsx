@@ -19,6 +19,8 @@ import { ChatLog } from "./chat/ChatLog";
 import { ChatInput } from "./chat/ChatInput";
 import { PartyPanel } from "./PartyPanel";
 import { EventEditorDialog } from "./EventEditorDialog";
+import { usePileActions } from "../board/usePileActions";
+import { PileDrawDialog } from "../board/PileDrawDialog";
 
 interface Props {
   session: Session;
@@ -30,6 +32,8 @@ export function SessionEditor({ session }: Props) {
   const cardTypes = useProjectStore((s) => s.cardTypes) ?? [];
   const upsertSession = useProjectStore((s) => s.upsertSession);
   const setCurrentSession = useProjectStore((s) => s.setCurrentSession);
+  const pushUndo = useProjectStore((s) => s.pushUndo);
+
   const selectedTokenId = useProjectStore((s) => s.selectedTokenId);
   const selectToken = useProjectStore((s) => s.selectToken);
 
@@ -63,6 +67,7 @@ export function SessionEditor({ session }: Props) {
   };
 
   const [editingEvent, setEditingEvent] = useState<GameEvent | null>(null);
+  const [pileDrawTokenId, setPileDrawTokenId] = useState<string | null>(null);
 
   // 切换会话时重置缩放和聊天区高度
   useEffect(() => {
@@ -136,6 +141,33 @@ export function SessionEditor({ session }: Props) {
       alert("保存失败: " + e);
     }
   }
+
+  const { drawFromPile, shufflePile, resetPile } = usePileActions({
+    tokens: session.tokens,
+    applyTokens: async (next, label) => {
+      const before = sessionRef.current.tokens;
+      const after: Session = {
+        ...sessionRef.current,
+        tokens: next,
+        updated_at: nowMs(),
+      };
+      await persist(after);
+      pushUndo({
+        id: `${Date.now()}-${newId().slice(2, 8)}`,
+        label,
+        undo: async () => {
+          await persist({
+            ...sessionRef.current,
+            tokens: before,
+            updated_at: nowMs(),
+          });
+        },
+        redo: async () => {
+          await persist(after);
+        },
+      });
+    },
+  });
 
   async function savePatch(patch: Partial<Session>) {
     const next: Session = {
@@ -286,6 +318,7 @@ export function SessionEditor({ session }: Props) {
               board={effectiveBoard}
               zoom={zoom}
               onZoomChange={setZoom}
+              onPileClick={(id) => setPileDrawTokenId(id)}
               onChange={(patch) => {
                 if (patch.tokens) {
                   handleTokensChange(patch.tokens);
@@ -390,6 +423,20 @@ export function SessionEditor({ session }: Props) {
           onClose={() => setEditingEvent(null)}
         />
       )}
+      {pileDrawTokenId &&
+        (() => {
+          const t = session.tokens.find((x) => x.id === pileDrawTokenId);
+          if (!t?.pile) return null;
+          return (
+            <PileDrawDialog
+              pile={t.pile}
+              onDraw={(n) => void drawFromPile(pileDrawTokenId, n)}
+              onShuffle={() => void shufflePile(pileDrawTokenId)}
+              onReset={() => void resetPile(pileDrawTokenId)}
+              onClose={() => setPileDrawTokenId(null)}
+            />
+          );
+        })()}
     </div>
   );
 }

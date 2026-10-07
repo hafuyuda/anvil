@@ -19,6 +19,8 @@ pub struct Manifest {
     #[serde(default)]
     pub theme_id: Option<String>,
     #[serde(default)]
+    pub default_card_back: Option<String>,
+    #[serde(default)]
     pub created_at: i64,
     #[serde(default)]
     pub updated_at: i64,
@@ -47,6 +49,7 @@ impl Manifest {
             author: None,
             description: None,
             theme_id: None,
+            default_card_back: None,
             created_at: now,
             updated_at: now,
         }

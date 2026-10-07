@@ -28,20 +28,18 @@ export function TokenInspector({ token, onSave, onDelete, onClose }: Props) {
   const [draft, setDraft] = useState<Token>(token);
   const [dirty, setDirty] = useState(false);
 
+  // token 切换 → 完全重置 draft
   useEffect(() => {
     setDraft(token);
     setDirty(false);
-  }, [
-    token.id,
-    token.x,
-    token.y,
-    token.name_override,
-    token.w,
-    token.h,
-    token.rotation,
-    token.layer,
-    token.visible,
-  ]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token.id]);
+
+  // 外部变化 → 仅在用户未编辑时同步
+  useEffect(() => {
+    if (dirty) return;
+    setDraft(token);
+  }, [token, dirty]);
 
   function update(patch: Partial<Token>) {
     setDraft((d) => ({ ...d, ...patch }));
@@ -287,6 +285,13 @@ export function TokenInspector({ token, onSave, onDelete, onClose }: Props) {
               style={{ accentColor: "var(--accent-gold)" }}
             />
             可见
+            <input
+              type="checkbox"
+              checked={draft.face_down === true}
+              onChange={(e) => update({ face_down: e.target.checked })}
+              style={{ accentColor: "var(--accent-gold)" }}
+            />
+            扣着（显示卡背）
           </label>
 
           <div

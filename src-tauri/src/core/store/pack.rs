@@ -207,6 +207,10 @@ impl Project {
                                 local.fields.push(rf.clone());
                             }
                         }
+                        // 本地没卡背时，用对方的
+                        if local.card_back.is_none() {
+                            local.card_back = rt.card_back.clone();
+                        }
                     }
                     imported_types += 1;
                 }

@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ipc, type Manifest } from "../../core/ipc";
 import { Modal } from "../../components/Modal";
 import { nowMs } from "../../lib/time";
 import { ThemePanel } from "./ThemePanel";
 import { AssetsTab } from "./AssetsTab";
 import { StatsTab } from "./StatsTab";
+import { ImageField } from "../../components/ImageField";
 
 interface Props {
   onClose: () => void;
@@ -19,6 +20,10 @@ export function ProjectSettingsDialog({ onClose }: Props) {
   const [dirty, setDirty] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // onClose 用 ref 稳定引用，避免父组件重渲染时 effect 重跑
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
   useEffect(() => {
     ipc
       .loadManifest()
@@ -28,10 +33,11 @@ export function ProjectSettingsDialog({ onClose }: Props) {
       })
       .catch((e) => {
         alert("读取失败: " + e);
-        onClose();
+        onCloseRef.current();
       })
       .finally(() => setLoading(false));
-  }, [onClose]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function update(patch: Partial<Manifest>) {
     if (!draft) return;
@@ -204,6 +210,13 @@ export function ProjectSettingsDialog({ onClose }: Props) {
               value={draft.description ?? ""}
               onChange={(e) => update({ description: e.target.value || null })}
               style={{ minHeight: 60 }}
+            />
+          </LabeledBlock>
+
+          <LabeledBlock label="默认卡背（未单独指定卡背的类型会用它）">
+            <ImageField
+              value={draft.default_card_back ?? null}
+              onChange={(v) => update({ default_card_back: v })}
             />
           </LabeledBlock>
 

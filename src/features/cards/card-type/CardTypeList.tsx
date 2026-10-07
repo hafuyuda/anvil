@@ -7,7 +7,6 @@ import { RelationKindList } from "../relation/RelationKindList";
 import { useDeleteUndo } from "../../../hooks/useDeleteUndo";
 import { newId } from "../../../lib/id";
 import { nowMs } from "../../../lib/time";
-import { getAppSettings } from "../../../lib/appSettings";
 
 export function CardTypeList() {
   const [subTab, setSubTab] = useState<"card" | "relation">("card");
@@ -93,25 +92,56 @@ function CardTypeSection() {
 
   async function addType() {
     const now = nowMs();
-    const defaultStyle = getAppSettings().defaultCardFrameStyle;
     const newType: CardType = {
       id: newId(),
       name: "新类型",
       fields: [],
       allowed_relation_kinds: [],
       views: [],
-      // 默认风格为 yugioh 时保持 card_frame 为空，
-      // 让 mapCard 走启发式映射；其它风格写入显式配置。
-      card_frame:
-        defaultStyle === "yugioh"
-          ? null
-          : { style: defaultStyle, body: [], foil_values: [] },
       created_at: now,
       updated_at: now,
     };
     await ipc.upsertCardType(newType);
     upsertCardType(newType);
     selectCardType(newType.id);
+  }
+
+  async function duplicateType(t: CardType) {
+    const now = nowMs();
+    // 深拷贝 fields / card_frame，只换 id 和 name
+    const clonedFields = t.fields.map((f) => ({
+      ...f,
+      ty: { ...f.ty } as typeof f.ty,
+      default: f.default,
+    }));
+    const clonedFrame = t.card_frame
+      ? {
+          ...t.card_frame,
+          body: [...t.card_frame.body],
+          foil_values: [...(t.card_frame.foil_values ?? [])],
+        }
+      : null;
+
+    const copy: CardType = {
+      id: newId(),
+      name: `${t.name}（副本）`,
+      icon: t.icon,
+      color: t.color,
+      description: t.description,
+      fields: clonedFields,
+      allowed_relation_kinds: [...t.allowed_relation_kinds],
+      views: [...t.views],
+      card_frame: clonedFrame,
+      created_at: now,
+      updated_at: now,
+    };
+    try {
+      await ipc.upsertCardType(copy);
+      upsertCardType(copy);
+      selectCardType(copy.id);
+    } catch (e) {
+      alert("复制失败: " + e);
+    }
   }
 
   async function handleDelete(t: CardType) {
@@ -151,6 +181,20 @@ function CardTypeSection() {
       renderItem={(t) => t.name}
       renderEditor={(t) => <CardTypeEditor key={t.id} cardType={t} />}
       emptyHint="选择或新建一个卡牌类型"
+      itemActions={(t) => (
+        <button
+          className="btn btn-ghost"
+          onClick={() => void duplicateType(t)}
+          title="复制此类型"
+          style={{
+            padding: "1px 6px",
+            fontSize: 12,
+            color: "var(--fg-muted)",
+          }}
+        >
+          ⧉
+        </button>
+      )}
     />
   );
 }

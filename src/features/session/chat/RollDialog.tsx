@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Modal } from "../../../components/Modal";
 import type { RollInfo } from "../../../core/ipc";
+import { DICE_ERROR_HINT, rollDice } from "../../../lib/dice";
 
 interface Props {
   onRoll: (roll: RollInfo, note: string) => void;
@@ -12,35 +13,13 @@ export function RollDialog({ onRoll, onClose }: Props) {
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  function parseAndRoll(): RollInfo | null {
-    const trimmed = expr.trim().toLowerCase();
-    const m = trimmed.match(/^(\d*)d(\d+)([+-]\d+)?$/);
-    if (!m) {
-      const n = Number(trimmed);
-      if (!Number.isNaN(n)) {
-        return { expr: trimmed, result: n, detail: [n] };
-      }
-      return null;
-    }
-    const count = m[1] ? Number(m[1]) : 1;
-    const face = Number(m[2]);
-    const mod = m[3] ? Number(m[3]) : 0;
-    if (count < 1 || count > 100 || face < 2 || face > 1000) return null;
-    const detail: number[] = [];
-    for (let i = 0; i < count; i++) {
-      detail.push(Math.floor(Math.random() * face) + 1);
-    }
-    const sum = detail.reduce((a, b) => a + b, 0);
-    return { expr: trimmed, result: sum + mod, detail };
-  }
-
   function handleRoll() {
-    const r = parseAndRoll();
+    const r = rollDice(expr);
     if (!r) {
-      setError("表达式不合法，例：1d20、2d6+3、5");
+      setError(DICE_ERROR_HINT);
       return;
     }
-    onRoll(r, note);
+    onRoll({ expr: r.expr, result: r.result, detail: r.detail }, note);
     onClose();
   }
 

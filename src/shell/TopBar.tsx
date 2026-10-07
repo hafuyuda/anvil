@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { ipc } from "../core/ipc";
 import { useProjectStore } from "../stores/projectStore";
 import { useOpenProject } from "../core/useOpenProject";
@@ -31,6 +31,9 @@ export function TopBar() {
 
   const openMergePack = useUIStore((s) => s.openMergePack);
 
+  const closeSettings = useCallback(() => setSettingsOpen(false), []);
+  const closeAppSettings = useCallback(() => setAppSettingsOpen(false), []);
+
   async function handleClose() {
     try {
       await ipc.closeProject();
@@ -44,6 +47,7 @@ export function TopBar() {
   }
 
   const refreshProject = useProjectStore((s) => s.refreshProject);
+  const setManifest = useProjectStore((s) => s.setManifest);
 
   async function handleRefresh() {
     if (!projectPath) return;
@@ -59,6 +63,8 @@ export function TopBar() {
         sessions: snap.sessions,
         cardGroups: snap.card_groups,
       });
+      const m = await ipc.loadManifest();
+      setManifest(m);
     } catch (e) {
       alert("刷新失败: " + e);
     }
@@ -192,12 +198,8 @@ export function TopBar() {
         )}
       </div>
 
-      {settingsOpen && (
-        <ProjectSettingsDialog onClose={() => setSettingsOpen(false)} />
-      )}
-      {appSettingsOpen && (
-        <AppSettingsDialog onClose={() => setAppSettingsOpen(false)} />
-      )}
+      {settingsOpen && <ProjectSettingsDialog onClose={closeSettings} />}
+      {appSettingsOpen && <AppSettingsDialog onClose={closeAppSettings} />}
     </>
   );
 }

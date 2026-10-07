@@ -12,6 +12,8 @@ import { useDeleteUndo } from "../../hooks/useDeleteUndo";
 import { AddFromGroupDialog } from "./AddFromGroupDialog";
 import { gridPosition, shuffle } from "./tokenPlacement";
 import type { CardGroup } from "../../core/ipc";
+import { PileDrawDialog } from "./PileDrawDialog";
+import { usePileActions } from "./usePileActions";
 
 interface Props {
   board: Board;
@@ -23,6 +25,8 @@ export function BoardEditor({ board }: Props) {
   const pushUndo = useProjectStore((s) => s.pushUndo);
 
   const [cardPickerOpen, setCardPickerOpen] = useState(false);
+  const [addPileOpen, setAddPileOpen] = useState(false);
+  const [pileDrawTokenId, setPileDrawTokenId] = useState<string | null>(null);
 
   const normalized: Board = {
     ...board,
@@ -30,6 +34,35 @@ export function BoardEditor({ board }: Props) {
     tokens: board.tokens ?? [],
   };
 
+  const { drawFromPile, shufflePile, resetPile } = usePileActions({
+    tokens: normalized.tokens ?? [],
+    applyTokens: async (next, label) => {
+      const before = normalized;
+      const after: Board = {
+        ...before,
+        tokens: next,
+        updated_at: nowMs(),
+      };
+      try {
+        await ipc.upsertBoard(after);
+        upsertBoard(after);
+        pushUndo({
+          id: `${Date.now()}-${newId().slice(2, 8)}`,
+          label,
+          undo: async () => {
+            await ipc.upsertBoard(before);
+            upsertBoard(before);
+          },
+          redo: async () => {
+            await ipc.upsertBoard(after);
+            upsertBoard(after);
+          },
+        });
+      } catch (e) {
+        alert("操作失败: " + e);
+      }
+    },
+  });
   const [name, setName] = useState(normalized.name);
   const [bgPickerOpen, setBgPickerOpen] = useState(false);
   const [imageOptions, setImageOptions] = useState<
@@ -202,8 +235,57 @@ export function BoardEditor({ board }: Props) {
     }
   }
 
+  async function handleAddPile(group: CardGroup) {
+    const valid = group.card_ids.filter((id) => cards.some((c) => c.id === id));
+    if (valid.length === 0) {
+      alert("该卡组里没有可用的卡牌。");
+      return;
+    }
+
+    const existing = normalized.tokens ?? [];
+    const pos = gridPosition(existing.length);
+
+    const pileToken: Token = {
+      id: newId(),
+      card_id: null,
+      name_override: group.name,
+      value_overrides: {},
+      x: pos.x,
+      y: pos.y,
+      w: 140,
+      h: 205,
+      rotation: 0,
+      layer: existing.length,
+      visible: true,
+      face_down: false,
+      pile: {
+        group_id: group.id,
+        label: group.name,
+        remaining: [...valid],
+        initial: [...valid],
+        total: valid.length,
+      },
+    };
+
+    const next: Board = {
+      ...normalized,
+      tokens: [...existing, pileToken],
+      updated_at: nowMs(),
+    };
+
+    try {
+      await ipc.upsertBoard(next);
+      upsertBoard(next);
+      setAddPileOpen(false);
+    } catch (e) {
+      alert("创建卡盒失败: " + e);
+    }
+  }
+
   const cards = useProjectStore((s) => s.cards) ?? [];
   const cardTypes = useProjectStore((s) => s.cardTypes) ?? [];
+
+  const cardGroups = useProjectStore((s) => s.cardGroups) ?? [];
 
   const selectedTokenIds = useProjectStore((s) => s.selectedTokenIds) ?? [];
   const clearTokenSelection = useProjectStore((s) => s.clearTokenSelection);
@@ -342,6 +424,13 @@ export function BoardEditor({ board }: Props) {
           从卡组导入
         </button>
         <button
+          className="btn"
+          onClick={() => setAddPileOpen(true)}
+          style={{ fontSize: 12 }}
+        >
+          从卡组加卡盒
+        </button>
+        <button
           className="btn btn-primary"
           onClick={() => setCardPickerOpen(true)}
           style={{ fontSize: 12 }}
@@ -416,6 +505,7 @@ export function BoardEditor({ board }: Props) {
           board={normalized}
           zoom={zoom}
           onZoomChange={setZoom}
+          onPileClick={(id) => setPileDrawTokenId(id)}
           onChange={(patch) => {
             if (patch.tokens) {
               savePatch({ tokens: patch.tokens }, "移动 Token");
@@ -443,6 +533,34 @@ export function BoardEditor({ board }: Props) {
           }}
         />
       )}
+      {addPileOpen && (
+        <PickerDialog
+          title="选择卡组（作为卡盒）"
+          options={cardGroups.map((g) => ({
+            value: g.id,
+            label: `${g.name}（${g.card_ids.length} 张）`,
+          }))}
+          onPick={(id) => {
+            const g = cardGroups.find((x) => x.id === id);
+            if (g) void handleAddPile(g);
+          }}
+          onClose={() => setAddPileOpen(false)}
+        />
+      )}
+      {pileDrawTokenId &&
+        (() => {
+          const t = normalized.tokens.find((x) => x.id === pileDrawTokenId);
+          if (!t?.pile) return null;
+          return (
+            <PileDrawDialog
+              pile={t.pile}
+              onDraw={(n) => void drawFromPile(pileDrawTokenId, n)}
+              onShuffle={() => void shufflePile(pileDrawTokenId)}
+              onReset={() => void resetPile(pileDrawTokenId)}
+              onClose={() => setPileDrawTokenId(null)}
+            />
+          );
+        })()}
       {cardPickerOpen && (
         <PickerDialog
           title="添加卡片到棋盘"

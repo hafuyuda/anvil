@@ -1,7 +1,7 @@
 import type { Card, CardType } from "../../core/ipc";
 import { SIZE_MAP, type CardFrameSize } from "./types";
 import { mapCard } from "./mapping";
-import { useImageUrl } from "../../hooks/useImageUrl";
+import { CardImage } from "./CardImage";
 
 interface Props {
   card: Card;
@@ -24,7 +24,6 @@ export function CardFrameYuGiOh({
 
   const displayBody = m.body.length > 0 ? m.body : (cardType.description ?? "");
   const stars = m.level ? "★".repeat(Math.min(m.level, 12)) : "";
-  const imageUrl = useImageUrl(m.image);
 
   // 由强调色派生出的描边/加深色，统一走 color-mix，兼容 hex 与 CSS 变量
   const accentSoft = `color-mix(in srgb, ${accent} 40%, transparent)`;
@@ -130,34 +129,15 @@ export function CardFrameYuGiOh({
         )}
 
         {/* 图像区 */}
-        <div
-          style={{
-            height: spec.imageHeight,
-            flexShrink: 0,
-            borderRadius: spec.borderRadius - 3,
-            overflow: "hidden",
-            border: `1px solid ${accentStrong}`,
-            background: `color-mix(in srgb, ${accent} 22%, var(--card-yugioh-inner-bg-2))`,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            position: "relative",
-          }}
-        >
-          {imageUrl ? (
-            <img
-              src={imageUrl}
-              alt=""
-              draggable={false}
-              style={{
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
-                display: "block",
-                userSelect: "none",
-              }}
-            />
-          ) : (
+        <CardImage
+          path={m.image}
+          crop={m.crop}
+          extend={m.extend}
+          height={spec.imageHeight}
+          borderRadius={spec.borderRadius - 3}
+          border={`1px solid ${accentStrong}`}
+          background={`color-mix(in srgb, ${accent} 22%, var(--card-yugioh-inner-bg-2))`}
+          fallback={
             <div
               style={{
                 fontSize: spec.titleSize * 2.4,
@@ -171,8 +151,8 @@ export function CardFrameYuGiOh({
             >
               {m.title.slice(0, 2) || "?"}
             </div>
-          )}
-        </div>
+          }
+        />
 
         {/* 等级星 */}
         {stars && (

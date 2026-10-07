@@ -1,4 +1,5 @@
 import type { FieldType, VariableDef } from "../../core/ipc";
+import { rollDice, validateDiceExpression } from "../../lib/dice";
 
 export interface ParsedEffect {
   key: string;
@@ -48,42 +49,6 @@ export function parseEffects(effects: unknown): ParsedEffect[] {
   return out;
 }
 
-// ============ 骰子 ============
-
-/**
- * 检测是否是骰子表达式。支持 NdM 和 NdM+K / NdM-K。
- * 也支持纯数字。
- */
-function parseDiceOrNumber(
-  raw: string,
-): { value: number; detail: number[]; isRoll: boolean } | null {
-  const trimmed = raw.trim();
-
-  // 纯数字
-  const num = Number(trimmed);
-  if (!Number.isNaN(num)) {
-    return { value: num, detail: [], isRoll: false };
-  }
-
-  // NdM+K
-  const m = trimmed.match(/^(\d*)d(\d+)([+-]\d+)?$/i);
-  if (!m) return null;
-
-  const count = m[1] ? Number(m[1]) : 1;
-  const face = Number(m[2]);
-  const mod = m[3] ? Number(m[3]) : 0;
-
-  if (count < 1 || count > 100) return null;
-  if (face < 2 || face > 1000) return null;
-
-  const detail: number[] = [];
-  for (let i = 0; i < count; i++) {
-    detail.push(Math.floor(Math.random() * face) + 1);
-  }
-  const sum = detail.reduce((a, b) => a + b, 0);
-  return { value: sum + mod, detail, isRoll: true };
-}
-
 function parseLiteral(
   raw: string,
   ty: FieldType,
@@ -98,9 +63,9 @@ function parseLiteral(
       };
     }
     case "number": {
-      const r = parseDiceOrNumber(raw);
+      const r = rollDice(raw);
       if (!r) return null;
-      return { value: r.value, detail: r.detail, isRoll: r.isRoll };
+      return { value: r.result, detail: r.detail, isRoll: r.isRoll };
     }
     default: {
       let v = raw;
@@ -152,19 +117,20 @@ export function applyEffects(
     }
 
     if (def.ty.kind === "number") {
-      const parsed = parseDiceOrNumber(e.rawValue);
+      const parsed = rollDice(e.rawValue);
       if (!parsed) {
         errors.push(`无法解析数值：${e.rawValue}`);
         continue;
       }
       const cur = typeof current === "number" ? current : 0;
-      const nextVal = e.op === "+=" ? cur + parsed.value : cur - parsed.value;
+      const nextVal =
+        e.op === "+=" ? cur + parsed.result : cur - parsed.result;
       next[e.key] = nextVal;
       applied.push({
         key: e.key,
         op: e.op,
         raw: e.raw,
-        resolved: parsed.value,
+        resolved: parsed.result,
         isRoll: parsed.isRoll,
         rollDetail: parsed.isRoll ? parsed.detail : undefined,
       });
@@ -221,8 +187,7 @@ export function validateEffects(
 
     // 骰子语法校验（只针对 number 类型 + 加减操作）
     if (def.ty.kind === "number") {
-      const r = parseDiceOrNumber(p.rawValue);
-      if (!r) {
+      if (!validateDiceExpression(p.rawValue)) {
         errors.push(`无法解析数值或骰子：${p.rawValue}`);
       }
     }

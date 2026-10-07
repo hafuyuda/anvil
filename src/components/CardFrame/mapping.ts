@@ -1,4 +1,4 @@
-import type { Card, CardType } from "../../core/ipc";
+import type { Card, CardType, CropRect, ImageExtend } from "../../core/ipc";
 
 export interface CardMapping {
   title: string;
@@ -14,7 +14,23 @@ export interface CardMapping {
   hpLabel?: string;
   body: string;
   image?: string;
+  crop: CropRect | null;
+  extend: ImageExtend | null;
   foil: boolean;
+}
+
+/**
+ * 判断一个值是否命中触发集合。
+ * 覆盖：string / number / bool / string[]（multi_enum / tags / ref）。
+ */
+function matchesFoil(value: unknown, targets: Set<string>): boolean {
+  if (typeof value === "string") return targets.has(value);
+  if (typeof value === "number") return targets.has(String(value));
+  if (typeof value === "boolean") return targets.has(String(value));
+  if (Array.isArray(value)) {
+    return value.some((x) => typeof x === "string" && targets.has(x));
+  }
+  return false;
 }
 
 export function mapCard(card: Card, cardType: CardType): CardMapping {
@@ -75,6 +91,10 @@ export function mapCard(card: Card, cardType: CardType): CardMapping {
         ? (card.values[cfg.image] as string)
         : findImageField(card, cardType);
 
+    // 裁剪与出框：卡级 override 优先，类型级 fallback
+    const crop = card.image_crop_override ?? cfg.image_crop ?? null;
+    const extend = card.image_extend_override ?? cfg.image_extend ?? null;
+
     const bodyParts: string[] = [];
     for (const key of cfg.body) {
       const v = card.values[key];
@@ -85,12 +105,12 @@ export function mapCard(card: Card, cardType: CardType): CardMapping {
       }
     }
 
+    // 闪卡触发：foil_field 指向的字段值命中 foil_values
+    // 支持字符串 / 数字 / 布尔 / 数组（多选枚举 / 标签 / 引用）
     let foil = false;
     if (cfg.foil_field && cfg.foil_values.length > 0) {
       const v = card.values[cfg.foil_field];
-      if (typeof v === "string" && cfg.foil_values.includes(v)) {
-        foil = true;
-      }
+      foil = matchesFoil(v, new Set(cfg.foil_values));
     }
 
     return {
@@ -108,6 +128,8 @@ export function mapCard(card: Card, cardType: CardType): CardMapping {
       body: bodyParts.join("\n"),
       image,
       foil,
+      crop,
+      extend,
     };
   }
 
@@ -216,6 +238,8 @@ function fallbackMap(card: Card, cardType: CardType): CardMapping {
     hp,
     body: bodyParts.join("\n"),
     image,
+    crop: card.image_crop_override ?? null,
+    extend: card.image_extend_override ?? null,
     foil: false,
   };
 }

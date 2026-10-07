@@ -1,5 +1,6 @@
 import { useState } from "react";
-import type { ChatEventKind, ChatPayload, RollInfo } from "../../../core/ipc";
+import type { ChatEventKind, ChatPayload } from "../../../core/ipc";
+import { rollDice } from "../../../lib/dice";
 import { RollDialog } from "./RollDialog";
 
 interface AuthorOption {
@@ -28,8 +29,10 @@ export function ChatInput({ authors, defaultAuthorId, onSend }: Props) {
   const [text, setText] = useState("");
   const [rollOpen, setRollOpen] = useState(false);
 
-  const currentAuthor = authors.find((a) => a.card_id === authorId) ??
-    authors[0] ?? { card_id: null, name: "KP" };
+  const currentAuthor =
+    authors.find((a) => a.card_id === authorId) ??
+    authors[0] ??
+    { card_id: null, name: "KP" };
 
   function send() {
     const content = text.trim();
@@ -37,13 +40,13 @@ export function ChatInput({ authors, defaultAuthorId, onSend }: Props) {
 
     if (content.startsWith("/roll ")) {
       const expr = content.slice(6).trim();
-      const r = quickRoll(expr);
+      const r = rollDice(expr);
       if (r) {
         onSend("chat.roll", {
           author_card_id: currentAuthor.card_id,
           author_name: currentAuthor.name,
-          content: expr,
-          roll: r,
+          content: r.expr,
+          roll: { expr: r.expr, result: r.result, detail: r.detail },
         });
         setText("");
         return;
@@ -58,7 +61,10 @@ export function ChatInput({ authors, defaultAuthorId, onSend }: Props) {
     setText("");
   }
 
-  function handleRollResult(roll: RollInfo, note: string) {
+  function handleRollResult(
+    roll: { expr: string; result: number; detail: number[] },
+    note: string,
+  ) {
     onSend("chat.roll", {
       author_card_id: currentAuthor.card_id,
       author_name: currentAuthor.name,
@@ -185,24 +191,4 @@ export function ChatInput({ authors, defaultAuthorId, onSend }: Props) {
       )}
     </>
   );
-}
-
-function quickRoll(expr: string): RollInfo | null {
-  const trimmed = expr.trim().toLowerCase();
-  const m = trimmed.match(/^(\d*)d(\d+)([+-]\d+)?$/);
-  if (!m) {
-    const n = Number(trimmed);
-    if (Number.isNaN(n)) return null;
-    return { expr: trimmed, result: n, detail: [n] };
-  }
-  const count = m[1] ? Number(m[1]) : 1;
-  const face = Number(m[2]);
-  const mod = m[3] ? Number(m[3]) : 0;
-  if (count < 1 || count > 100 || face < 2 || face > 1000) return null;
-  const detail: number[] = [];
-  for (let i = 0; i < count; i++) {
-    detail.push(Math.floor(Math.random() * face) + 1);
-  }
-  const sum = detail.reduce((a, b) => a + b, 0);
-  return { expr: trimmed, result: sum + mod, detail };
 }

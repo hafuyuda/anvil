@@ -1,7 +1,8 @@
 import type { Card, CardType } from "../../core/ipc";
 import { SIZE_MAP, type CardFrameSize } from "./types";
 import { mapCard } from "./mapping";
-import { useImageUrl } from "../../hooks/useImageUrl";
+
+import { CardImage } from "./CardImage";
 
 interface Props {
   card: Card;
@@ -27,7 +28,6 @@ export function CardFramePokemon({
   const accent = cardType.color ?? "var(--card-frame-default-accent)";
 
   const displayBody = m.body.length > 0 ? m.body : (cardType.description ?? "");
-  const imageUrl = useImageUrl(m.image);
 
   const accentSoft = `color-mix(in srgb, ${accent} 45%, transparent)`;
   const accentStrong = `color-mix(in srgb, ${accent} 70%, #000)`;
@@ -157,34 +157,15 @@ export function CardFramePokemon({
         </div>
 
         {/* 艺术图 */}
-        <div
-          style={{
-            height: spec.imageHeight,
-            flexShrink: 0,
-            borderRadius: 3,
-            overflow: "hidden",
-            border: `2px solid ${accentSoft}`,
-            background: `linear-gradient(180deg, color-mix(in srgb, ${accent} 25%, var(--card-pokemon-art-bg)) 0%, color-mix(in srgb, ${accent} 10%, var(--card-pokemon-art-bg)) 100%)`,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            position: "relative",
-          }}
-        >
-          {imageUrl ? (
-            <img
-              src={imageUrl}
-              alt=""
-              draggable={false}
-              style={{
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
-                display: "block",
-                userSelect: "none",
-              }}
-            />
-          ) : (
+        <CardImage
+          path={m.image}
+          crop={m.crop}
+          extend={m.extend}
+          height={spec.imageHeight}
+        borderRadius={3}
+          border={`2px solid ${accentSoft}`}
+          background={`linear-gradient(180deg, color-mix(in srgb, ${accent} 25%, var(--card-pokemon-art-bg)) 0%, color-mix(in srgb, ${accent} 10%, var(--card-pokemon-art-bg)) 100%)`}
+          fallback={
             <div
               style={{
                 fontSize: spec.titleSize * 2.6,
@@ -197,8 +178,8 @@ export function CardFramePokemon({
             >
               {m.title.slice(0, 2) || "?"}
             </div>
-          )}
-        </div>
+          }
+        />
 
         {/* 正文 */}
         <div

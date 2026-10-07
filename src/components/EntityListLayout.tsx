@@ -18,6 +18,8 @@ interface Props<T extends Item> {
   listWidth?: number;
   /** 列表头部的额外控件（如排序下拉） */
   listControls?: ReactNode;
+  /** 每行的额外操作按钮（在删除按钮之前渲染） */
+  itemActions?: (item: T) => ReactNode;
 }
 
 export function EntityListLayout<T extends Item>({
@@ -33,6 +35,7 @@ export function EntityListLayout<T extends Item>({
   emptyHint,
   listWidth = 200,
   listControls,
+  itemActions,
 }: Props<T>) {
   const selected = items.find((i) => i.id === selectedId) ?? null;
   const [hoverId, setHoverId] = useState<string | null>(null);
@@ -99,6 +102,7 @@ export function EntityListLayout<T extends Item>({
           {items.map((item) => {
             const active = item.id === selectedId;
             const hover = item.id === hoverId;
+            const showActions = hover || active;
             return (
               <div
                 key={item.id}
@@ -135,7 +139,16 @@ export function EntityListLayout<T extends Item>({
                   {renderItem(item)}
                 </span>
 
-                {onDelete && (hover || active) && (
+                {itemActions && showActions && (
+                  <span
+                    style={{ display: "flex", gap: 2, flexShrink: 0 }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {itemActions(item)}
+                  </span>
+                )}
+
+                {onDelete && showActions && (
                   <button
                     className="btn btn-ghost"
                     onClick={(e) => {

@@ -46,7 +46,6 @@ export function AppShell() {
       if (timer !== null) window.clearTimeout(timer);
       timer = window.setTimeout(async () => {
         if (!projectPath) return;
-        // ★ 有未保存修改时跳过，避免旧磁盘数据覆盖内存
         if ((useProjectStore.getState().pendingSaves ?? 0) > 0) return;
         try {
           const snap = await ipc.reloadProject();
@@ -60,6 +59,8 @@ export function AppShell() {
             sessions: snap.sessions,
             cardGroups: snap.card_groups,
           });
+          const m = await ipc.loadManifest();
+          useProjectStore.getState().setManifest(m);
         } catch {
           // 忽略
         }

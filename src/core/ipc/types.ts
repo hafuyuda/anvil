@@ -8,6 +8,8 @@ export interface Card {
   type_id: TypeId;
   name: string;
   values: Record<string, unknown>;
+  image_crop_override?: CropRect | null;
+  image_extend_override?: ImageExtend | null;
   created_at: number;
   updated_at: number;
 }
@@ -38,6 +40,22 @@ export interface FieldDef {
   deprecated: boolean;
 }
 
+export interface CropRect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+export interface ImageExtend {
+  /** 0–1，相对图像区高度的比例 */
+  top: number;
+  bottom: number;
+  /** 0–1，相对图像区宽度的比例 */
+  left: number;
+  right: number;
+}
+
 export interface CardFrameConfig {
   style?: string | null;
   title?: string | null;
@@ -55,6 +73,8 @@ export interface CardFrameConfig {
   hp_label?: string | null;
   foil_field?: string | null;
   foil_values: string[];
+  image_crop?: CropRect | null;
+  image_extend?: ImageExtend | null;
 }
 
 export interface CardType {
@@ -67,6 +87,7 @@ export interface CardType {
   allowed_relation_kinds: string[];
   views: string[];
   card_frame?: CardFrameConfig | null;
+  card_back?: string | null;
   created_at: number;
   updated_at: number;
 }
@@ -139,6 +160,14 @@ export interface GridConfig {
   snap: boolean;
 }
 
+export interface PileData {
+  group_id: string;
+  label: string;
+  remaining: string[];
+  initial: string[];
+  total: number;
+}
+
 export interface Token {
   id: string;
   card_id?: CardId | null;
@@ -151,6 +180,8 @@ export interface Token {
   rotation: number;
   layer: number;
   visible: boolean;
+  face_down?: boolean;
+  pile?: PileData | null;
 }
 
 export interface Board {
@@ -225,6 +256,7 @@ export interface Manifest {
   author?: string | null;
   description?: string | null;
   theme_id?: string | null;
+  default_card_back?: string | null;
   created_at: number;
   updated_at: number;
 }

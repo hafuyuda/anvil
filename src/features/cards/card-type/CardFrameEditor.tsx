@@ -6,21 +6,49 @@ import {
   isCardFrameStyle,
   type CardFrameStyle,
 } from "../../../components/CardFrame";
+import { ImageField } from "../../../components/ImageField";
+import { useProjectStore } from "../../../stores/projectStore";
+import { CropEditor } from "./CropEditor";
 
 interface Props {
   cardType: CardType;
   onChange: (cfg: CardType["card_frame"]) => void;
   onChangeColor: (color: string | null) => void;
+  onChangeCardBack: (path: string | null) => void;
 }
 
 const STYLE_OPTIONS: { value: CardFrameStyle; label: string }[] = (
   Object.keys(CARD_FRAME_STYLE_LABELS) as CardFrameStyle[]
 ).map((v) => ({ value: v, label: CARD_FRAME_STYLE_LABELS[v] }));
 
-export function CardFrameEditor({ cardType, onChange, onChangeColor }: Props) {
+export function CardFrameEditor({
+  cardType,
+  onChange,
+  onChangeColor,
+  onChangeCardBack,
+}: Props) {
   const cfg = cardType.card_frame ?? { body: [], foil_values: [] };
   const fields = cardType.fields.filter((f) => !f.deprecated);
 
+  const cards = useProjectStore((s) => s.cards) ?? [];
+
+  const sampleImagePath: string | null = (() => {
+    const typeCards = cards.filter((c) => c.type_id === cardType.id);
+    for (const card of typeCards) {
+      if (cfg.image) {
+        const v = card.values[cfg.image];
+        if (typeof v === "string" && v.trim()) return v;
+      }
+      for (const f of fields) {
+        if (f.ty.kind === "image") {
+          const v = card.values[f.key];
+          if (typeof v === "string" && v.trim()) return v;
+        }
+      }
+    }
+    return null;
+  })();
+  
   const styleValue: CardFrameStyle | null = isCardFrameStyle(cfg.style)
     ? cfg.style
     : null;
@@ -62,6 +90,23 @@ export function CardFrameEditor({ cardType, onChange, onChangeColor }: Props) {
       {/* 强调色 */}
       <AccentColorRow value={cardType.color ?? null} onChange={onChangeColor} />
 
+      {/* 卡背图片 */}
+      <div>
+        <div
+          style={{
+            fontSize: 12,
+            color: "var(--fg-muted)",
+            marginBottom: 4,
+          }}
+        >
+          卡背图片（留空用项目默认 / 内置图案）
+        </div>
+        <ImageField
+          value={cardType.card_back ?? null}
+          onChange={onChangeCardBack}
+        />
+      </div>
+
       <div
         style={{
           display: "grid",
@@ -92,6 +137,24 @@ export function CardFrameEditor({ cardType, onChange, onChangeColor }: Props) {
           value={cfg.image}
           onChange={(v) => set("image", v)}
           options={fields.filter((f) => f.ty.kind === "image")}
+        />
+      </div>
+
+      {/* 图像裁剪 */}
+      <div>
+        <div
+          style={{
+            fontSize: 12,
+            color: "var(--fg-muted)",
+            marginBottom: 6,
+          }}
+        >
+          图像裁剪（拖拽调整可视区域）
+        </div>
+        <CropEditor
+          value={cfg.image_crop ?? null}
+          onChange={(crop) => set("image_crop", crop)}
+          imagePath={sampleImagePath}
         />
       </div>
 
@@ -516,7 +579,6 @@ function FoilTriggerRow({
               value={fieldKey ?? ""}
               onChange={(e) => {
                 const v = e.target.value || null;
-                // 一次调用同时写两个字段，避免第二次覆盖第一次
                 onChange({ foil_field: v, foil_values: [] });
               }}
             >
@@ -607,6 +669,16 @@ function FoilTriggerRow({
                     placeholder="例如：传说, 稀有"
                     style={{ fontFamily: "var(--font-mono)", fontSize: 11 }}
                   />
+                  <span
+                    style={{
+                      fontSize: 10,
+                      color: "var(--fg-muted)",
+                      marginTop: 2,
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    数字填 7，布尔填 true，多选字段填其中任一值
+                  </span>
                 </label>
               )}
 

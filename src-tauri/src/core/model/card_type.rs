@@ -3,6 +3,32 @@ use serde_json::Value;
 
 pub type TypeId = String;
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CropRect {
+    /// 0–1，从左边起
+    pub x: f64,
+    /// 0–1，从上边起
+    pub y: f64,
+    /// 0–1，占原图宽度的比例
+    pub w: f64,
+    /// 0–1，占原图高度的比例
+    pub h: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ImageExtend {
+    /// 0–1，相对图像区高度的比例。0 = 不扩展
+    #[serde(default)]
+    pub top: f64,
+    #[serde(default)]
+    pub bottom: f64,
+    /// 0–1，相对图像区宽度的比例
+    #[serde(default)]
+    pub left: f64,
+    #[serde(default)]
+    pub right: f64,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct CardFrameConfig {
     #[serde(default)]
@@ -36,6 +62,10 @@ pub struct CardFrameConfig {
     pub foil_field: Option<String>,
     #[serde(default)]
     pub foil_values: Vec<String>,
+    #[serde(default)]
+    pub image_crop: Option<CropRect>,
+    #[serde(default)]
+    pub image_extend: Option<ImageExtend>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -91,6 +121,8 @@ pub struct CardType {
     pub views: Vec<String>,
     #[serde(default)]
     pub card_frame: Option<CardFrameConfig>,
+    #[serde(default)]
+    pub card_back: Option<String>,
     pub created_at: i64,
     pub updated_at: i64,
 }

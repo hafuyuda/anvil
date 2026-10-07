@@ -31,6 +31,20 @@ impl Default for GridConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PileData {
+    /// 来源卡组的 ID（用于显示和未来追溯）
+    pub group_id: String,
+    /// 显示名（一般与卡组名一致）
+    pub label: String,
+    /// 还没抽出的卡 ID，顺序即堆叠顺序（头部 = 下一张抽出）
+    pub remaining: Vec<String>,
+    /// 初始完整列表，用于「重置」
+    pub initial: Vec<String>,
+    /// 初始总张数（用于显示 "N / M"）
+    pub total: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Token {
     pub id: String,
     #[serde(default)]
@@ -51,6 +65,10 @@ pub struct Token {
     pub layer: i32,
     #[serde(default = "default_true")]
     pub visible: bool,
+    #[serde(default)]
+    pub face_down: bool,
+    #[serde(default)]
+    pub pile: Option<PileData>,
 }
 
 fn default_board_width() -> f64 {

@@ -3,6 +3,7 @@ import type {
   Card,
   CardGroup,
   CardType,
+  Manifest,
   Relation,
   RelationKind,
   Scenario,
@@ -24,6 +25,8 @@ export interface UndoEntry {
 export interface ProjectState {
   // ── project ──
   projectPath: string | null;
+  manifest: Manifest | null;
+  setManifest: (m: Manifest | null) => void;
   setProject: (
     path: string,
     cards: Card[],

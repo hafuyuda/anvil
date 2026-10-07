@@ -3,12 +3,15 @@ import type { Board, GridConfig, Token } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
 import { CardFrame } from "../../components/CardFrame";
 import { useImageUrl } from "../../hooks/useImageUrl";
+import { CardBack } from "../../components/CardFrame/CardBack";
+import { PileToken } from "./PileToken";
 
 interface Props {
   board: Board;
   zoom: number;
   onZoomChange: (z: number) => void;
   onChange: (patch: Partial<Board>) => void;
+  onPileClick?: (tokenId: string) => void;
 }
 
 const DEFAULT_GRID: GridConfig = {
@@ -34,7 +37,13 @@ interface DragState {
   moved: boolean;
 }
 
-export function BoardCanvas({ board, zoom, onZoomChange, onChange }: Props) {
+export function BoardCanvas({
+  board,
+  zoom,
+  onZoomChange,
+  onChange,
+  onPileClick,
+}: Props) {
   const cards = useProjectStore((s) => s.cards) ?? [];
   const cardTypes = useProjectStore((s) => s.cardTypes) ?? [];
   const selectedTokenIds = useProjectStore((s) => s.selectedTokenIds) ?? [];
@@ -57,12 +66,33 @@ export function BoardCanvas({ board, zoom, onZoomChange, onChange }: Props) {
 
   useEffect(() => {
     if (dragging || !localTokens) return;
-    const same =
-      boardTokens.length === localTokens.length &&
-      boardTokens.every((t, i) => {
-        const l = localTokens[i];
-        return l && l.id === t.id && l.x === t.x && l.y === t.y;
-      });
+
+    // 长度变化（增删）→ 立即清空
+    if (boardTokens.length !== localTokens.length) {
+      setLocalTokens(null);
+      return;
+    }
+
+    // id 集合不一致 → 立即清空
+    const boardIdSet = new Set(boardTokens.map((t) => t.id));
+    const idMismatch = localTokens.some((t) => !boardIdSet.has(t.id));
+    if (idMismatch) {
+      setLocalTokens(null);
+      return;
+    }
+
+    // id 集合一致 → 逐项比较位置 / layer / face_down
+    const same = boardTokens.every((t, i) => {
+      const l = localTokens[i];
+      return (
+        l &&
+        l.id === t.id &&
+        l.x === t.x &&
+        l.y === t.y &&
+        l.layer === t.layer &&
+        (l.face_down ?? false) === (t.face_down ?? false)
+      );
+    });
     if (same) setLocalTokens(null);
   }, [boardTokens, dragging, localTokens]);
 
@@ -165,7 +195,20 @@ export function BoardCanvas({ board, zoom, onZoomChange, onChange }: Props) {
     );
     setLocalTokens(next);
 
-    (e.target as Element).setPointerCapture(e.pointerId);
+    (e.currentTarget as Element).setPointerCapture(e.pointerId);
+  }
+
+  function onTokenDoubleClick(e: React.MouseEvent, t: Token) {
+    e.stopPropagation();
+    // 卡盒不参与翻面
+    if (t.pile) return;
+
+    const current = localTokens ?? boardTokens;
+    const next = current.map((x) =>
+      x.id === t.id ? { ...x, face_down: !(x.face_down ?? false) } : x,
+    );
+    setLocalTokens(next);
+    onChange({ tokens: next });
   }
 
   function onPointerMove(e: React.PointerEvent) {
@@ -199,6 +242,14 @@ export function BoardCanvas({ board, zoom, onZoomChange, onChange }: Props) {
     setDragging(null);
     if (wasDragging.moved && localTokens) {
       onChange({ tokens: localTokens });
+      return;
+    }
+    // 未移动 → 检查是否卡盒，是则触发点击
+    if (!wasDragging.moved && onPileClick) {
+      const t = boardTokens.find((x) => x.id === wasDragging.primaryTokenId);
+      if (t?.pile) {
+        onPileClick(t.id);
+      }
     }
   }
 
@@ -248,6 +299,7 @@ export function BoardCanvas({ board, zoom, onZoomChange, onChange }: Props) {
           borderRadius: "var(--radius-md)",
         }}
         onPointerDown={(e) => onTokenPointerDown(e, t)}
+        onDoubleClick={(e) => onTokenDoubleClick(e, t)}
       >
         <div
           style={{
@@ -258,7 +310,15 @@ export function BoardCanvas({ board, zoom, onZoomChange, onChange }: Props) {
             pointerEvents: "none",
           }}
         >
-          {card && cardType ? (
+          {t.pile ? (
+            <PileToken
+              remaining={t.pile.remaining.length}
+              total={t.pile.total}
+              size="small"
+            />
+          ) : t.face_down === true ? (
+            <CardBack path={cardType?.card_back ?? null} size="small" />
+          ) : card && cardType ? (
             <CardFrame card={card} cardType={cardType} size="small" />
           ) : (
             <PlaceholderToken

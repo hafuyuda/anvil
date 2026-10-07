@@ -121,25 +121,35 @@
   --card-foil-edge: #c9a961;
   --card-foil-duration: 6s;
 
-  /* 对话气泡 */
-  --chat-bubble-bg: #2f2922;
-  --chat-bubble-border: #4a4033;
-  --chat-bubble-text: #e8dcc5;
-  --chat-action-text: #a89880;
-  --chat-roll-bg: #25201a;
-  --chat-roll-border: #4a4033;
-  --chat-roll-accent: #7a8590;
-  --chat-narration-bg: #2a2118;
-  --chat-narration-border: #c9a961;
-  --chat-narration-text: #d4c5a0;
-  --chat-ooc-bg: #2a2a26;
-  --chat-ooc-text: #a89880;
-  --chat-whisper-bg: #2c2436;
-  --chat-whisper-border: #7a5a94;
-  --chat-whisper-text: #c8a8d8;
-  --chat-system-text: #6d6252;
-  --chat-system-line: #3a3226;
-  --chat-panel-bg: #1f1a14;
+    /* 卡背 */
+  --card-back-bg-1: #2a2520;
+  --card-back-bg-2: #1a1612;
+  --card-back-border: #c9a961;
+  --card-back-glyph: #c9a961;
+  --card-back-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+  
+    /* 卡牌图像出框单位：相对图像区高度的比例 */
+  --card-image-extend-unit: 40%;
+  
+    /* 对话气泡（派生自主题，随主题变化） */
+  --chat-panel-bg: var(--bg-panel);
+  --chat-bubble-bg: var(--bg-surface);
+  --chat-bubble-border: var(--border-default);
+  --chat-bubble-text: var(--fg-primary);
+  --chat-action-text: var(--fg-secondary);
+  --chat-roll-bg: var(--bg-surface);
+  --chat-roll-border: var(--border-default);
+  --chat-roll-accent: var(--accent-steel);
+  --chat-narration-bg: var(--bg-surface);
+  --chat-narration-border: var(--accent-gold);
+  --chat-narration-text: var(--fg-primary);
+  --chat-ooc-bg: var(--bg-surface);
+  --chat-ooc-text: var(--fg-secondary);
+  --chat-whisper-bg: var(--bg-surface);
+  --chat-whisper-border: var(--accent-copper);
+  --chat-whisper-text: var(--fg-primary);
+  --chat-system-text: var(--fg-muted);
+  --chat-system-line: var(--border-subtle);
 
 
 }
@@ -193,14 +203,22 @@ body {
 }
 
 .btn-primary {
-  background: linear-gradient(180deg, var(--accent-copper) 0%, #7a431f 100%);
-  border-color: #7a431f;
+  background: linear-gradient(
+    180deg,
+    var(--accent-copper) 0%,
+    color-mix(in srgb, var(--accent-copper) 60%, #000) 100%
+  );
+  border-color: color-mix(in srgb, var(--accent-copper) 70%, #000);
   color: #fff;
   font-weight: 600;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: linear-gradient(180deg, #b8663a 0%, var(--accent-copper) 100%);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--accent-copper) 80%, #fff) 0%,
+    var(--accent-copper) 100%
+  );
 }
 
 .btn-ghost {
@@ -218,7 +236,7 @@ body {
 }
 
 .btn-danger:hover:not(:disabled) {
-  background: rgba(200, 64, 31, 0.15);
+  background: color-mix(in srgb, var(--danger) 15%, transparent);
   border-color: var(--danger);
 }
 
