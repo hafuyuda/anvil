@@ -1,3 +1,5 @@
+
+
 # 贡献指南
 
 感谢你对 Anvil 感兴趣。这份文档会帮你快速上手。
@@ -93,10 +95,10 @@ git checkout -b fix/your-bugfix
 **例子**：
 
 ```text
-feat: add card pile drawing on board
+feat: add structured script editor
 
-支持从卡盒抽 1 张或 N 张，抽出的牌扣着排布。
-支持洗牌与重置，操作进撤销栈。
+剧本 tab 默认显示结构视图，每行一个卡片，
+支持拖拽排序与类型切换。源码视图保留为高级模式。
 ```
 
 ### 5. 推送并开 PR
@@ -147,9 +149,9 @@ src/
 │   ├── card-groups/    # 卡组
 │   ├── world/          # 图谱
 │   ├── story/          # 剧情
-│   │   ├── scenario/   # 设计
+│   │   ├── scenario/   # 设计 + 导出
 │   │   ├── play/       # 运行
-│   │   └── script/     # 剧本
+│   │   └── script/     # 剧本解析 / 编辑 / 序列化
 │   ├── board/          # 棋盘
 │   ├── session/        # 跑团
 │   │   └── chat/       # 对话流
@@ -172,7 +174,7 @@ src/
 - **子目录内不放转发文件**。旧式的 `Xxx.tsx` 转发 + `xxx/` 实现的模式已废弃，直接指向子目录版本。
 - **`components/` 放跨 feature 通用组件**（`CardFrame`、`Modal`、`Toolbar`）。若某组件只被一个 feature 用，它应该在那个 feature 里。
 - **`features/` 之间不互相引用内部文件**。需要共享，提升到 `components/` 或 `lib/`。
-  - 已知例外：`session/SessionEditor` 引 `board/BoardCanvas`，`story/scenario/StoryGraphView` 引 `world/GraphNode`。这两处是历史遗留，改动时如能顺手清理更好，但不强求。
+  - 已知例外：`session/SessionEditor` 引 `board/BoardCanvas`，`story/scenario/StoryGraphView` 引 `world/GraphNode`。
 - **新增文件时先问：半年后的自己打开这个目录，能否一眼猜到它在这里。** 猜不到就换个位置。
 
 ---
@@ -192,6 +194,7 @@ src/
 - 组件文件 PascalCase，hook 文件 camelCase
 - 状态用 Zustand，不要用 Context 传业务状态
 - 每个功能模块一个目录，主组件放在目录入口
+- 主文件超过 400 行考虑拆子组件
 
 ### 通用
 
@@ -249,6 +252,10 @@ Windows 上 Tauri 的 WebView2 会拦截 HTML5 拖放，破坏 IME。用 `@dnd-k
 
 Modal、对话框等组件的 `onClose` prop 经常是父组件内联箭头函数。effect 里用 ref 模式读，避免 effect 重跑冲掉用户编辑。
 
+### 10. 结构化编辑器是主视图
+
+视觉小说剧本、卡框配置等结构化内容，默认显示表单化的行卡片视图。源码 / JSON 视图作为高级模式保留。
+
 ---
 
 ## 常用命令
@@ -283,14 +290,16 @@ pnpm prettier --write src/
 
 1. 打开项目 → 载入示例世界 → 数据完整
 2. 卡片墙 → 搜索、筛选、多选、批量操作
-3. 类型 → 字段编辑、拖拽排序、卡框映射、闪卡触发、裁剪
+3. 类型 → 字段编辑、拖拽排序、卡框映射、闪卡触发、裁剪、出框、卡背
 4. 图谱 → 拖拽、连线、过滤、点击节点/边
-5. 剧情 → 节点图、运行、条件、效果、骰子
-6. 棋盘 → 拖拽、缩放、旋转、背景、卡盒抽牌、翻牌
-7. 卡组 → 新建、加卡、导入棋盘、加卡盒
-8. 跑团 → 对话、掷骰、消息编辑、事件日志
-9. 项目设置 → 主题、图片资源、数据统计、默认卡背
-10. 导出 → 导入 → 合并
+5. 剧情 → 设置、节点图、剧本（结构 + 源码双视图）、运行、条件、效果、骰子
+6. 剧情 → 导出 Markdown → 检查文件内容
+7. 棋盘 → 拖拽、缩放、旋转、背景、卡盒抽牌、翻牌、占位
+8. 卡组 → 新建、加卡、导入棋盘、加卡盒
+9. 跑团 → 对话、掷骰、消息编辑、事件日志、会话内卡盒
+10. 项目设置 → 主题、图片资源、数据统计、默认卡背
+11. 应用设置 → 默认卡框风格、打字机速度
+12. 导出 → 导入 → 合并
 
 如果你加了新功能，请在 PR 描述里说明验证步骤。
 
@@ -322,9 +331,21 @@ FTS 用 trigram，短查询（< 3 字符）走内存过滤。这是设计。
 
 如果对话框内部有 effect 依赖 `onClose` 等不稳定引用，父组件重渲染会导致 effect 重跑。用 ref 稳定回调，effect 依赖数组尽量空。
 
+### 拖动 token 后删除，界面延迟一拍
+
+`BoardCanvas` 里 `localTokens` 是拖拽时的本地镜像。同步 effect 必须**先比较长度和 id 集合**，再逐项比字段。只比字段会比不出来「增删」。
+
 ### Rust 编译报 `missing field XXX`
 
 新增结构体字段后，所有结构体字面量都要补。`seed.rs` 里通常用 `..Default::default()` 收尾。
+
+### 结构化编辑器输入框「选了没反应」
+
+React 里连续两次 `setState` 会基于同一个旧 state 计算。合并更新成一个 `onChange({ ...patch })`，不要用两个独立回调。
+
+### Vite 报 `does not provide an export named`
+
+通常是模块编译失败，Vite 静默处理导致导出丢失。先看 `tsc --noEmit` 的真实报错，或完全重启 dev server。
 
 ---
 
@@ -339,3 +360,6 @@ FTS 用 trigram，短查询（< 3 字符）走内存过滤。这是设计。
 ## 协议
 
 贡献的代码默认采用项目的 [MIT 协议](LICENSE)。
+
+
+

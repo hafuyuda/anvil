@@ -65,6 +65,8 @@ export function CardFrameYuGiOh({
           flexDirection: "column",
           gap: spec.padding / 2,
           background: `linear-gradient(180deg, var(--card-yugioh-inner-bg-1) 0%, var(--card-yugioh-inner-bg-2) 100%)`,
+          position: "relative",
+          overflow: "hidden",
         }}
       >
         {/* 标题栏 */}

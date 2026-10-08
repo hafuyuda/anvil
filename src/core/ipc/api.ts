@@ -117,6 +117,10 @@ export const ipc = {
   upsertTheme: (theme: Theme) => invoke<void>("upsert_theme", { theme }),
   deleteTheme: (id: string) => invoke<void>("delete_theme", { id }),
 
+    // ── 剧情导出 ──
+  exportScenarioHtml: (scenarioId: string, outputPath: string) =>
+    invoke<void>("export_scenario_html", { scenarioId, outputPath }),
+  
   // ── 图片资源 ──
   importImage: (src: string) => invoke<string>("import_image", { src }),
   deleteImage: (relative: string) => invoke<void>("delete_image", { relative }),
@@ -143,4 +147,7 @@ export const ipc = {
     invoke<void>("save_script", { cardId, content }),
   deleteScript: (cardId: string) => invoke<void>("delete_script", { cardId }),
   listScriptCardIds: () => invoke<string[]>("list_script_card_ids"),
+
+  saveTextFile: (path: string, content: string) =>
+    invoke<void>("save_text_file", { path, content }),
 };

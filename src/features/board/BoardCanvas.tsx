@@ -1,10 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { Board, GridConfig, Token } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
-import { CardFrame } from "../../components/CardFrame";
 import { useImageUrl } from "../../hooks/useImageUrl";
-import { CardBack } from "../../components/CardFrame/CardBack";
-import { PileToken } from "./PileToken";
+import { BoardToken } from "./BoardToken";
 
 interface Props {
   board: Board;
@@ -22,15 +20,11 @@ const DEFAULT_GRID: GridConfig = {
   snap: true,
 };
 
-const DEFAULT_TOKEN_W = 140;
-const DEFAULT_TOKEN_H = 205;
-
 const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 4;
 
 interface DragState {
   primaryTokenId: string;
-  // 起始时所有选中 token 的初始位置
   initialPositions: Record<string, { x: number; y: number }>;
   offsetX: number;
   offsetY: number;
@@ -64,16 +58,15 @@ export function BoardCanvas({
   const onZoomRef = useRef(onZoomChange);
   onZoomRef.current = onZoomChange;
 
+  // 本地 token 镜像与 store 同步
   useEffect(() => {
     if (dragging || !localTokens) return;
 
-    // 长度变化（增删）→ 立即清空
     if (boardTokens.length !== localTokens.length) {
       setLocalTokens(null);
       return;
     }
 
-    // id 集合不一致 → 立即清空
     const boardIdSet = new Set(boardTokens.map((t) => t.id));
     const idMismatch = localTokens.some((t) => !boardIdSet.has(t.id));
     if (idMismatch) {
@@ -81,7 +74,6 @@ export function BoardCanvas({
       return;
     }
 
-    // id 集合一致 → 逐项比较位置 / layer / face_down
     const same = boardTokens.every((t, i) => {
       const l = localTokens[i];
       return (
@@ -165,12 +157,10 @@ export function BoardCanvas({
       return;
     }
 
-    // 如果点在未选中的 token 上 → 单选
     if (!selectedTokenIds.includes(t.id)) {
       selectToken(t.id);
     }
 
-    // 确定拖动集合
     const dragIds = selectedTokenIds.includes(t.id) ? selectedTokenIds : [t.id];
 
     const initialPositions: Record<string, { x: number; y: number }> = {};
@@ -187,7 +177,6 @@ export function BoardCanvas({
       moved: false,
     });
 
-    // 把所有选中的提到最前
     const maxLayer = boardTokens.reduce((m, x) => Math.max(m, x.layer), 0);
     const idsSet = new Set(dragIds);
     const next = boardTokens.map((x) =>
@@ -200,7 +189,6 @@ export function BoardCanvas({
 
   function onTokenDoubleClick(e: React.MouseEvent, t: Token) {
     e.stopPropagation();
-    // 卡盒不参与翻面
     if (t.pile) return;
 
     const current = localTokens ?? boardTokens;
@@ -244,7 +232,6 @@ export function BoardCanvas({
       onChange({ tokens: localTokens });
       return;
     }
-    // 未移动 → 检查是否卡盒，是则触发点击
     if (!wasDragging.moved && onPileClick) {
       const t = boardTokens.find((x) => x.id === wasDragging.primaryTokenId);
       if (t?.pile) {
@@ -262,91 +249,6 @@ export function BoardCanvas({
     ) {
       clearTokenSelection();
     }
-  }
-
-  function renderToken(t: Token) {
-    const w = t.w ?? DEFAULT_TOKEN_W;
-    const h = t.h ?? DEFAULT_TOKEN_H;
-    const scale = w / DEFAULT_TOKEN_W;
-    const selected = selectedTokenIds.includes(t.id);
-    const isDragging = dragging && dragging.initialPositions[t.id];
-    const card = t.card_id ? cards.find((c) => c.id === t.card_id) : null;
-    const cardType = card
-      ? cardTypes.find((ct) => ct.id === card.type_id)
-      : null;
-
-    return (
-      <div
-        key={t.id}
-        data-token-id={t.id}
-        style={{
-          position: "absolute",
-          left: t.x,
-          top: t.y,
-          width: w,
-          height: h,
-          zIndex: t.layer + 1,
-          cursor: isDragging ? "grabbing" : "grab",
-          transition: isDragging ? "none" : "filter 0.15s, transform 0.15s",
-          transform: `rotate(${t.rotation}deg)`,
-          transformOrigin: "center center",
-          filter: selected
-            ? "drop-shadow(0 0 0 var(--accent-gold)) drop-shadow(0 4px 12px rgba(0,0,0,0.5))"
-            : undefined,
-          userSelect: "none",
-          outline: selected ? "2px solid var(--accent-gold)" : "none",
-          outlineOffset: 2,
-          borderRadius: "var(--radius-md)",
-        }}
-        onPointerDown={(e) => onTokenPointerDown(e, t)}
-        onDoubleClick={(e) => onTokenDoubleClick(e, t)}
-      >
-        <div
-          style={{
-            width: DEFAULT_TOKEN_W,
-            height: DEFAULT_TOKEN_H,
-            transform: `scale(${scale})`,
-            transformOrigin: "top left",
-            pointerEvents: "none",
-          }}
-        >
-          {t.pile ? (
-            <PileToken
-              remaining={t.pile.remaining.length}
-              total={t.pile.total}
-              size="small"
-            />
-          ) : t.face_down === true ? (
-            <CardBack path={cardType?.card_back ?? null} size="small" />
-          ) : card && cardType ? (
-            <CardFrame card={card} cardType={cardType} size="small" />
-          ) : (
-            <PlaceholderToken
-              label={t.name_override ?? "Token"}
-              selected={false}
-            />
-          )}
-        </div>
-
-        {t.name_override && (
-          <div
-            style={{
-              position: "absolute",
-              left: 0,
-              right: 0,
-              bottom: -18,
-              textAlign: "center",
-              fontSize: 11,
-              color: "var(--fg-secondary)",
-              pointerEvents: "none",
-              textShadow: "0 1px 2px rgba(0,0,0,0.8)",
-            }}
-          >
-            {t.name_override}
-          </div>
-        )}
-      </div>
-    );
   }
 
   const gridLines: React.ReactNode[] = [];
@@ -456,40 +358,30 @@ export function BoardCanvas({
           {tokens
             .filter((t) => t.visible)
             .sort((a, b) => a.layer - b.layer)
-            .map(renderToken)}
+            .map((t) => {
+              const card = t.card_id
+                ? (cards.find((c) => c.id === t.card_id) ?? null)
+                : null;
+              const cardType = card
+                ? (cardTypes.find((ct) => ct.id === card.type_id) ?? null)
+                : null;
+              return (
+                <BoardToken
+                  key={t.id}
+                  token={t}
+                  card={card}
+                  cardType={cardType}
+                  selected={selectedTokenIds.includes(t.id)}
+                  isDragging={Boolean(
+                    dragging && dragging.initialPositions[t.id],
+                  )}
+                  onPointerDown={onTokenPointerDown}
+                  onDoubleClick={onTokenDoubleClick}
+                />
+              );
+            })}
         </div>
       </div>
-    </div>
-  );
-}
-
-function PlaceholderToken({
-  label,
-  selected,
-}: {
-  label: string;
-  selected: boolean;
-}) {
-  return (
-    <div
-      style={{
-        width: "100%",
-        height: "100%",
-        borderRadius: "var(--radius-md)",
-        background: "var(--bg-surface)",
-        border: `2px solid ${
-          selected ? "var(--accent-gold)" : "var(--border-default)"
-        }`,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontSize: 12,
-        color: "var(--fg-secondary)",
-        textAlign: "center",
-        padding: 8,
-      }}
-    >
-      {label}
     </div>
   );
 }

@@ -17,4 +17,9 @@
   },
   "npm.packageManager": "pnpm",
   "eslint.packageManager": "pnpm",
+  "piny.project_settings": {
+    "open-pages": [
+      "pinyfakepage.html"
+    ]
+  },
 }

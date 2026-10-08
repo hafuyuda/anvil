@@ -70,6 +70,7 @@ export function CardFramePokemon({
           gap: spec.padding / 2,
           overflow: "hidden",
           border: `1px solid var(--card-pokemon-inner-border)`,
+          position: "relative",
         }}
       >
         {/* 顶部：标题 + HP */}

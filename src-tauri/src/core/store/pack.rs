@@ -211,9 +211,22 @@ impl Project {
                         if local.card_back.is_none() {
                             local.card_back = rt.card_back.clone();
                         }
+                        // 裁剪 / 出框：仅当双方都有 card_frame 时逐项合并
+                        // 本地 card_frame 为空时不动——避免塞入部分配置破坏启发式映射
+                        if let (Some(local_cfg), Some(remote_cfg)) =
+                            (local.card_frame.as_mut(), rt.card_frame.as_ref())
+                        {
+                            if local_cfg.image_crop.is_none() {
+                                local_cfg.image_crop = remote_cfg.image_crop.clone();
+                            }
+                            if local_cfg.image_extend.is_none() {
+                                local_cfg.image_extend = remote_cfg.image_extend.clone();
+                            }
+                        }
                     }
                     imported_types += 1;
                 }
+
                 TypeMapAction::New => {
                     let mut copy = rt.clone();
                     let new_id = uuid::Uuid::new_v4().to_string();

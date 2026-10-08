@@ -70,6 +70,7 @@ export function CardFrameGeneric({
           flexDirection: "column",
           gap: spec.padding / 2,
           overflow: "hidden",
+          position: "relative",
         }}
       >
         {/* 标题栏 */}

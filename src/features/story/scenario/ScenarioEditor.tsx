@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { save as saveDialog } from "@tauri-apps/plugin-dialog";
 import { ipc, type Scenario } from "../../../core/ipc";
 import { useProjectStore } from "../../../stores/projectStore";
 import { useDraft } from "../../../hooks/useDraft";
@@ -7,6 +8,7 @@ import { StoryGraphView } from "./StoryGraphView";
 import { PlayView } from "../play/PlayView";
 import { ScriptPanel } from "../script/ScriptPanel";
 import { ScenarioSettingsTab } from "./ScenarioSettingsTab";
+import { exportScenarioMarkdown } from "./exportMarkdown";
 
 interface Props {
   scenario: Scenario;
@@ -16,6 +18,9 @@ type Tab = "settings" | "graph" | "script" | "play";
 
 export function ScenarioEditor({ scenario }: Props) {
   const upsertScenario = useProjectStore((s) => s.upsertScenario);
+  const cards = useProjectStore((s) => s.cards) ?? [];
+  const cardTypes = useProjectStore((s) => s.cardTypes) ?? [];
+  const relations = useProjectStore((s) => s.relations) ?? [];
 
   const { draft, dirty, update, commit } = useDraft(
     scenario,
@@ -37,6 +42,52 @@ export function ScenarioEditor({ scenario }: Props) {
   );
 
   const [tab, setTab] = useState<Tab>("settings");
+  const [exportingMd, setExportingMd] = useState(false);
+  const [exportingHtml, setExportingHtml] = useState(false);
+
+  async function handleExportMarkdown() {
+    if (exportingMd) return;
+    setExportingMd(true);
+    try {
+      const md = await exportScenarioMarkdown({
+        scenario: draft,
+        cards,
+        cardTypes,
+        relations,
+      });
+      const output = await saveDialog({
+        defaultPath: `${draft.name || "未命名"}-剧本.md`,
+        filters: [{ name: "Markdown", extensions: ["md"] }],
+        title: "导出 Markdown 剧本",
+      });
+      if (!output) return;
+      await ipc.saveTextFile(output, md);
+      alert(`已导出到：${output}`);
+    } catch (e) {
+      alert("导出失败: " + e);
+    } finally {
+      setExportingMd(false);
+    }
+  }
+
+  async function handleExportHtml() {
+    if (exportingHtml) return;
+    setExportingHtml(true);
+    try {
+      const output = await saveDialog({
+        defaultPath: `${draft.name || "未命名"}.html`,
+        filters: [{ name: "HTML", extensions: ["html"] }],
+        title: "导出 HTML 阅读器",
+      });
+      if (!output) return;
+      await ipc.exportScenarioHtml(scenario.id, output);
+      alert(`已导出到：${output}`);
+    } catch (e) {
+      alert("导出失败: " + e);
+    } finally {
+      setExportingHtml(false);
+    }
+  }
 
   return (
     <div
@@ -56,6 +107,7 @@ export function ScenarioEditor({ scenario }: Props) {
           background: "var(--bg-panel)",
           display: "flex",
           gap: 4,
+          alignItems: "center",
         }}
       >
         <TabButton
@@ -73,6 +125,27 @@ export function ScenarioEditor({ scenario }: Props) {
         <TabButton active={tab === "play"} onClick={() => setTab("play")}>
           运行
         </TabButton>
+
+        <div style={{ flex: 1 }} />
+
+        <button
+          className="btn"
+          onClick={handleExportMarkdown}
+          disabled={exportingMd || exportingHtml}
+          style={{ fontSize: 12 }}
+          title="导出为可读的 Markdown 剧本"
+        >
+          {exportingMd ? "导出中…" : "导出 Markdown"}
+        </button>
+        <button
+          className="btn"
+          onClick={handleExportHtml}
+          disabled={exportingMd || exportingHtml}
+          style={{ fontSize: 12 }}
+          title="导出为单文件 HTML 阅读器（图片内嵌）"
+        >
+          {exportingHtml ? "导出中…" : "导出 HTML"}
+        </button>
       </div>
 
       {tab === "settings" && (

@@ -1,20 +1,22 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { ipc } from "../../../core/ipc";
-import { parseScript } from "./parser";
-import { ScriptPreview } from "./ScriptPreview";
+import { ScriptSourceEditor } from "./ScriptSourceEditor";
+import { ScriptStructuredEditor } from "./ScriptStructuredEditor";
 
 interface Props {
   cardId: string;
   cardName: string;
 }
 
+type Mode = "structured" | "source";
+
 export function ScriptEditor({ cardId, cardName }: Props) {
   const [content, setContent] = useState("");
   const [loaded, setLoaded] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [mode, setMode] = useState<Mode>("structured");
 
-  // 加载
   useEffect(() => {
     setLoaded(false);
     setDirty(false);
@@ -31,7 +33,6 @@ export function ScriptEditor({ cardId, cardName }: Props) {
       });
   }, [cardId]);
 
-  // 自动保存（800ms）
   useEffect(() => {
     if (!loaded || !dirty) return;
     const handle = setTimeout(async () => {
@@ -48,7 +49,10 @@ export function ScriptEditor({ cardId, cardName }: Props) {
     return () => clearTimeout(handle);
   }, [content, dirty, loaded, cardId]);
 
-  const parsed = useMemo(() => parseScript(content), [content]);
+  function handleChange(c: string) {
+    setContent(c);
+    setDirty(true);
+  }
 
   if (!loaded) {
     return (
@@ -76,7 +80,7 @@ export function ScriptEditor({ cardId, cardName }: Props) {
         flexDirection: "column",
       }}
     >
-      {/* 顶部 */}
+      {/* 顶部：场景名 + 保存状态 */}
       <div
         style={{
           padding: "6px 12px",
@@ -113,86 +117,62 @@ export function ScriptEditor({ cardId, cardName }: Props) {
         </span>
       </div>
 
-      {/* 语法提示 */}
+      {/* Tab 切换 */}
       <div
         style={{
           padding: "4px 12px",
-          fontSize: 11,
-          color: "var(--fg-muted)",
-          background: "var(--bg-app)",
           borderBottom: "1px solid var(--border-subtle)",
-          fontFamily: "var(--font-mono)",
+          background: "var(--bg-panel)",
+          display: "flex",
+          gap: 4,
           flexShrink: 0,
-          lineHeight: 1.6,
         }}
       >
-        {"> 旁白"} · {"**角色**（表情）：对白"} · {"*动作*"} · {"@bg 路径"} ·{" "}
-        {"@bgm 文件"}
-        <div style={{ color: "var(--fg-muted)", fontSize: 10 }}>
-          顶部 frontmatter 可写：
-          <span style={{ color: "var(--fg-secondary)" }}>
-            {" "}
-            bg · bgm · is_ending · ending_name
-          </span>
-        </div>
-        <div style={{ color: "var(--fg-muted)", fontSize: 10 }}>
-          说话人按名字匹配项目中的卡。立绘从卡的{" "}
-          <span style={{ color: "var(--fg-secondary)" }}>
-            portrait_&lt;表情&gt;
-          </span>{" "}
-          image 字段读取。
-        </div>
-      </div>
-
-      {/* 主体：源码 + 预览 */}
-      <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
-        <textarea
-          value={content}
-          onChange={(e) => {
-            setContent(e.target.value);
-            setDirty(true);
-          }}
-          placeholder={`> 炉火噼啪作响。\n\n**布洛克**（neutral）：坐吧，旅人。\n\n*格蕾塔从炉边跑过来。*`}
-          style={{
-            flex: 1,
-            minWidth: 0,
-            padding: 12,
-            border: "none",
-            outline: "none",
-            resize: "none",
-            background: "var(--bg-app)",
-            color: "var(--fg-primary)",
-            fontSize: 13,
-            lineHeight: 1.7,
-            fontFamily: "var(--font-mono)",
-            boxSizing: "border-box",
-          }}
-        />
-
-        <div
-          style={{
-            width: 320,
-            borderLeft: "1px solid var(--border-subtle)",
-            overflowY: "auto",
-            background: "var(--bg-panel)",
-            flexShrink: 0,
-          }}
+        <TabButton
+          active={mode === "structured"}
+          onClick={() => setMode("structured")}
         >
-          <div
-            style={{
-              padding: "6px 12px",
-              fontSize: 10,
-              color: "var(--fg-muted)",
-              textTransform: "uppercase",
-              letterSpacing: 1,
-              borderBottom: "1px solid var(--border-subtle)",
-            }}
-          >
-            解析预览（{parsed.lines.length} 行）
-          </div>
-          <ScriptPreview script={parsed} />
-        </div>
+          结构
+        </TabButton>
+        <TabButton active={mode === "source"} onClick={() => setMode("source")}>
+          源码
+        </TabButton>
       </div>
+
+      {mode === "structured" && (
+        <ScriptStructuredEditor content={content} onChange={handleChange} />
+      )}
+      {mode === "source" && (
+        <ScriptSourceEditor content={content} onChange={handleChange} />
+      )}
     </div>
+  );
+}
+
+function TabButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      className="btn btn-ghost"
+      onClick={onClick}
+      style={{
+        fontWeight: active ? 600 : 400,
+        color: active ? "var(--fg-primary)" : "var(--fg-secondary)",
+        borderBottom: active
+          ? "2px solid var(--accent-gold)"
+          : "2px solid transparent",
+        borderRadius: 0,
+        padding: "4px 12px",
+      }}
+    >
+      {children}
+    </button>
   );
 }

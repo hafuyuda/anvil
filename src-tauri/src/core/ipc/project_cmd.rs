@@ -313,3 +313,20 @@ pub fn list_script_card_ids(state: State<AppState>) -> Result<Vec<String>, Strin
     let p = guard.as_ref().ok_or("no project open")?;
     p.list_script_card_ids().map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub fn save_text_file(path: String, content: String) -> Result<(), String> {
+    std::fs::write(&path, content).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn export_scenario_html(
+    state: State<AppState>,
+    scenario_id: String,
+    output_path: String,
+) -> Result<(), String> {
+    let guard = state.project.lock().unwrap();
+    let p = guard.as_ref().ok_or("no project open")?;
+    p.export_scenario_html(&scenario_id, &PathBuf::from(output_path))
+        .map_err(|e| e.to_string())
+}

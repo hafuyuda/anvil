@@ -72,6 +72,7 @@ export function CardFrameMTG({
           flexDirection: "column",
           gap: 4,
           overflow: "hidden",
+          position: "relative",
         }}
       >
         {/* 顶部标题条 */}

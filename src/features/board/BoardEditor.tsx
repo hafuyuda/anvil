@@ -1,19 +1,14 @@
 import { useEffect, useState } from "react";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
-import { ipc, type Board, Token } from "../../core/ipc";
+import { ipc, type Board } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
-import { BoardCanvas } from "./BoardCanvas";
 import { DEFAULT_GRID } from "./constants";
-import { nowMs } from "../../lib/time";
-import { PickerDialog } from "../../components/PickerDialog";
 import { invalidateImage } from "../../lib/imageCache";
-import { newId } from "../../lib/id";
-import { useDeleteUndo } from "../../hooks/useDeleteUndo";
-import { AddFromGroupDialog } from "./AddFromGroupDialog";
-import { gridPosition, shuffle } from "./tokenPlacement";
-import type { CardGroup } from "../../core/ipc";
-import { PileDrawDialog } from "./PileDrawDialog";
-import { usePileActions } from "./usePileActions";
+import { BoardToolbar } from "./BoardToolbar";
+import { BoardCanvas } from "./BoardCanvas";
+import { BoardDialogs } from "./BoardDialogs";
+import { BoardBottomBar } from "./BoardBottomBar";
+import { useBoardActions } from "./useBoardActions";
 
 interface Props {
   board: Board;
@@ -23,10 +18,11 @@ export function BoardEditor({ board }: Props) {
   const upsertBoard = useProjectStore((s) => s.upsertBoard);
   const setCurrentBoard = useProjectStore((s) => s.setCurrentBoard);
   const pushUndo = useProjectStore((s) => s.pushUndo);
-
-  const [cardPickerOpen, setCardPickerOpen] = useState(false);
-  const [addPileOpen, setAddPileOpen] = useState(false);
-  const [pileDrawTokenId, setPileDrawTokenId] = useState<string | null>(null);
+  const cards = useProjectStore((s) => s.cards) ?? [];
+  const cardTypes = useProjectStore((s) => s.cardTypes) ?? [];
+  const cardGroups = useProjectStore((s) => s.cardGroups) ?? [];
+  const selectedTokenIds = useProjectStore((s) => s.selectedTokenIds) ?? [];
+  const clearTokenSelection = useProjectStore((s) => s.clearTokenSelection);
 
   const normalized: Board = {
     ...board,
@@ -34,44 +30,28 @@ export function BoardEditor({ board }: Props) {
     tokens: board.tokens ?? [],
   };
 
-  const { drawFromPile, shufflePile, resetPile } = usePileActions({
-    tokens: normalized.tokens ?? [],
-    applyTokens: async (next, label) => {
-      const before = normalized;
-      const after: Board = {
-        ...before,
-        tokens: next,
-        updated_at: nowMs(),
-      };
-      try {
-        await ipc.upsertBoard(after);
-        upsertBoard(after);
-        pushUndo({
-          id: `${Date.now()}-${newId().slice(2, 8)}`,
-          label,
-          undo: async () => {
-            await ipc.upsertBoard(before);
-            upsertBoard(before);
-          },
-          redo: async () => {
-            await ipc.upsertBoard(after);
-            upsertBoard(after);
-          },
-        });
-      } catch (e) {
-        alert("操作失败: " + e);
-      }
-    },
-  });
+  const {
+    savePatch,
+    addCardToBoard,
+    addPlaceholder,
+    importFromGroup,
+    addPile,
+    drawFromPile,
+    shufflePile,
+    resetPile,
+    deleteSelectedTokens,
+  } = useBoardActions({ board: normalized, upsertBoard, pushUndo });
+
   const [name, setName] = useState(normalized.name);
+  const [zoom, setZoom] = useState(1);
   const [bgPickerOpen, setBgPickerOpen] = useState(false);
   const [imageOptions, setImageOptions] = useState<
     { value: string; label: string }[]
   >([]);
-
-  const [zoom, setZoom] = useState(1);
-
   const [addFromGroupOpen, setAddFromGroupOpen] = useState(false);
+  const [addPileOpen, setAddPileOpen] = useState(false);
+  const [cardPickerOpen, setCardPickerOpen] = useState(false);
+  const [pileDrawTokenId, setPileDrawTokenId] = useState<string | null>(null);
 
   useEffect(() => {
     setZoom(1);
@@ -83,38 +63,6 @@ export function BoardEditor({ board }: Props) {
       setCurrentBoard(null);
     };
   }, [normalized.id, setCurrentBoard]);
-
-  async function persist(b: Board) {
-    await ipc.upsertBoard(b);
-    upsertBoard(b);
-  }
-
-  async function savePatch(patch: Partial<Board>, undoLabel?: string) {
-    const before = normalized;
-    const after: Board = {
-      ...before,
-      ...patch,
-      updated_at: nowMs(),
-    };
-    try {
-      await ipc.upsertBoard(after);
-      upsertBoard(after);
-      if (undoLabel) {
-        pushUndo({
-          id: `${Date.now()}-${newId().slice(2, 8)}`,
-          label: undoLabel,
-          undo: async () => {
-            await persist(before);
-          },
-          redo: async () => {
-            await persist(after);
-          },
-        });
-      }
-    } catch (e) {
-      alert("保存失败: " + e);
-    }
-  }
 
   function commitName() {
     if (name !== normalized.name) {
@@ -163,135 +111,6 @@ export function BoardEditor({ board }: Props) {
 
   const grid = normalized.grid;
 
-  async function addCardToBoard(cardId: string) {
-    const tokens = normalized.tokens ?? [];
-    const count = tokens.length;
-    const pos = gridPosition(count);
-
-    const newToken: Token = {
-      id: Math.random().toString(36).slice(2) + Date.now().toString(36),
-      card_id: cardId,
-      name_override: null,
-      value_overrides: {},
-      x: pos.x,
-      y: pos.y,
-      w: 140,
-      h: 205,
-      rotation: 0,
-      layer: count,
-      visible: true,
-    };
-
-    const next: Board = {
-      ...normalized,
-      tokens: [...tokens, newToken],
-      updated_at: Date.now(),
-    };
-    await ipc.upsertBoard(next);
-    upsertBoard(next);
-  }
-
-  async function handleImportFromGroup(group: CardGroup, shuffleOn: boolean) {
-    const valid = group.card_ids.filter((id) => cards.some((c) => c.id === id));
-    if (valid.length === 0) {
-      alert("该卡组里没有可用的卡牌。");
-      return;
-    }
-
-    const ordered = shuffleOn ? shuffle(valid) : valid;
-
-    const existing = normalized.tokens ?? [];
-    const startIdx = existing.length;
-
-    const newTokens: Token[] = ordered.map((cardId, i) => {
-      const pos = gridPosition(startIdx + i);
-      return {
-        id: newId(),
-        card_id: cardId,
-        name_override: null,
-        value_overrides: {},
-        x: pos.x,
-        y: pos.y,
-        w: 140,
-        h: 205,
-        rotation: 0,
-        layer: startIdx + i,
-        visible: true,
-      };
-    });
-
-    const next: Board = {
-      ...normalized,
-      tokens: [...existing, ...newTokens],
-      updated_at: nowMs(),
-    };
-
-    try {
-      await ipc.upsertBoard(next);
-      upsertBoard(next);
-      setAddFromGroupOpen(false);
-    } catch (e) {
-      alert("导入失败: " + e);
-    }
-  }
-
-  async function handleAddPile(group: CardGroup) {
-    const valid = group.card_ids.filter((id) => cards.some((c) => c.id === id));
-    if (valid.length === 0) {
-      alert("该卡组里没有可用的卡牌。");
-      return;
-    }
-
-    const existing = normalized.tokens ?? [];
-    const pos = gridPosition(existing.length);
-
-    const pileToken: Token = {
-      id: newId(),
-      card_id: null,
-      name_override: group.name,
-      value_overrides: {},
-      x: pos.x,
-      y: pos.y,
-      w: 140,
-      h: 205,
-      rotation: 0,
-      layer: existing.length,
-      visible: true,
-      face_down: false,
-      pile: {
-        group_id: group.id,
-        label: group.name,
-        remaining: [...valid],
-        initial: [...valid],
-        total: valid.length,
-      },
-    };
-
-    const next: Board = {
-      ...normalized,
-      tokens: [...existing, pileToken],
-      updated_at: nowMs(),
-    };
-
-    try {
-      await ipc.upsertBoard(next);
-      upsertBoard(next);
-      setAddPileOpen(false);
-    } catch (e) {
-      alert("创建卡盒失败: " + e);
-    }
-  }
-
-  const cards = useProjectStore((s) => s.cards) ?? [];
-  const cardTypes = useProjectStore((s) => s.cardTypes) ?? [];
-
-  const cardGroups = useProjectStore((s) => s.cardGroups) ?? [];
-
-  const selectedTokenIds = useProjectStore((s) => s.selectedTokenIds) ?? [];
-  const clearTokenSelection = useProjectStore((s) => s.clearTokenSelection);
-
-  const deleteWithUndo = useDeleteUndo();
-
   return (
     <div
       style={{
@@ -303,192 +122,34 @@ export function BoardEditor({ board }: Props) {
         gap: 8,
       }}
     >
-      <div
-        style={{
-          display: "flex",
-          gap: 8,
-          alignItems: "center",
-          flexShrink: 0,
-          flexWrap: "wrap",
-        }}
-      >
-        <input
-          className="input"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onBlur={commitName}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-          }}
-          style={{
-            flex: 1,
-            minWidth: 160,
-            fontWeight: 600,
-            fontSize: 14,
-            fontFamily: "var(--font-title)",
-          }}
-        />
-
-        <Toggle
-          label="显示网格"
-          checked={grid.visible}
-          onChange={(v) =>
-            savePatch({ grid: { ...grid, visible: v } }, "切换网格")
-          }
-        />
-        <Toggle
-          label="吸附"
-          checked={grid.snap}
-          onChange={(v) =>
-            savePatch({ grid: { ...grid, snap: v } }, "切换吸附")
-          }
-        />
-
-        <label
-          style={{
-            fontSize: 12,
-            display: "flex",
-            gap: 6,
-            alignItems: "center",
-            color: "var(--fg-secondary)",
-          }}
-        >
-          格大小
-          <input
-            className="input"
-            type="number"
-            value={grid.size}
-            onChange={(e) =>
-              savePatch(
-                { grid: { ...grid, size: Number(e.target.value) || 10 } },
-                "修改格大小",
-              )
-            }
-            style={{ width: 64 }}
-          />
-        </label>
-        <label
-          style={{
-            fontSize: 12,
-            display: "flex",
-            gap: 6,
-            alignItems: "center",
-            color: "var(--fg-secondary)",
-          }}
-        >
-          宽
-          <input
-            className="input"
-            type="number"
-            value={normalized.width}
-            onChange={(e) =>
-              savePatch(
-                { width: Number(e.target.value) || 1200 },
-                "修改棋盘宽度",
-              )
-            }
-            style={{ width: 72 }}
-          />
-        </label>
-        <label
-          style={{
-            fontSize: 12,
-            display: "flex",
-            gap: 6,
-            alignItems: "center",
-            color: "var(--fg-secondary)",
-          }}
-        >
-          高
-          <input
-            className="input"
-            type="number"
-            value={normalized.height}
-            onChange={(e) =>
-              savePatch(
-                { height: Number(e.target.value) || 800 },
-                "修改棋盘高度",
-              )
-            }
-            style={{ width: 72 }}
-          />
-        </label>
-        <button className="btn" onClick={openBgPicker} style={{ fontSize: 12 }}>
-          {normalized.background ? "更换背景" : "设置背景"}
-        </button>
-        <button
-          className="btn"
-          onClick={() => setAddFromGroupOpen(true)}
-          style={{ fontSize: 12 }}
-        >
-          从卡组导入
-        </button>
-        <button
-          className="btn"
-          onClick={() => setAddPileOpen(true)}
-          style={{ fontSize: 12 }}
-        >
-          从卡组加卡盒
-        </button>
-        <button
-          className="btn btn-primary"
-          onClick={() => setCardPickerOpen(true)}
-          style={{ fontSize: 12 }}
-        >
-          + 添加卡片
-        </button>
-        {normalized.background && (
-          <button
-            className="btn"
-            onClick={clearBackground}
-            style={{ fontSize: 12 }}
-          >
-            清除背景
-          </button>
-        )}
-        <div
-          style={{
-            display: "flex",
-            gap: 2,
-            alignItems: "center",
-            marginLeft: "auto",
-          }}
-        >
-          <button
-            className="btn btn-icon"
-            onClick={() => setZoom((z) => Math.max(0.25, z / 1.2))}
-            title="缩小"
-          >
-            −
-          </button>
-          <span
-            style={{
-              minWidth: 48,
-              textAlign: "center",
-              fontSize: 12,
-              fontFamily: "var(--font-mono)",
-              color: "var(--fg-secondary)",
-            }}
-          >
-            {Math.round(zoom * 100)}%
-          </span>
-          <button
-            className="btn btn-icon"
-            onClick={() => setZoom((z) => Math.min(4, z * 1.2))}
-            title="放大"
-          >
-            +
-          </button>
-          <button
-            className="btn btn-ghost"
-            onClick={() => setZoom(1)}
-            style={{ fontSize: 11, padding: "2px 6px" }}
-            title="重置为 100%"
-          >
-            100%
-          </button>
-        </div>
-      </div>
+      <BoardToolbar
+        name={name}
+        setName={setName}
+        onCommitName={commitName}
+        grid={grid}
+        onToggleGrid={(v) =>
+          savePatch({ grid: { ...grid, visible: v } }, "切换网格")
+        }
+        onToggleSnap={(v) =>
+          savePatch({ grid: { ...grid, snap: v } }, "切换吸附")
+        }
+        onGridSizeChange={(s) =>
+          savePatch({ grid: { ...grid, size: s } }, "修改格大小")
+        }
+        width={normalized.width}
+        height={normalized.height}
+        onWidthChange={(w) => savePatch({ width: w }, "修改棋盘宽度")}
+        onHeightChange={(h) => savePatch({ height: h }, "修改棋盘高度")}
+        hasBackground={Boolean(normalized.background)}
+        onOpenBgPicker={openBgPicker}
+        onClearBackground={clearBackground}
+        onOpenAddFromGroup={() => setAddFromGroupOpen(true)}
+        onOpenAddPile={() => setAddPileOpen(true)}
+        onOpenCardPicker={() => setCardPickerOpen(true)}
+        onAddPlaceholder={() => void addPlaceholder()}
+        zoom={zoom}
+        onZoomChange={setZoom}
+      />
 
       <div
         style={{
@@ -516,171 +177,53 @@ export function BoardEditor({ board }: Props) {
         />
       </div>
 
-      {bgPickerOpen && (
-        <PickerDialog
-          title="选择背景图"
-          options={[{ value: "", label: "— 无背景 —" }, ...imageOptions]}
-          onPick={(v) => savePatch({ background: v || null }, "设置棋盘背景")}
-          onClose={() => setBgPickerOpen(false)}
-        />
-      )}
-
-      {addFromGroupOpen && (
-        <AddFromGroupDialog
-          onClose={() => setAddFromGroupOpen(false)}
-          onImport={(group, shuffleOn) => {
-            void handleImportFromGroup(group, shuffleOn);
-          }}
-        />
-      )}
-      {addPileOpen && (
-        <PickerDialog
-          title="选择卡组（作为卡盒）"
-          options={cardGroups.map((g) => ({
-            value: g.id,
-            label: `${g.name}（${g.card_ids.length} 张）`,
-          }))}
-          onPick={(id) => {
-            const g = cardGroups.find((x) => x.id === id);
-            if (g) void handleAddPile(g);
-          }}
-          onClose={() => setAddPileOpen(false)}
-        />
-      )}
-      {pileDrawTokenId &&
-        (() => {
-          const t = normalized.tokens.find((x) => x.id === pileDrawTokenId);
-          if (!t?.pile) return null;
-          return (
-            <PileDrawDialog
-              pile={t.pile}
-              onDraw={(n) => void drawFromPile(pileDrawTokenId, n)}
-              onShuffle={() => void shufflePile(pileDrawTokenId)}
-              onReset={() => void resetPile(pileDrawTokenId)}
-              onClose={() => setPileDrawTokenId(null)}
-            />
-          );
-        })()}
-      {cardPickerOpen && (
-        <PickerDialog
-          title="添加卡片到棋盘"
-          options={cards.map((c) => ({
-            value: c.id,
-            label: `${c.name} · ${cardTypes.find((t) => t.id === c.type_id)?.name ?? "?"}`,
-          }))}
-          onPick={(id) => {
-            void addCardToBoard(id);
-          }}
-          onClose={() => setCardPickerOpen(false)}
-        />
-      )}
-
-      {selectedTokenIds.length > 0 && (
-        <div
-          style={{
-            display: "flex",
-            gap: 6,
-            alignItems: "center",
-            padding: "4px 8px",
-            background: "var(--bg-raised)",
-            borderRadius: "var(--radius-md)",
-            marginLeft: "auto",
-          }}
-        >
-          <span
-            style={{
-              fontSize: 11,
-              color: "var(--accent-gold)",
-              fontWeight: 600,
-            }}
-          >
-            已选 {selectedTokenIds.length}
-          </span>
-          <button
-            className="btn"
-            onClick={clearTokenSelection}
-            style={{ fontSize: 11, padding: "2px 8px" }}
-          >
-            取消
-          </button>
-          <button
-            className="btn btn-danger"
-            onClick={async () => {
-              const ids = selectedTokenIds;
-              if (ids.length === 0) return;
-              if (
-                !confirm(
-                  `删除选中的 ${ids.length} 个 Token？可用 Ctrl+Z 撤销。`,
-                )
-              )
-                return;
-
-              const removed = normalized.tokens.filter((t) =>
-                ids.includes(t.id),
-              );
-
-              await deleteWithUndo({
-                label: `删除 ${ids.length} 个 Token`,
-                do: async () => {
-                  const next: Board = {
-                    ...normalized,
-                    tokens: normalized.tokens.filter(
-                      (t) => !ids.includes(t.id),
-                    ),
-                    updated_at: nowMs(),
-                  };
-                  await ipc.upsertBoard(next);
-                  upsertBoard(next);
-                  clearTokenSelection();
-                },
-                restore: async () => {
-                  const next: Board = {
-                    ...normalized,
-                    tokens: [...normalized.tokens, ...removed],
-                    updated_at: nowMs(),
-                  };
-                  await ipc.upsertBoard(next);
-                  upsertBoard(next);
-                },
-              });
-            }}
-            style={{ fontSize: 11, padding: "2px 8px" }}
-          >
-            删除
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function Toggle({
-  label,
-  checked,
-  onChange,
-}: {
-  label: string;
-  checked: boolean;
-  onChange: (v: boolean) => void;
-}) {
-  return (
-    <label
-      style={{
-        fontSize: 12,
-        display: "flex",
-        gap: 4,
-        alignItems: "center",
-        color: "var(--fg-secondary)",
-        cursor: "pointer",
-      }}
-    >
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        style={{ accentColor: "var(--accent-gold)" }}
+      <BoardDialogs
+        bgPickerOpen={bgPickerOpen}
+        imageOptions={imageOptions}
+        onCloseBg={() => setBgPickerOpen(false)}
+        onPickBg={(v) => savePatch({ background: v || null }, "设置棋盘背景")}
+        addFromGroupOpen={addFromGroupOpen}
+        onCloseAddFromGroup={() => setAddFromGroupOpen(false)}
+        onImportFromGroup={(group, shuffleOn) => {
+          void importFromGroup(group, shuffleOn);
+        }}
+        addPileOpen={addPileOpen}
+        cardGroups={cardGroups}
+        onCloseAddPile={() => setAddPileOpen(false)}
+        onPickPileGroup={(id) => {
+          const g = cardGroups.find((x) => x.id === id);
+          if (g) void addPile(g);
+        }}
+        pileDrawTokenId={pileDrawTokenId}
+        tokens={normalized.tokens}
+        onClosePileDraw={() => setPileDrawTokenId(null)}
+        onDrawPile={(n) => {
+          if (pileDrawTokenId) void drawFromPile(pileDrawTokenId, n);
+        }}
+        onShufflePile={() => {
+          if (pileDrawTokenId) void shufflePile(pileDrawTokenId);
+        }}
+        onResetPile={() => {
+          if (pileDrawTokenId) void resetPile(pileDrawTokenId);
+        }}
+        cardPickerOpen={cardPickerOpen}
+        cards={cards}
+        cardTypes={cardTypes}
+        onCloseCardPicker={() => setCardPickerOpen(false)}
+        onPickCard={(id) => void addCardToBoard(id)}
       />
-      {label}
-    </label>
+
+      <BoardBottomBar
+        count={selectedTokenIds.length}
+        onClear={clearTokenSelection}
+        onDelete={() => {
+          const ids = selectedTokenIds;
+          if (ids.length === 0) return;
+          if (!confirm(`删除选中的 ${ids.length} 个 Token？可用 Ctrl+Z 撤销。`))
+            return;
+          void deleteSelectedTokens(ids).then(() => clearTokenSelection());
+        }}
+      />
+    </div>
   );
 }

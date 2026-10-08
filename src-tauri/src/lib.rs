@@ -43,6 +43,8 @@ pub fn run() {
             save_script,
             delete_script,
             list_script_card_ids,
+            save_text_file,
+            export_scenario_html,
             // cards
             save_card,
             list_cards,
