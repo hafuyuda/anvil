@@ -26,8 +26,7 @@ export function ScriptEditor({ cardId, cardName }: Props) {
         setContent(c ?? "");
         setLoaded(true);
       })
-      .catch((e) => {
-        console.error(e);
+      .catch(() => {
         setContent("");
         setLoaded(true);
       });
@@ -41,7 +40,7 @@ export function ScriptEditor({ cardId, cardName }: Props) {
         await ipc.saveScript(cardId, content);
         setDirty(false);
       } catch (e) {
-        console.error("保存剧本失败:", e);
+        // 静默；保存失败由 dirty 保留状态，用户下次编辑会重试
       } finally {
         setSaving(false);
       }

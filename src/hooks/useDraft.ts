@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useProjectStore } from "../stores/projectStore";
 import { registerFlusher } from "../lib/saveRegistry";
 import { useAppSettings } from "./useAppSettings";
+import { makeUndoId } from "../lib/id";
 
 interface HasId {
   id: string;
@@ -95,7 +96,7 @@ export function useDraft<T extends HasId>(
     const result = await doSave(after);
     if (result !== false) {
       pushUndo({
-        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        id: makeUndoId(),
         label,
         undo: async () => {
           baselineRef.current = before;

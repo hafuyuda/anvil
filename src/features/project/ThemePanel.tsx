@@ -4,33 +4,9 @@ import { applyTheme, resetTheme } from "../../lib/theme";
 import { BUILTIN_THEMES, type BuiltinTheme } from "../../themes";
 import { newId } from "../../lib/id";
 import { nowMs } from "../../lib/time";
-
-const PRESET_VARIABLES: { key: string; label: string }[] = [
-  { key: "--bg-app", label: "应用背景" },
-  { key: "--bg-panel", label: "面板背景" },
-  { key: "--bg-surface", label: "表面背景" },
-  { key: "--bg-raised", label: "悬停背景" },
-  { key: "--fg-primary", label: "主文字" },
-  { key: "--fg-secondary", label: "次要文字" },
-  { key: "--fg-muted", label: "弱化文字" },
-  { key: "--accent-gold", label: "金色强调" },
-  { key: "--accent-copper", label: "铜色强调" },
-  { key: "--accent-ember", label: "暗红强调" },
-  { key: "--border-subtle", label: "细边框" },
-  { key: "--border-default", label: "默认边框" },
-  { key: "--danger", label: "危险" },
-  { key: "--success", label: "成功" },
-];
-
-function readCurrentVariables(): Record<string, string> {
-  const cs = getComputedStyle(document.documentElement);
-  const out: Record<string, string> = {};
-  for (const { key } of PRESET_VARIABLES) {
-    const v = cs.getPropertyValue(key).trim();
-    if (v) out[key] = v;
-  }
-  return out;
-}
+import { readCurrentVariables } from "./theme/themeConstants";
+import { SectionLabel, ThemeItem } from "./theme/ThemeItem";
+import { ThemeVariableEditor } from "./theme/ThemeVariableEditor";
 
 interface Props {
   manifestThemeId: string | null;
@@ -238,163 +214,17 @@ export function ThemePanel({ manifestThemeId, onChangeThemeId }: Props) {
           </ul>
         </div>
 
-        {/* 右：编辑 / 预览 */}
+        {/* 右：编辑 */}
         {draft && (
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-              <input
-                className="input"
-                value={draft.name}
-                onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-                style={{ flex: 1, fontWeight: 600 }}
-              />
-              <button
-                className="btn btn-primary"
-                onClick={save}
-                disabled={!dirty}
-              >
-                {dirty ? "保存" : "已保存"}
-              </button>
-            </div>
-
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: 8,
-              }}
-            >
-              {PRESET_VARIABLES.map(({ key, label }) => {
-                const value = draft.variables[key] ?? "";
-                return (
-                  <label
-                    key={key}
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: 2,
-                    }}
-                  >
-                    <span style={{ fontSize: 11, color: "var(--fg-muted)" }}>
-                      {label}
-                      <span
-                        style={{
-                          marginLeft: 4,
-                          fontFamily: "var(--font-mono)",
-                          fontSize: 10,
-                        }}
-                      >
-                        {key}
-                      </span>
-                    </span>
-                    <div style={{ display: "flex", gap: 4 }}>
-                      <input
-                        className="input"
-                        value={value}
-                        onChange={(e) => updateVar(key, e.target.value)}
-                        style={{
-                          flex: 1,
-                          fontFamily: "var(--font-mono)",
-                          fontSize: 11,
-                        }}
-                      />
-                      <input
-                        type="color"
-                        value={
-                          value.startsWith("#") && value.length >= 7
-                            ? value.slice(0, 7)
-                            : "#000000"
-                        }
-                        onChange={(e) => updateVar(key, e.target.value)}
-                        style={{
-                          width: 32,
-                          padding: 0,
-                          border: "1px solid var(--border-default)",
-                          borderRadius: "var(--radius-md)",
-                          background: "var(--bg-surface)",
-                          cursor: "pointer",
-                        }}
-                      />
-                    </div>
-                  </label>
-                );
-              })}
-            </div>
-          </div>
+          <ThemeVariableEditor
+            draft={draft}
+            setDraft={setDraft}
+            dirty={dirty}
+            onSave={save}
+            onUpdateVar={updateVar}
+          />
         )}
       </div>
     </div>
-  );
-}
-
-function SectionLabel({
-  children,
-  style,
-}: {
-  children: React.ReactNode;
-  style?: React.CSSProperties;
-}) {
-  return (
-    <div
-      style={{
-        fontSize: 10,
-        color: "var(--fg-muted)",
-        textTransform: "uppercase",
-        letterSpacing: 1,
-        marginBottom: 4,
-        ...style,
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
-function ThemeItem({
-  name,
-  selected,
-  onSelect,
-  onDelete,
-}: {
-  name: string;
-  selected: boolean;
-  onSelect: () => void;
-  onDelete?: () => void;
-}) {
-  return (
-    <li
-      onClick={onSelect}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        padding: "4px 8px",
-        cursor: "pointer",
-        borderRadius: "var(--radius-sm)",
-        background: selected ? "var(--bg-raised)" : "transparent",
-        borderLeft: selected
-          ? "2px solid var(--accent-gold)"
-          : "2px solid transparent",
-        fontSize: 12,
-      }}
-    >
-      <span style={{ flex: 1 }}>{name}</span>
-      {onDelete && (
-        <button
-          className="btn btn-ghost"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete();
-          }}
-          style={{
-            color: "var(--danger)",
-            padding: "0 6px",
-            fontSize: 12,
-          }}
-          title="删除"
-        >
-          ×
-        </button>
-      )}
-    </li>
   );
 }

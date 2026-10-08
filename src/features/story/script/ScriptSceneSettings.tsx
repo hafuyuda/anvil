@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ipc } from "../../../core/ipc";
 import { PickerDialog } from "../../../components/PickerDialog";
 import type { ScriptFrontmatter } from "./types";

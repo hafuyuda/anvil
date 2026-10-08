@@ -1,5 +1,5 @@
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
-import { openProjectAt } from "./openProjectAt";
+import { openProjectAt } from "../core/openProjectAt";
 
 export function useOpenProject() {
   async function openProject() {

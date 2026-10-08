@@ -13,6 +13,7 @@ import { CommandPalette } from "../components/CommandPalette";
 import { ipc } from "../core/ipc";
 import { MergePackDialog } from "../features/project/MergePackDialog";
 import { tryAutoOpenLastProject } from "../core/openProjectAt";
+import { ToastHost } from "../components/ToastHost";
 
 export function AppShell() {
   const projectPath = useProjectStore((s) => s.projectPath);
@@ -105,6 +106,7 @@ export function AppShell() {
       )}
 
       {mergePackOpen && <MergePackDialog onClose={closeMergePack} />}
+      <ToastHost />
     </div>
   );
 }

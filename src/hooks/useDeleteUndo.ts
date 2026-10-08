@@ -1,4 +1,5 @@
 import { useProjectStore } from "../stores/projectStore";
+import { makeUndoId } from "../lib/id";
 
 interface UndoableDeleteOptions {
   /** 撤销/重做时显示在按钮上的标签 */
@@ -22,7 +23,7 @@ export function useDeleteUndo() {
 
     // 记录撤销点
     pushUndo({
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      id: makeUndoId(),
       label: opts.label,
       undo: opts.restore,
       redo: opts.do,

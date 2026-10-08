@@ -3,6 +3,8 @@ import { ipc, type Card, type CardGroup, type CardType } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
 import { useDraft } from "../../hooks/useDraft";
 import { nowMs } from "../../lib/time";
+import { CardGroupCardList } from "./CardGroupCardList";
+import { CardGroupPicker } from "./CardGroupPicker";
 
 interface Props {
   group: CardGroup;
@@ -70,13 +72,9 @@ export function CardGroupEditor({ group }: Props) {
   function confirmPick() {
     const existing = new Set(draft.card_ids);
     const toAdd = Array.from(picked).filter((id) => !existing.has(id));
-    if (toAdd.length === 0) {
-      setPicking(false);
-      setPicked(new Set());
-      setPickQuery("");
-      return;
+    if (toAdd.length > 0) {
+      update({ card_ids: [...draft.card_ids, ...toAdd] });
     }
-    update({ card_ids: [...draft.card_ids, ...toAdd] });
     setPicking(false);
     setPicked(new Set());
     setPickQuery("");
@@ -88,7 +86,6 @@ export function CardGroupEditor({ group }: Props) {
     setPickQuery("");
   }
 
-  // 候选卡：排除已在卡组内的
   const candidateCards = useMemo(() => {
     const inGroup = new Set(draft.card_ids);
     const q = pickQuery.trim().toLowerCase();
@@ -166,246 +163,28 @@ export function CardGroupEditor({ group }: Props) {
           )}
         </div>
 
-        {!picking && draft.card_ids.length === 0 && (
-          <div
-            style={{
-              padding: 24,
-              textAlign: "center",
-              color: "var(--fg-muted)",
-              fontSize: 12,
-              border: "1px dashed var(--border-default)",
-              borderRadius: "var(--radius-md)",
-            }}
-          >
-            还没有卡牌。点「+ 添加卡牌」开始。
-          </div>
+        {!picking && (
+          <CardGroupCardList
+            cardIds={draft.card_ids}
+            cardById={cardById}
+            typeById={typeById}
+            onMove={moveCard}
+            onRemove={removeCard}
+          />
         )}
 
-        {!picking && draft.card_ids.length > 0 && (
-          <ul
-            style={{
-              listStyle: "none",
-              padding: 0,
-              margin: 0,
-              border: "1px solid var(--border-subtle)",
-              borderRadius: "var(--radius-md)",
-              background: "var(--bg-surface)",
-              overflow: "hidden",
-            }}
-          >
-            {draft.card_ids.map((id, i) => {
-              const card = cardById.get(id);
-              const type = card ? typeById.get(card.type_id) : null;
-              return (
-                <li
-                  key={id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    padding: "6px 10px",
-                    borderBottom:
-                      i < draft.card_ids.length - 1
-                        ? "1px solid var(--border-subtle)"
-                        : "none",
-                    fontSize: 12,
-                  }}
-                >
-                  <span
-                    style={{
-                      color: "var(--fg-muted)",
-                      fontFamily: "var(--font-mono)",
-                      fontSize: 10,
-                      minWidth: 24,
-                      textAlign: "right",
-                    }}
-                  >
-                    {i + 1}
-                  </span>
-                  <span
-                    style={{
-                      flex: 1,
-                      minWidth: 0,
-                      color: card ? "var(--fg-primary)" : "var(--fg-muted)",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                    title={card?.name ?? id}
-                  >
-                    {card?.name ?? `（已删除 ${id.slice(0, 8)}）`}
-                  </span>
-                  {type && (
-                    <span
-                      style={{
-                        color: "var(--fg-muted)",
-                        fontSize: 11,
-                        flexShrink: 0,
-                      }}
-                    >
-                      {type.name}
-                    </span>
-                  )}
-                  <button
-                    className="btn btn-ghost"
-                    onClick={() => moveCard(id, -1)}
-                    disabled={i === 0}
-                    title="上移"
-                    style={{
-                      fontSize: 11,
-                      padding: "1px 6px",
-                      color: "var(--fg-muted)",
-                    }}
-                  >
-                    ↑
-                  </button>
-                  <button
-                    className="btn btn-ghost"
-                    onClick={() => moveCard(id, 1)}
-                    disabled={i === draft.card_ids.length - 1}
-                    title="下移"
-                    style={{
-                      fontSize: 11,
-                      padding: "1px 6px",
-                      color: "var(--fg-muted)",
-                    }}
-                  >
-                    ↓
-                  </button>
-                  <button
-                    className="btn btn-ghost"
-                    onClick={() => removeCard(id)}
-                    title="移除"
-                    style={{
-                      fontSize: 12,
-                      padding: "1px 6px",
-                      color: "var(--danger)",
-                    }}
-                  >
-                    ×
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-
-        {/* 添加卡片选择区 */}
         {picking && (
-          <div
-            style={{
-              border: "1px solid var(--border-default)",
-              borderRadius: "var(--radius-md)",
-              background: "var(--bg-surface)",
-              padding: 10,
-              display: "flex",
-              flexDirection: "column",
-              gap: 8,
-            }}
-          >
-            <input
-              className="input"
-              autoFocus
-              value={pickQuery}
-              onChange={(e) => setPickQuery(e.target.value)}
-              placeholder="搜索卡牌名或类型…"
-            />
-
-            <div
-              style={{
-                maxHeight: 260,
-                overflowY: "auto",
-                border: "1px solid var(--border-subtle)",
-                borderRadius: "var(--radius-sm)",
-                background: "var(--bg-panel)",
-              }}
-            >
-              {candidateCards.length === 0 && (
-                <div
-                  style={{
-                    padding: 16,
-                    textAlign: "center",
-                    color: "var(--fg-muted)",
-                    fontSize: 12,
-                  }}
-                >
-                  {cards.length === 0 ? "项目里还没有卡牌" : "没有可添加的卡牌"}
-                </div>
-              )}
-              {candidateCards.map((c) => {
-                const t = typeById.get(c.type_id);
-                const checked = picked.has(c.id);
-                return (
-                  <label
-                    key={c.id}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      padding: "5px 10px",
-                      cursor: "pointer",
-                      fontSize: 12,
-                      background: checked ? "var(--bg-raised)" : "transparent",
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() => togglePick(c.id)}
-                      style={{ accentColor: "var(--accent-gold)" }}
-                    />
-                    <span
-                      style={{
-                        flex: 1,
-                        minWidth: 0,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                        color: "var(--fg-primary)",
-                      }}
-                    >
-                      {c.name}
-                    </span>
-                    {t && (
-                      <span
-                        style={{
-                          color: "var(--fg-muted)",
-                          fontSize: 11,
-                          flexShrink: 0,
-                        }}
-                      >
-                        {t.name}
-                      </span>
-                    )}
-                  </label>
-                );
-              })}
-            </div>
-
-            <div
-              style={{
-                display: "flex",
-                gap: 8,
-                justifyContent: "flex-end",
-              }}
-            >
-              <button
-                className="btn"
-                onClick={cancelPick}
-                style={{ fontSize: 12 }}
-              >
-                取消
-              </button>
-              <button
-                className="btn btn-primary"
-                onClick={confirmPick}
-                disabled={picked.size === 0}
-                style={{ fontSize: 12 }}
-              >
-                添加 {picked.size > 0 ? `(${picked.size})` : ""}
-              </button>
-            </div>
-          </div>
+          <CardGroupPicker
+            pickQuery={pickQuery}
+            setPickQuery={setPickQuery}
+            candidateCards={candidateCards}
+            typeById={typeById}
+            picked={picked}
+            totalCards={cards.length}
+            onToggle={togglePick}
+            onCancel={cancelPick}
+            onConfirm={confirmPick}
+          />
         )}
       </div>
 

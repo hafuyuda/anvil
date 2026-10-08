@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ipc, type Board, type Card, type Token } from "../../../core/ipc";
-import { useOpenProject } from "../../../core/useOpenProject";
+import { useOpenProject } from "../../../hooks/useOpenProject";
 import { useProjectStore } from "../../../stores/projectStore";
 import { PickerDialog } from "../../../components/PickerDialog";
 import { useDeleteUndo } from "../../../hooks/useDeleteUndo";

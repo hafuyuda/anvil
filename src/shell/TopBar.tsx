@@ -1,10 +1,10 @@
 import { useCallback, useState } from "react";
 import { ipc } from "../core/ipc";
 import { useProjectStore } from "../stores/projectStore";
-import { useOpenProject } from "../core/useOpenProject";
-import { useCreateProject } from "../core/useCreateProject";
-import { useExportPack } from "../core/useExportPack";
-import { useImportPack } from "../core/useImportPack";
+import { useOpenProject } from "../hooks/useOpenProject";
+import { useCreateProject } from "../hooks/useCreateProject";
+import { useExportPack } from "../hooks/useExportPack";
+import { useImportPack } from "../hooks/useImportPack";
 import { ProjectSettingsDialog } from "../features/project/ProjectSettingsDialog";
 import { useUIStore } from "../stores/uiStore";
 import { resetTheme } from "../lib/theme";

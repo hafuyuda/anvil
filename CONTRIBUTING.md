@@ -1,5 +1,3 @@
-
-
 # 贡献指南
 
 感谢你对 Anvil 感兴趣。这份文档会帮你快速上手。
@@ -132,11 +130,12 @@ src-tauri/src/
 └── lib.rs
 
 src/
-├── core/               # IPC 类型 + 项目级动作
+├── core/               # IPC 类型 + 项目级纯函数
 │   ├── ipc/            # 前端 IPC 类型 + invoke 封装
-│   └── use*.ts         # 打开/创建/导入/导出等
+│   ├── openProjectAt.ts
+│   └── applyProjectTheme.ts
 ├── lib/                # 通用工具（id / time / theme / dice / ...）
-├── hooks/              # React hooks
+├── hooks/              # React hooks（useDraft / useKeyboard / useOpenProject / ...）
 ├── components/         # 跨 feature 通用组件
 ├── shell/              # 五段布局
 ├── themes/             # 内置主题
@@ -258,6 +257,44 @@ Modal、对话框等组件的 `onClose` prop 经常是父组件内联箭头函�
 
 ---
 
+## 技术债 · 顺手改
+
+以下项目不单独占一批。改动相关文件时如遇到，请顺手处理。不做专项重构。
+
+### alert → toast
+
+全项目约 85 处 `alert()`。目标是统一为 `toast.error()` / `toast.success()` / `toast.info()`。
+
+基础设施（`lib/toast.ts` + `components/ToastHost.tsx`）尚未落地。等落地后，改到某文件时顺手替换：
+
+- `alert("xxx失败: " + e)` → `toast.error("xxx失败: " + e)`
+- `alert("已导出到：" + path)` → `toast.success(...)`
+- `alert("请先创建...")` → `toast.info(...)`
+
+### confirm → confirmDialog
+
+全项目 26 处 `confirm()`。目标是换成异步 `confirmDialog()`，与项目视觉一致。
+
+**不专门做一批**。每处都要改控制流：
+
+```ts
+// 旧
+if (!confirm("确认删除？")) return;
+await doDelete();
+
+// 新
+if (!(await confirmDialog("确认删除？"))) return;
+await doDelete();
+```
+
+调用它的函数如果原本是同步的，要改成 `async`，级联向上。
+
+改到某文件时顺手替换，不要跨文件牵连。
+
+`lib/confirm.ts` 尚未实现。
+
+---
+
 ## 常用命令
 
 ```bash
@@ -360,6 +397,3 @@ React 里连续两次 `setState` 会基于同一个旧 state 计算。合并更�
 ## 协议
 
 贡献的代码默认采用项目的 [MIT 协议](LICENSE)。
-
-
-

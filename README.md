@@ -107,13 +107,12 @@ anvil/
 │   │   └── ipc/            # Tauri 命令（按领域拆分）
 │   └── lib.rs
 ├── src/
-│   ├── core/               # IPC 类型与封装 + 项目级动作
-│   │   ├── ipc/            # 前端 IPC 类型与 invoke 封装
-│   │   ├── openProjectAt.ts
-│   │   ├── applyProjectTheme.ts
-│   │   └── use*.ts         # 打开/创建/导入/导出
+├── core/               # IPC 类型 + 项目级纯函数
+│   ├── ipc/            # 前端 IPC 类型 + invoke 封装
+│   ├── openProjectAt.ts
+│   └── applyProjectTheme.ts
 │   ├── lib/                # 通用工具（id / time / theme / imageCache / dice / commands / appSettings）
-│   ├── hooks/              # 通用 hook（useDraft / useKeyboard / useAppSettings / ...）
+├── hooks/              # React hooks（useDraft / useKeyboard /useOpenProject / ...）
 │   ├── components/         # 通用组件（CardFrame / Toolbar / Modal / ...）
 │   ├── shell/              # 五段布局（TopBar / LeftNav / Workspace / Inspector / StatusBar）
 │   ├── themes/             # 内置主题定义

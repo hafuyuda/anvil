@@ -21,6 +21,7 @@ import { PartyPanel } from "./PartyPanel";
 import { EventEditorDialog } from "./EventEditorDialog";
 import { usePileActions } from "../board/usePileActions";
 import { PileDrawDialog } from "../board/PileDrawDialog";
+import { makeUndoId } from "../../lib/id";
 
 interface Props {
   session: Session;
@@ -144,38 +145,29 @@ export function SessionEditor({ session }: Props) {
 
   const { drawFromPile, shufflePile, resetPile } = usePileActions({
     tokens: session.tokens,
-    applyTokens: async (next, label) => {
-      const before = sessionRef.current.tokens;
-      const after: Session = {
-        ...sessionRef.current,
-        tokens: next,
-        updated_at: nowMs(),
-      };
-      await persist(after);
+    applyTokens: (next, label) => savePatch({ tokens: next }, label),
+  });
+
+  async function savePatch(patch: Partial<Session>, undoLabel?: string) {
+    const before = sessionRef.current;
+    const after: Session = {
+      ...before,
+      ...patch,
+      updated_at: nowMs(),
+    };
+    await persist(after);
+    if (undoLabel) {
       pushUndo({
-        id: `${Date.now()}-${newId().slice(2, 8)}`,
-        label,
+        id: makeUndoId(),
+        label: undoLabel,
         undo: async () => {
-          await persist({
-            ...sessionRef.current,
-            tokens: before,
-            updated_at: nowMs(),
-          });
+          await persist(before);
         },
         redo: async () => {
           await persist(after);
         },
       });
-    },
-  });
-
-  async function savePatch(patch: Partial<Session>) {
-    const next: Session = {
-      ...sessionRef.current,
-      ...patch,
-      updated_at: nowMs(),
-    };
-    await persist(next);
+    }
   }
 
   async function logEvent(

@@ -1,6 +1,6 @@
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
-import { ipc } from "./ipc";
-import { openProjectAt } from "./openProjectAt";
+import { ipc } from "../core/ipc";
+import { openProjectAt } from "../core/openProjectAt";
 
 export function useCreateProject() {
   async function createProject() {

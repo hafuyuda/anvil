@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useProjectStore } from "../stores/projectStore";
-import { useOpenProject } from "../core/useOpenProject";
-import { useCreateProject } from "../core/useCreateProject";
+import { useOpenProject } from "../hooks/useOpenProject";
+import { useCreateProject } from "../hooks/useCreateProject";
 import { openProjectAt } from "../core/openProjectAt";
 import { getRecentProjects, removeRecentProject } from "../lib/recentProjects";
 import { CardWall } from "../features/cards/card-wall/CardWall";

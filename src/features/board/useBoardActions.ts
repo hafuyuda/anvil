@@ -5,6 +5,7 @@ import { nowMs } from "../../lib/time";
 import { newId } from "../../lib/id";
 import { gridPosition, shuffle } from "./tokenPlacement";
 import { usePileActions } from "./usePileActions";
+import { makeUndoId } from "../../lib/id";
 
 interface UndoEntry {
   id: string;
@@ -45,7 +46,7 @@ export function useBoardActions({ board, upsertBoard, pushUndo }: Args) {
       upsertBoard(after);
       if (undoLabel) {
         pushUndo({
-          id: `${Date.now()}-${newId().slice(2, 8)}`,
+          id: makeUndoId(),
           label: undoLabel,
           undo: async () => {
             await persist(before);
