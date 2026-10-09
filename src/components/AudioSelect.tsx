@@ -5,7 +5,7 @@ import { Modal } from "./Modal";
 import { invalidateAudio } from "../lib/audioCache";
 import { useRef } from "react";
 import { loadAudio } from "../lib/audioCache";
-import { toast } from "../lib/toast";
+import { runWithError } from "../lib/runWithError";
 
 interface Props {
   value: string | null | undefined;
@@ -183,14 +183,13 @@ function AudioPickerDialog({
       title: "导入音频",
     });
     if (!src || Array.isArray(src)) return;
-    try {
+    const r = await runWithError(async () => {
       const relative = await ipc.importAudio(src);
       invalidateAudio(relative);
       await refresh();
       onPick(relative);
-    } catch (e) {
-      toast.error("导入失败: " + e);
-    }
+    }, "导入失败");
+    if (!r.ok) return;
   }
 
   return (

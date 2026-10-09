@@ -9,7 +9,7 @@ import { ipc } from "../../core/ipc";
 import { useUIStore } from "../../stores/uiStore";
 import { getRecentProjects } from "../../lib/recentProjects";
 import { openProjectAt } from "../../core/openProjectAt";
-import { toast } from "../../lib/toast";
+import { runWithError } from "../../lib/runWithError";
 
 export function useGlobalCommands() {
   const openProjectHook = useOpenProject();
@@ -209,11 +209,7 @@ export function useGlobalCommands() {
         category: "项目",
         keywords: ["recent", "最近", name],
         run: async () => {
-          try {
-            await openProjectAt(path);
-          } catch (e) {
-            toast.error("打开失败: " + e);
-          }
+          await runWithError(() => openProjectAt(path), "打开失败");
         },
       });
     }

@@ -4,6 +4,7 @@ import { ipc, type AudioMeta } from "../../core/ipc";
 import { loadAudio, invalidateAudio } from "../../lib/audioCache";
 import { toast } from "../../lib/toast";
 import { confirmDialog } from "../../lib/confirm";
+import { runWithError } from "../../lib/runWithError";
 
 function basename(p: string): string {
   const parts = p.split("/");
@@ -42,13 +43,11 @@ export function AudioTab() {
       title: "导入音频",
     });
     if (!src || Array.isArray(src)) return;
-    try {
+    await runWithError(async () => {
       const relative = await ipc.importAudio(src);
       invalidateAudio(relative);
       await refresh();
-    } catch (e) {
-      toast.error("导入失败: " + e);
-    }
+    }, "导入失败");
   }
 
   async function handleDelete(item: AudioMeta) {
@@ -64,13 +63,11 @@ export function AudioTab() {
       }))
     )
       return;
-    try {
+    await runWithError(async () => {
       await ipc.deleteAudio(item.path);
       invalidateAudio(item.path);
       await refresh();
-    } catch (e) {
-      toast.error("删除失败: " + e);
-    }
+    }, "删除失败");
   }
 
   const totalSize = items.reduce((s, i) => s + i.size, 0);

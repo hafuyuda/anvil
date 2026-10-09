@@ -6,8 +6,8 @@ import { ScenarioEditor } from "./ScenarioEditor";
 import { newId } from "../../../lib/id";
 import { nowMs } from "../../../lib/time";
 import { useDeleteUndo } from "../../../hooks/useDeleteUndo";
-import { toast } from "../../../lib/toast";
 import { confirmDialog } from "../../../lib/confirm";
+import { runWithError } from "../../../lib/runWithError";
 
 export function ScenarioList() {
   const scenarios = useProjectStore((s) => s.scenarios) ?? [];
@@ -45,22 +45,22 @@ export function ScenarioList() {
       }))
     )
       return;
-    try {
-      await deleteWithUndo({
-        label: "删除剧情",
-        do: async () => {
-          await ipc.deleteScenario(s.id);
-          removeScenario(s.id);
-          if (selectedId === s.id) setSelectedId(null);
-        },
-        restore: async () => {
-          await ipc.upsertScenario(s);
-          upsertScenario(s);
-        },
-      });
-    } catch (e) {
-      toast.error("删除失败: " + e);
-    }
+    await runWithError(
+      () =>
+        deleteWithUndo({
+          label: "删除剧情",
+          do: async () => {
+            await ipc.deleteScenario(s.id);
+            removeScenario(s.id);
+            if (selectedId === s.id) setSelectedId(null);
+          },
+          restore: async () => {
+            await ipc.upsertScenario(s);
+            upsertScenario(s);
+          },
+        }),
+      "删除失败",
+    );
   }
 
   return (

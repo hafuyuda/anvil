@@ -7,7 +7,7 @@ import { DEFAULT_GRID } from "./constants";
 import { newId } from "../../lib/id";
 import { nowMs } from "../../lib/time";
 import { useDeleteUndo } from "../../hooks/useDeleteUndo";
-import { toast } from "../../lib/toast";
+import { runWithError } from "../../lib/runWithError";
 import { confirmDialog } from "../../lib/confirm";
 
 export function BoardList() {
@@ -45,23 +45,22 @@ export function BoardList() {
       }))
     )
       return;
-      
-    try {
-      await deleteWithUndo({
-        label: "删除棋盘",
-        do: async () => {
-          await ipc.deleteBoard(s.id);
-          removeBoard(s.id);
-          if (selectedId === s.id) setSelectedId(null);
-        },
-        restore: async () => {
-          await ipc.upsertBoard(s);
-          upsertBoard(s);
-        },
-      });
-    } catch (e) {
-      toast.error("删除失败: " + e);
-    }
+    await runWithError(
+      () =>
+        deleteWithUndo({
+          label: "删除棋盘",
+          do: async () => {
+            await ipc.deleteBoard(s.id);
+            removeBoard(s.id);
+            if (selectedId === s.id) setSelectedId(null);
+          },
+          restore: async () => {
+            await ipc.upsertBoard(s);
+            upsertBoard(s);
+          },
+        }),
+      "删除失败",
+    );
   }
 
   return (

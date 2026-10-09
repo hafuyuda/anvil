@@ -6,7 +6,7 @@ import {
   isChatKind,
 } from "../../core/ipc";
 import { Modal } from "../../components/Modal";
-import { toast } from "../../lib/toast";
+import { runWithError } from "../../lib/runWithError";
 
 interface Props {
   event: GameEvent;
@@ -68,10 +68,11 @@ export function EventEditorDialog({ event, onSave, onClose }: Props) {
       } else {
         payload = event.payload;
       }
-      await onSave(payload, note.trim() ? note.trim() : undefined);
-      onClose();
-    } catch (e) {
-      toast.error("保存失败: " + e);
+      const r = await runWithError(
+        () => onSave(payload, note.trim() ? note.trim() : undefined),
+        "保存失败",
+      );
+      if (r.ok) onClose();
     } finally {
       setSaving(false);
     }

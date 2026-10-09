@@ -5,7 +5,7 @@ import { FieldInput } from "../../../components/FieldInput";
 import { newId } from "../../../lib/id";
 import { nowMs } from "../../../lib/time";
 import { toast } from "../../../lib/toast";
-
+import { runWithError } from "../../../lib/runWithError";
 
 interface Props {
   fromCardId: string;
@@ -51,7 +51,7 @@ export function RelationForm({ fromCardId, fromTypeId, onDone }: Props) {
       toast.info("请选择目标卡牌");
       return;
     }
-    
+
     const relation: Relation = {
       id: newId(),
       from: fromCardId,
@@ -62,13 +62,11 @@ export function RelationForm({ fromCardId, fromTypeId, onDone }: Props) {
       created_at: nowMs(),
     };
 
-    try {
+    await runWithError(async () => {
       await ipc.upsertRelation(relation);
       upsertRelation(relation);
       onDone();
-    } catch (e) {
-      toast.error("保存失败: " + e);
-    }
+    }, "保存失败");
   }
 
   return (

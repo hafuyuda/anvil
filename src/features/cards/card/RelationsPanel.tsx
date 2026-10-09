@@ -9,8 +9,8 @@ import { useProjectStore } from "../../../stores/projectStore";
 import { RelationForm } from "../relation/RelationForm";
 import { useDeleteUndo } from "../../../hooks/useDeleteUndo";
 import { HoverPreview } from "../../../components/HoverPreview";
-import { toast } from "../../../lib/toast";
 import { confirmDialog } from "../../../lib/confirm";
+import { runWithError } from "../../../lib/runWithError";
 
 interface Props {
   card: Card;
@@ -68,21 +68,21 @@ export function RelationsPanel({ card }: Props) {
       }))
     )
       return;
-    try {
-      await deleteWithUndo({
-        label: "删除关系",
-        do: async () => {
-          await ipc.deleteRelation(r.from, r.id);
-          removeRelation(r.id);
-        },
-        restore: async () => {
-          await ipc.upsertRelation(r);
-          upsertRelation(r);
-        },
-      });
-    } catch (e) {
-      toast.error("删除失败: " + e);
-    }
+    await runWithError(
+      () =>
+        deleteWithUndo({
+          label: "删除关系",
+          do: async () => {
+            await ipc.deleteRelation(r.from, r.id);
+            removeRelation(r.id);
+          },
+          restore: async () => {
+            await ipc.upsertRelation(r);
+            upsertRelation(r);
+          },
+        }),
+      "删除失败",
+    );
   }
 
   function renderRow(r: Relation, mode: "out" | "in") {

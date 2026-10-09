@@ -8,6 +8,7 @@ import { StatsTab } from "./StatsTab";
 import { ImageField } from "../../components/ImageField";
 import { AudioTab } from "./AudioTab";
 import { toast } from "../../lib/toast";
+import { runWithError } from "../../lib/runWithError";
 
 interface Props {
   onClose: () => void;
@@ -54,14 +55,12 @@ export function ProjectSettingsDialog({ onClose }: Props) {
       return;
     }
     const next: Manifest = { ...draft, updated_at: nowMs() };
-    try {
+    await runWithError(async () => {
       await ipc.saveManifest(next);
       setManifest(next);
       setDraft(next);
       setDirty(false);
-    } catch (e) {
-      toast.error("保存失败: " + e);
-    }
+    }, "保存失败");
   }
 
   async function saveThemeId(id: string | null) {
@@ -72,12 +71,10 @@ export function ProjectSettingsDialog({ onClose }: Props) {
       updated_at: nowMs(),
     };
     setDraft(next);
-    try {
+    await runWithError(async () => {
       await ipc.saveManifest(next);
       setManifest(next);
-    } catch (e) {
-      toast.error("保存失败: " + e);
-    }
+    }, "保存失败");
   }
 
   return (

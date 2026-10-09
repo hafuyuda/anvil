@@ -7,6 +7,7 @@ import { useSyncExternalStore } from "react";
 import { subscribeImageCache, getCachedImage } from "../../lib/imageCache";
 import { toast } from "../../lib/toast";
 import { confirmDialog } from "../../lib/confirm";
+import { runWithError } from "../../lib/runWithError";
 
 function basename(p: string): string {
   const parts = p.split("/");
@@ -52,13 +53,11 @@ export function AssetsTab() {
       title: "导入图片",
     });
     if (!src || Array.isArray(src)) return;
-    try {
+    await runWithError(async () => {
       const relative = await ipc.importImage(src);
       invalidateImage(relative);
       await refresh();
-    } catch (e) {
-      toast.error("导入失败: " + e);
-    }
+    }, "导入失败");
   }
 
   async function handleDelete(relative: string) {
@@ -82,25 +81,23 @@ export function AssetsTab() {
       )
         return;
     }
-    try {
+    await runWithError(async () => {
       await ipc.deleteImage(relative);
       invalidateImage(relative);
       await refresh();
-    } catch (e) {
-      toast.error("删除失败: " + e);
-    }
+    }, "删除失败");
   }
 
   async function handleCheckUnused() {
     setChecking(true);
     try {
-      const list = await ipc.listUnusedImages();
-      setUnused(list);
-      if (list.length === 0) {
-        toast.info("没有未引用的图片。");
-      }
-    } catch (e) {
-      toast.error("扫描失败: " + e);
+      await runWithError(async () => {
+        const list = await ipc.listUnusedImages();
+        setUnused(list);
+        if (list.length === 0) {
+          toast.info("没有未引用的图片。");
+        }
+      }, "扫描失败");
     } finally {
       setChecking(false);
     }
@@ -116,15 +113,13 @@ export function AssetsTab() {
       }))
     )
       return;
-    try {
+    await runWithError(async () => {
       const deleted = await ipc.cleanupUnusedImages();
       for (const p of deleted) invalidateImage(p);
       setUnused(null);
       await refresh();
       toast.success(`已删除 ${deleted.length} 张图片。`);
-    } catch (e) {
-      toast.error("清理失败: " + e);
-    }
+    }, "清理失败");
   }
 
   return (

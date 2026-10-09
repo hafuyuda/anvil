@@ -6,8 +6,8 @@ import { SessionEditor } from "./SessionEditor";
 import { newId } from "../../lib/id";
 import { nowMs } from "../../lib/time";
 import { useDeleteUndo } from "../../hooks/useDeleteUndo";
-import { toast } from "../../lib/toast";
 import { confirmDialog } from "../../lib/confirm";
+import { runWithError } from "../../lib/runWithError";
 
 type SortKey = "updated_desc" | "updated_asc" | "created_desc" | "name";
 
@@ -59,22 +59,22 @@ export function SessionList() {
       }))
     )
       return;
-    try {
-      await deleteWithUndo({
-        label: "删除会话",
-        do: async () => {
-          await ipc.deleteSession(s.id);
-          removeSession(s.id);
-          if (selectedId === s.id) setSelectedId(null);
-        },
-        restore: async () => {
-          await ipc.upsertSession(s);
-          upsertSession(s);
-        },
-      });
-    } catch (e) {
-      toast.error("删除失败: " + e);
-    }
+    await runWithError(
+      () =>
+        deleteWithUndo({
+          label: "删除会话",
+          do: async () => {
+            await ipc.deleteSession(s.id);
+            removeSession(s.id);
+            if (selectedId === s.id) setSelectedId(null);
+          },
+          restore: async () => {
+            await ipc.upsertSession(s);
+            upsertSession(s);
+          },
+        }),
+      "删除失败",
+    );
   }
 
   return (

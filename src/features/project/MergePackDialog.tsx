@@ -12,6 +12,7 @@ import { MergePackInfoCard } from "./MergePackInfoCard";
 import { TypeMapRow, KindMapRow } from "./MergePackMappingRows";
 import { MergePackIncludeList } from "./MergePackIncludeList";
 import { toast } from "../../lib/toast";
+import { runWithError } from "../../lib/runWithError";
 
 interface Props {
   onClose: () => void;
@@ -104,7 +105,13 @@ export function MergePackDialog({ onClose }: Props) {
 
     setMerging(true);
     try {
-      const result = await ipc.mergePack(src, options);
+      const merged = await runWithError(
+        () => ipc.mergePack(src, options),
+        "合并失败",
+      );
+      if (!merged.ok) return;
+      const result = merged.value;
+
       const lines = [
         `导入类型 ${result.imported_types}`,
         `导入卡牌 ${result.imported_cards}`,
@@ -122,7 +129,7 @@ export function MergePackDialog({ onClose }: Props) {
       if (result.skipped_types.length > 0) {
         lines.push(`跳过类型：${result.skipped_types.join("、")}`);
       }
-      toast.success("合并完成\n\n" + lines.join("\n"));
+      toast.success("合并完成\n" + lines.join("\n"));
 
       if (projectPath) {
         try {
@@ -142,8 +149,6 @@ export function MergePackDialog({ onClose }: Props) {
         }
       }
       onClose();
-    } catch (e) {
-      toast.error("合并失败: " + e);
     } finally {
       setMerging(false);
     }

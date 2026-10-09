@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ipc, type ProjectStats } from "../../core/ipc";
 import { toast } from "../../lib/toast";
 import { confirmDialog } from "../../lib/confirm";
+import { runWithError } from "../../lib/runWithError";
 
 export function StatsTab() {
   const [stats, setStats] = useState<ProjectStats | null>(null);
@@ -11,10 +12,10 @@ export function StatsTab() {
   async function refresh() {
     setLoading(true);
     try {
-      const s = await ipc.projectStats();
-      setStats(s);
-    } catch (e) {
-      toast.error("读取统计失败: " + e);
+      await runWithError(async () => {
+        const s = await ipc.projectStats();
+        setStats(s);
+      }, "读取统计失败");
     } finally {
       setLoading(false);
     }
@@ -34,10 +35,10 @@ export function StatsTab() {
       return;
     setRebuilding(true);
     try {
-      await ipc.rebuildIndex();
-      toast.success("索引已重建。");
-    } catch (e) {
-      toast.error("重建失败: " + e);
+      const r = await runWithError(() => ipc.rebuildIndex(), "重建失败");
+      if (r.ok) {
+        toast.success("索引已重建。");
+      }
     } finally {
       setRebuilding(false);
     }

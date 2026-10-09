@@ -24,6 +24,7 @@ import { PileDrawDialog } from "../board/PileDrawDialog";
 import { makeUndoId } from "../../lib/id";
 import { toast } from "../../lib/toast";
 import { confirmDialog } from "../../lib/confirm";
+import { runWithError } from "../../lib/runWithError";
 
 interface Props {
   session: Session;
@@ -138,11 +139,7 @@ export function SessionEditor({ session }: Props) {
 
   async function persist(next: Session) {
     upsertSession(next);
-    try {
-      await ipc.upsertSession(next);
-    } catch (e) {
-      toast.error("保存失败: " + e);
-    }
+    await runWithError(() => ipc.upsertSession(next), "保存失败");
   }
 
   const { drawFromPile, shufflePile, resetPile } = usePileActions({
@@ -178,13 +175,11 @@ export function SessionEditor({ session }: Props) {
     payload: unknown,
     note?: string,
   ): Promise<void> {
-    try {
+    await runWithError(async () => {
       await ipc.appendEvent(session.id, kind, payload, note);
       const updated = await ipc.listEvents(session.id);
       setEvents(updated);
-    } catch (e) {
-      toast.error("记录事件失败: " + e);
-    }
+    }, "记录事件失败");
   }
 
   async function handleSelectBoard(boardId: string) {
@@ -246,13 +241,11 @@ export function SessionEditor({ session }: Props) {
       }))
     )
       return;
-    try {
+    await runWithError(async () => {
       await ipc.deleteEvent(session.id, event.seq);
       const updated = await ipc.listEvents(session.id);
       setEvents(updated);
-    } catch (e) {
-      toast.error("删除失败: " + e);
-    }
+    }, "删除失败");
   }
 
   return (

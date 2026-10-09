@@ -7,8 +7,8 @@ import { nowMs } from "../../../lib/time";
 import { useDeleteUndo } from "../../../hooks/useDeleteUndo";
 import { CropEditor } from "../card-type/CropEditor";
 import { ImageExtendRow } from "../card-type/ImageExtendRow";
-import { toast } from "../../../lib/toast";
 import { confirmDialog } from "../../../lib/confirm";
+import { runWithError } from "../../../lib/runWithError";
 
 interface Props {
   card: Card;
@@ -44,21 +44,21 @@ export function CardEditor({ card, cardType }: Props) {
       }))
     )
       return;
-    try {
-      await deleteWithUndo({
-        label: "删除卡牌",
-        do: async () => {
-          await ipc.deleteCard(card.id);
-          useProjectStore.getState().removeCard(card.id);
-        },
-        restore: async () => {
-          await ipc.saveCard(card);
-          useProjectStore.getState().addCard(card);
-        },
-      });
-    } catch (e) {
-      toast.error("删除失败: " + e);
-    }
+    await runWithError(
+      () =>
+        deleteWithUndo({
+          label: "删除卡牌",
+          do: async () => {
+            await ipc.deleteCard(card.id);
+            useProjectStore.getState().removeCard(card.id);
+          },
+          restore: async () => {
+            await ipc.saveCard(card);
+            useProjectStore.getState().addCard(card);
+          },
+        }),
+      "删除失败",
+    );
   }
 
   function setValue(key: string, value: unknown) {

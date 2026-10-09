@@ -9,6 +9,7 @@ import { SectionLabel, ThemeItem } from "./theme/ThemeItem";
 import { ThemeVariableEditor } from "./theme/ThemeVariableEditor";
 import { toast } from "../../lib/toast";
 import { confirmDialog } from "../../lib/confirm";
+import { runWithError } from "../../lib/runWithError";
 
 interface Props {
   manifestThemeId: string | null;
@@ -78,15 +79,13 @@ export function ThemePanel({ manifestThemeId, onChangeThemeId }: Props) {
       toast.info("主题名不能为空");
       return;
     }
-    try {
+    await runWithError(async () => {
       await ipc.upsertTheme(draft);
       const list = await ipc.listThemes();
       setThemes(list);
       setSelection({ type: "project", theme: draft });
       setDirty(false);
-    } catch (e) {
-      toast.error("保存失败: " + e);
-    }
+    }, "保存失败");
   }
 
   async function remove(id: string) {
@@ -98,7 +97,7 @@ export function ThemePanel({ manifestThemeId, onChangeThemeId }: Props) {
       }))
     )
       return;
-    try {
+    await runWithError(async () => {
       await ipc.deleteTheme(id);
       const list = await ipc.listThemes();
       setThemes(list);
@@ -110,11 +109,9 @@ export function ThemePanel({ manifestThemeId, onChangeThemeId }: Props) {
       if (manifestThemeId === id) {
         onChangeThemeId(null);
       }
-    } catch (e) {
-      toast.error("删除失败: " + e);
-    }
+    }, "删除失败");
   }
-
+  
   function applyAsProjectTheme(id: string | null) {
     onChangeThemeId(id);
     if (id) {

@@ -1,8 +1,8 @@
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { ipc } from "../core/ipc";
 import { openProjectAt } from "../core/openProjectAt";
-import { toast } from "../lib/toast";
 import { confirmDialog } from "../lib/confirm";
+import { runWithError } from "../lib/runWithError";
 
 export function useCreateProject() {
   async function createProject() {
@@ -32,18 +32,13 @@ export function useCreateProject() {
 
     const name = dest.split(/[\\/]/).pop() ?? "新项目";
 
-    try {
-      await ipc.createProject(dest, name);
-    } catch (e) {
-      toast.error("创建失败: " + e);
-      return;
-    }
+    const r = await runWithError(
+      () => ipc.createProject(dest, name),
+      "创建失败",
+    );
+    if (!r.ok) return;
 
-    try {
-      await openProjectAt(dest);
-    } catch (e) {
-      toast.error("打开新项目失败: " + e);
-    }
+    await runWithError(() => openProjectAt(dest), "打开新项目失败");
   }
 
   return createProject;

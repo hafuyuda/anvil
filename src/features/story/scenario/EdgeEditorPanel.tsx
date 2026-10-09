@@ -9,8 +9,8 @@ import { useProjectStore } from "../../../stores/projectStore";
 import { useDraft } from "../../../hooks/useDraft";
 import { validateEffects } from "../effects";
 import { useDeleteUndo } from "../../../hooks/useDeleteUndo";
-import { toast } from "../../../lib/toast";
 import { confirmDialog } from "../../../lib/confirm";
+import { runWithError } from "../../../lib/runWithError";
 
 interface Props {
   relation: Relation;
@@ -94,22 +94,22 @@ export function EdgeEditorPanel({ relation, scenario }: Props) {
     )
       return;
     const snapshot = { ...draft };
-    try {
-      await deleteWithUndo({
-        label: "删除剧情关系",
-        do: async () => {
-          await ipc.deleteRelation(snapshot.from, snapshot.id);
-          removeRelation(snapshot.id);
-          selectEdge(null);
-        },
-        restore: async () => {
-          await ipc.upsertRelation(snapshot);
-          upsertRelation(snapshot);
-        },
-      });
-    } catch (e) {
-      toast.error("删除失败: " + e);
-    }
+    await runWithError(
+      () =>
+        deleteWithUndo({
+          label: "删除剧情关系",
+          do: async () => {
+            await ipc.deleteRelation(snapshot.from, snapshot.id);
+            removeRelation(snapshot.id);
+            selectEdge(null);
+          },
+          restore: async () => {
+            await ipc.upsertRelation(snapshot);
+            upsertRelation(snapshot);
+          },
+        }),
+      "删除失败",
+    );
   }
 
   return (

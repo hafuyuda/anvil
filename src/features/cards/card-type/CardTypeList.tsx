@@ -9,6 +9,8 @@ import { newId } from "../../../lib/id";
 import { nowMs } from "../../../lib/time";
 import { toast } from "../../../lib/toast";
 import { confirmDialog } from "../../../lib/confirm";
+import { runWithError } from "../../../lib/runWithError";
+
 export function CardTypeList() {
   const [subTab, setSubTab] = useState<"card" | "relation">("card");
   const selectCardType = useProjectStore((s) => s.selectCardType);
@@ -136,13 +138,12 @@ function CardTypeSection() {
       created_at: now,
       updated_at: now,
     };
-    try {
+
+    await runWithError(async () => {
       await ipc.upsertCardType(copy);
       upsertCardType(copy);
       selectCardType(copy.id);
-    } catch (e) {
-      toast.error("复制失败: " + e);
-    }
+    }, "复制失败");
   }
 
   async function handleDelete(t: CardType) {
@@ -159,22 +160,22 @@ function CardTypeSection() {
       }))
     )
       return;
-    try {
-      await deleteWithUndo({
-        label: "删除卡牌类型",
-        do: async () => {
-          await ipc.deleteCardType(t.id);
-          removeCardType(t.id);
-          if (selectedId === t.id) selectCardType(null);
-        },
-        restore: async () => {
-          await ipc.upsertCardType(t);
-          upsertCardType(t);
-        },
-      });
-    } catch (e) {
-      toast.error("删除失败: " + e);
-    }
+    await runWithError(
+      () =>
+        deleteWithUndo({
+          label: "删除卡牌类型",
+          do: async () => {
+            await ipc.deleteCardType(t.id);
+            removeCardType(t.id);
+            if (selectedId === t.id) selectCardType(null);
+          },
+          restore: async () => {
+            await ipc.upsertCardType(t);
+            upsertCardType(t);
+          },
+        }),
+      "删除失败",
+    );
   }
 
   return (

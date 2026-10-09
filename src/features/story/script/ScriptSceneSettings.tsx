@@ -4,7 +4,7 @@ import { PickerDialog } from "../../../components/PickerDialog";
 import type { ScriptFrontmatter } from "./types";
 import { AudioSelect } from "../../../components/AudioSelect";
 import { toast } from "../../../lib/toast";
-
+import { runWithError } from "../../../lib/runWithError";
 
 interface Props {
   frontmatter: ScriptFrontmatter;
@@ -18,7 +18,7 @@ export function ScriptSceneSettings({ frontmatter, onChange }: Props) {
   >([]);
 
   async function openBgPicker() {
-    try {
+    await runWithError(async () => {
       const images = await ipc.listImages();
       if (images.length === 0) {
         toast.info("项目里还没有图片。去「项目设置 → 图片资源」导入一张。");
@@ -31,9 +31,7 @@ export function ScriptSceneSettings({ frontmatter, onChange }: Props) {
         })),
       );
       setPickerOpen(true);
-    } catch (e) {
-      toast.error("读取图片列表失败: " + e);
-    }
+    }, "读取图片列表失败");
   }
 
   return (

@@ -14,6 +14,7 @@ import { useCardWallFilters } from "./useCardWallFilters";
 import { AddToGroupDialog } from "../../card-groups/AddToGroupDialog";
 import { toast } from "../../../lib/toast";
 import { confirmDialog } from "../../../lib/confirm";
+import { runWithError } from "../../../lib/runWithError";
 
 export function CardWall() {
   const {
@@ -69,13 +70,11 @@ export function CardWall() {
       created_at: now,
       updated_at: now,
     };
-    try {
+    await runWithError(async () => {
       await ipc.saveCard(card);
       addCard(card);
       selectCard(card.id);
-    } catch (e) {
-      toast.error("保存失败: " + e);
-    }
+    }, "保存失败");
   }
 
   // ── 载入示例世界 ──
@@ -89,7 +88,7 @@ export function CardWall() {
       }))
     )
       return;
-    try {
+    await runWithError(async () => {
       await ipc.seedExampleWorld();
       const [
         newCards,
@@ -121,9 +120,7 @@ export function CardWall() {
         newSessions,
         newCardGroups,
       );
-    } catch (e) {
-      toast.error("载入示例失败: " + e);
-    }
+    }, "载入示例失败");
   }
 
   // ── 添加到棋盘 ──
@@ -159,12 +156,10 @@ export function CardWall() {
       tokens,
       updated_at: nowMs(),
     };
-    try {
+    await runWithError(async () => {
       await ipc.upsertBoard(next);
       upsertBoard(next);
-    } catch (e) {
-      toast.error("添加失败: " + e);
-    }
+    }, "添加失败");
   }
 
   function handleAddToBoard(cardList: Card[]) {
@@ -198,39 +193,39 @@ export function CardWall() {
     )
       return;
 
-    try {
-      await deleteWithUndo({
-        label: `删除 ${cardsToDelete.length} 张卡牌`,
-        do: async () => {
-          for (const c of cardsToDelete) {
-            await ipc.deleteCard(c.id);
-          }
-          const state = useProjectStore.getState();
-          const remaining = (state.cards ?? []).filter(
-            (c) => !ids.includes(c.id),
-          );
-          useProjectStore.setState({
-            cards: remaining,
-            relations: (state.relations ?? []).filter(
-              (r) => !ids.includes(r.from) && !ids.includes(r.to),
-            ),
-            selectedCardIds: [],
-            selectedCardId: null,
-          });
-        },
-        restore: async () => {
-          for (const c of cardsToDelete) {
-            await ipc.saveCard(c);
-          }
-          const state = useProjectStore.getState();
-          useProjectStore.setState({
-            cards: [...(state.cards ?? []), ...cardsToDelete],
-          });
-        },
-      });
-    } catch (e) {
-      toast.error("删除失败: " + e);
-    }
+    await runWithError(
+      () =>
+        deleteWithUndo({
+          label: `删除 ${cardsToDelete.length} 张卡牌`,
+          do: async () => {
+            for (const c of cardsToDelete) {
+              await ipc.deleteCard(c.id);
+            }
+            const state = useProjectStore.getState();
+            const remaining = (state.cards ?? []).filter(
+              (c) => !ids.includes(c.id),
+            );
+            useProjectStore.setState({
+              cards: remaining,
+              relations: (state.relations ?? []).filter(
+                (r) => !ids.includes(r.from) && !ids.includes(r.to),
+              ),
+              selectedCardIds: [],
+              selectedCardId: null,
+            });
+          },
+          restore: async () => {
+            for (const c of cardsToDelete) {
+              await ipc.saveCard(c);
+            }
+            const state = useProjectStore.getState();
+            useProjectStore.setState({
+              cards: [...(state.cards ?? []), ...cardsToDelete],
+            });
+          },
+        }),
+      "删除失败",
+    );
   }
 
   // ── 卡片点击（含多选修饰）──

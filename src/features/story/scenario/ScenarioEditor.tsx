@@ -10,6 +10,7 @@ import { ScriptPanel } from "../script/ScriptPanel";
 import { ScenarioSettingsTab } from "./ScenarioSettingsTab";
 import { exportScenarioMarkdown } from "./exportMarkdown";
 import { toast } from "../../../lib/toast";
+import { runWithError } from "../../../lib/runWithError";
 
 interface Props {
   scenario: Scenario;
@@ -50,22 +51,22 @@ export function ScenarioEditor({ scenario }: Props) {
     if (exportingMd) return;
     setExportingMd(true);
     try {
-      const md = await exportScenarioMarkdown({
-        scenario: draft,
-        cards,
-        cardTypes,
-        relations,
-      });
-      const output = await saveDialog({
-        defaultPath: `${draft.name || "未命名"}-剧本.md`,
-        filters: [{ name: "Markdown", extensions: ["md"] }],
-        title: "导出 Markdown 剧本",
-      });
-      if (!output) return;
-      await ipc.saveTextFile(output, md);
-      toast.success(`已导出到：${output}`);
-    } catch (e) {
-      toast.error("导出失败: " + e);
+      await runWithError(async () => {
+        const md = await exportScenarioMarkdown({
+          scenario: draft,
+          cards,
+          cardTypes,
+          relations,
+        });
+        const output = await saveDialog({
+          defaultPath: `${draft.name || "未命名"}-剧本.md`,
+          filters: [{ name: "Markdown", extensions: ["md"] }],
+          title: "导出 Markdown 剧本",
+        });
+        if (!output) return;
+        await ipc.saveTextFile(output, md);
+        toast.success(`已导出到：${output}`);
+      }, "导出失败");
     } finally {
       setExportingMd(false);
     }
@@ -75,16 +76,16 @@ export function ScenarioEditor({ scenario }: Props) {
     if (exportingHtml) return;
     setExportingHtml(true);
     try {
-      const output = await saveDialog({
-        defaultPath: `${draft.name || "未命名"}.html`,
-        filters: [{ name: "HTML", extensions: ["html"] }],
-        title: "导出 HTML 阅读器",
-      });
-      if (!output) return;
-      await ipc.exportScenarioHtml(scenario.id, output);
-      toast.success(`已导出到：${output}`);
-    } catch (e) {
-      toast.error("导出失败: " + e);
+      await runWithError(async () => {
+        const output = await saveDialog({
+          defaultPath: `${draft.name || "未命名"}.html`,
+          filters: [{ name: "HTML", extensions: ["html"] }],
+          title: "导出 HTML 阅读器",
+        });
+        if (!output) return;
+        await ipc.exportScenarioHtml(scenario.id, output);
+        toast.success(`已导出到：${output}`);
+      }, "导出失败");
     } finally {
       setExportingHtml(false);
     }

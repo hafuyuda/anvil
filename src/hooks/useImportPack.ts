@@ -2,6 +2,7 @@ import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { ipc } from "../core/ipc";
 import { openProjectAt } from "../core/openProjectAt";
 import { toast } from "../lib/toast";
+import { runWithError } from "../lib/runWithError";
 
 export function useImportPack() {
   async function importPack() {
@@ -19,19 +20,15 @@ export function useImportPack() {
     });
     if (!dest || Array.isArray(dest)) return;
 
-    try {
-      await ipc.importPack(src, dest);
-    } catch (e) {
-      toast.error("导入失败: " + e);
-      return;
-    }
+    const r = await runWithError(() => ipc.importPack(src, dest), "导入失败");
+    if (!r.ok) return;
 
-    try {
-      await openProjectAt(dest);
-        toast.success("导入成功");
-    } catch (e) {
-      toast.error("打开导入的项目失败: " + e);
-    }
+    const openResult = await runWithError(
+      () => openProjectAt(dest),
+      "打开导入的项目失败",
+    );
+    if (!openResult.ok) return;
+    toast.success("导入成功");
   }
 
   return importPack;

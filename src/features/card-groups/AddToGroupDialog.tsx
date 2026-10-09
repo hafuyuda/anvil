@@ -5,6 +5,7 @@ import { Modal } from "../../components/Modal";
 import { newId } from "../../lib/id";
 import { nowMs } from "../../lib/time";
 import { toast } from "../../lib/toast";
+import { runWithError } from "../../lib/runWithError";
 
 interface Props {
   cardIds: string[];
@@ -36,11 +37,11 @@ export function AddToGroupDialog({ cardIds, onClose, onDone }: Props) {
         card_ids: [...group.card_ids, ...toAdd],
         updated_at: nowMs(),
       };
-      await ipc.upsertCardGroup(next);
-      upsertCardGroup(next);
-      onDone(group.name, toAdd.length);
-    } catch (e) {
-      toast.error("加入卡组失败: " + e);
+      await runWithError(async () => {
+        await ipc.upsertCardGroup(next);
+        upsertCardGroup(next);
+        onDone(group.name, toAdd.length);
+      }, "加入卡组失败");
     } finally {
       setBusy(false);
     }
@@ -64,11 +65,11 @@ export function AddToGroupDialog({ cardIds, onClose, onDone }: Props) {
         created_at: now,
         updated_at: now,
       };
-      await ipc.upsertCardGroup(g);
-      upsertCardGroup(g);
-      onDone(name, cardIds.length);
-    } catch (e) {
-      toast.error("新建卡组失败: " + e);
+      await runWithError(async () => {
+        await ipc.upsertCardGroup(g);
+        upsertCardGroup(g);
+        onDone(name, cardIds.length);
+      }, "新建卡组失败");
     } finally {
       setBusy(false);
     }

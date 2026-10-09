@@ -11,8 +11,8 @@ import { BoardBottomBar } from "./BoardBottomBar";
 import { useBoardActions } from "./useBoardActions";
 import { RelationFilterDialog } from "./RelationFilterDialog";
 import { usePileActions } from "./usePileActions";
-import { toast } from "../../lib/toast";
 import { confirmDialog } from "../../lib/confirm";
+import { runWithError } from "../../lib/runWithError";
 
 interface Props {
   board: Board;
@@ -79,7 +79,7 @@ export function BoardEditor({ board }: Props) {
   }
 
   async function openBgPicker() {
-    try {
+    await runWithError(async () => {
       const images = await ipc.listImages();
       if (images.length === 0) {
         const proceed = await confirmDialog({
@@ -111,9 +111,7 @@ export function BoardEditor({ board }: Props) {
         })),
       );
       setBgPickerOpen(true);
-    } catch (e) {
-      toast.error("读取图片列表失败: " + e);
-    }
+    }, "读取图片列表失败");
   }
 
   async function clearBackground() {

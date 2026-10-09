@@ -6,6 +6,7 @@ import { newId, makeUndoId } from "../../lib/id";
 import { gridPosition, shuffle } from "./tokenPlacement";
 import { usePileActions } from "./usePileActions";
 import { toast } from "../../lib/toast";
+import { runWithError } from "../../lib/runWithError";
 
 interface UndoEntry {
   id: string;
@@ -65,7 +66,7 @@ export function useBoardActions({ board, upsertBoard, pushUndo }: Args) {
       ...patch,
       updated_at: nowMs(),
     };
-    try {
+    await runWithError(async () => {
       await ipc.upsertBoard(after);
       upsertBoard(after);
       if (undoLabel) {
@@ -80,9 +81,7 @@ export function useBoardActions({ board, upsertBoard, pushUndo }: Args) {
           },
         });
       }
-    } catch (e) {
-      toast.error("保存失败: " + e);
-    }
+    }, "保存失败");
   }
 
   async function addCardToBoard(cardId: string) {
@@ -189,12 +188,10 @@ export function useBoardActions({ board, upsertBoard, pushUndo }: Args) {
       updated_at: nowMs(),
     };
 
-    try {
+    await runWithError(async () => {
       await ipc.upsertBoard(next);
       upsertBoard(next);
-    } catch (e) {
-      toast.error("导入失败: " + e);
-    }
+    }, "导入失败");
   }
 
   async function addPile(group: CardGroup) {
@@ -243,12 +240,10 @@ export function useBoardActions({ board, upsertBoard, pushUndo }: Args) {
       updated_at: nowMs(),
     };
 
-    try {
+    await runWithError(async () => {
       await ipc.upsertBoard(next);
       upsertBoard(next);
-    } catch (e) {
-      toast.error("创建卡盒失败: " + e);
-    }
+    }, "创建卡盒失败");
   }
 
   const { drawFromPile, shufflePile, resetPile } = usePileActions({

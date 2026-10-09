@@ -1,6 +1,6 @@
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { openProjectAt } from "../core/openProjectAt";
-import { toast } from "../lib/toast";
+import { runWithError } from "../lib/runWithError";
 
 export function useOpenProject() {
   async function openProject() {
@@ -11,11 +11,7 @@ export function useOpenProject() {
     });
     if (!selected || Array.isArray(selected)) return;
 
-    try {
-      await openProjectAt(selected);
-    } catch (e) {
-      toast.error("打开失败: " + e);
-    }
+    await runWithError(() => openProjectAt(selected), "打开失败");
   }
 
   return openProject;

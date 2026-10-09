@@ -12,7 +12,7 @@ import { setLastOpenPath } from "../lib/recentProjects";
 import { clearImageCache } from "../lib/imageCache";
 import { clearAudioCache } from "../lib/audioCache";
 import { AppSettingsDialog } from "../features/app/AppSettingsDialog";
-import { toast } from "../lib/toast";
+import { runWithError } from "../lib/runWithError";
 
 export function TopBar() {
   const projectPath = useProjectStore((s) => s.projectPath);
@@ -54,7 +54,7 @@ export function TopBar() {
 
   async function handleRefresh() {
     if (!projectPath) return;
-    try {
+    await runWithError(async () => {
       const snap = await ipc.reloadProject();
       refreshProject({
         cards: snap.cards,
@@ -68,9 +68,7 @@ export function TopBar() {
       });
       const m = await ipc.loadManifest();
       setManifest(m);
-    } catch (e) {
-      toast.error("刷新失败: " + e);
-    }
+    }, "刷新失败");
   }
 
   const statusText = !projectPath

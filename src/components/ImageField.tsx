@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { ipc } from "../core/ipc";
-import { toast } from "../lib/toast";
 import { confirmDialog } from "../lib/confirm";
+import { runWithError } from "../lib/runWithError";
 
 interface Props {
   value: string | null | undefined;
@@ -47,12 +47,11 @@ export function ImageField({ value, onChange }: Props) {
     });
     if (!src || Array.isArray(src)) return;
 
-    try {
+    const r = await runWithError(async () => {
       const relative = await ipc.importImage(src);
       onChange(relative);
-    } catch (e) {
-      toast.error("导入图片失败: " + e);
-    }
+    }, "导入图片失败");
+    if (!r.ok) return;
   }
 
   async function clearRef() {

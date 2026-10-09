@@ -6,8 +6,8 @@ import { RelationKindEditor } from "./RelationKindEditor";
 import { newId } from "../../../lib/id";
 import { nowMs } from "../../../lib/time";
 import { useDeleteUndo } from "../../../hooks/useDeleteUndo";
-import { toast } from "../../../lib/toast";
 import { confirmDialog } from "../../../lib/confirm";
+import { runWithError } from "../../../lib/runWithError";
 
 export function RelationKindList() {
   const relationKinds = useProjectStore((s) => s.relationKinds) ?? [];
@@ -45,22 +45,21 @@ export function RelationKindList() {
       }))
     )
       return;
-    try {
-      await deleteWithUndo({
-        label: "删除关系",
-        do: async () => {
-          await ipc.deleteRelationKind(s.id);
-          removeRelationKind(s.id);
-          if (selectedId === s.id) setSelectedId(null);
-        },
-        restore: async () => {
-          await ipc.upsertRelationKind(s);
-          upsertRelationKind(s);
-        },
-      });
-    } catch (e) {
-      toast.error("删除失败: " + e);
-    }
+    await runWithError(
+      () =>
+        deleteWithUndo({
+          label: "删除关系类型",
+          do: async () => {
+            await ipc.deleteRelationKind(s.id);
+            removeRelationKind(s.id);
+          },
+          restore: async () => {
+            await ipc.upsertRelationKind(s);
+            upsertRelationKind(s);
+          },
+        }),
+      "删除失败",
+    );
   }
 
   return (

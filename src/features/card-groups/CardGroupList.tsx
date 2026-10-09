@@ -6,8 +6,8 @@ import { CardGroupEditor } from "./CardGroupEditor";
 import { useDeleteUndo } from "../../hooks/useDeleteUndo";
 import { newId } from "../../lib/id";
 import { nowMs } from "../../lib/time";
-import { toast } from "../../lib/toast";
 import { confirmDialog } from "../../lib/confirm";
+import { runWithError } from "../../lib/runWithError";
 
 export function CardGroupList() {
   const cardGroups = useProjectStore((s) => s.cardGroups) ?? [];
@@ -41,22 +41,22 @@ export function CardGroupList() {
       }))
     )
       return;
-    try {
-      await deleteWithUndo({
-        label: "删除卡组",
-        do: async () => {
-          await ipc.deleteCardGroup(g.id);
-          removeCardGroup(g.id);
-          if (selectedId === g.id) setSelectedId(null);
-        },
-        restore: async () => {
-          await ipc.upsertCardGroup(g);
-          upsertCardGroup(g);
-        },
-      });
-    } catch (e) {
-      toast.error("删除失败: " + e);
-    }
+    await runWithError(
+      () =>
+        deleteWithUndo({
+          label: "删除卡组",
+          do: async () => {
+            await ipc.deleteCardGroup(g.id);
+            removeCardGroup(g.id);
+            if (selectedId === g.id) setSelectedId(null);
+          },
+          restore: async () => {
+            await ipc.upsertCardGroup(g);
+            upsertCardGroup(g);
+          },
+        }),
+      "删除失败",
+    );
   }
 
   return (
