@@ -30,7 +30,11 @@ Anvil 把世界观搭建、分支故事、棋盘推演、跑团记录统一在�
 
 ## 截图
 
-![alt text](docs/start-menu.png)
+![alt text](docs/screenshot-start-menu.png)
+![alt text](docs/screenshot-card-wall.png)
+![alt text](docs/screenshot-story.png)
+![alt text](docs/screenshot-board.png)
+![alt text](docs/screenshot-session.png)
 
 ```text
 docs/
