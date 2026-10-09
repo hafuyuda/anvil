@@ -1,6 +1,8 @@
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { ipc } from "../core/ipc";
 import { openProjectAt } from "../core/openProjectAt";
+import { toast } from "../lib/toast";
+import { confirmDialog } from "../lib/confirm";
 
 export function useCreateProject() {
   async function createProject() {
@@ -14,11 +16,14 @@ export function useCreateProject() {
     try {
       const empty = await ipc.isDirectoryEmpty(dest);
       if (!empty) {
-        const proceed = confirm(
-          `目录「${dest}」不是空的。\n\n` +
+        const proceed = await confirmDialog({
+          title: "目录不为空",
+          message:
+            `目录「${dest}」不是空的。\n\n` +
             `· 点击「确定」将尝试新建，但可能因已有文件而失败\n` +
             `· 点击「取消」返回`,
-        );
+          confirmLabel: "继续",
+        });
         if (!proceed) return;
       }
     } catch {
@@ -30,14 +35,14 @@ export function useCreateProject() {
     try {
       await ipc.createProject(dest, name);
     } catch (e) {
-      alert("创建失败: " + e);
+      toast.error("创建失败: " + e);
       return;
     }
 
     try {
       await openProjectAt(dest);
     } catch (e) {
-      alert("打开新项目失败: " + e);
+      toast.error("打开新项目失败: " + e);
     }
   }
 

@@ -10,6 +10,8 @@ import {
   setAppSettings,
   type AppSettings,
 } from "../../lib/appSettings";
+import { applyFontScale } from "../../lib/fontScale";
+import { confirmDialog } from "../../lib/confirm";
 
 interface Props {
   onClose: () => void;
@@ -27,8 +29,15 @@ export function AppSettingsDialog({ onClose }: Props) {
     setAppSettings(patch);
   }
 
-  function handleReset() {
-    if (!confirm("恢复全部应用设置为默认值？")) return;
+  async function handleReset() {
+    if (
+      !(await confirmDialog({
+        message: "恢复全部应用设置为默认值？",
+        confirmLabel: "恢复",
+        danger: true,
+      }))
+    )
+      return;
     resetAppSettings();
     setDraft(getAppSettings());
   }
@@ -127,6 +136,24 @@ export function AppSettingsDialog({ onClose }: Props) {
               const n = Number(e.target.value) || 10;
               update({ recentProjectsMax: Math.max(3, Math.min(50, n)) });
             }}
+          />
+        </Labeled>
+        <Labeled
+          label="界面缩放"
+          hint={`${Math.round(draft.fontScale * 100)}%`}
+        >
+          <input
+            type="range"
+            min={0.75}
+            max={1.5}
+            step={0.05}
+            value={draft.fontScale}
+            onChange={(e) => {
+              const v = Number(e.target.value);
+              update({ fontScale: v });
+              applyFontScale(v);
+            }}
+            style={{ width: "100%", accentColor: "var(--accent-gold)" }}
           />
         </Labeled>
       </div>

@@ -10,7 +10,9 @@ import { useUIStore } from "../stores/uiStore";
 import { resetTheme } from "../lib/theme";
 import { setLastOpenPath } from "../lib/recentProjects";
 import { clearImageCache } from "../lib/imageCache";
+import { clearAudioCache } from "../lib/audioCache";
 import { AppSettingsDialog } from "../features/app/AppSettingsDialog";
+import { toast } from "../lib/toast";
 
 export function TopBar() {
   const projectPath = useProjectStore((s) => s.projectPath);
@@ -43,6 +45,7 @@ export function TopBar() {
     closeProject();
     resetTheme();
     clearImageCache();
+    clearAudioCache();
     setLastOpenPath(null);
   }
 
@@ -66,7 +69,7 @@ export function TopBar() {
       const m = await ipc.loadManifest();
       setManifest(m);
     } catch (e) {
-      alert("刷新失败: " + e);
+      toast.error("刷新失败: " + e);
     }
   }
 

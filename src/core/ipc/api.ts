@@ -16,6 +16,7 @@ import type {
   MergeResult,
   PackInspection,
   ProjectStats,
+  AudioMeta,
 } from "./types";
 
 export const ipc = {
@@ -117,10 +118,10 @@ export const ipc = {
   upsertTheme: (theme: Theme) => invoke<void>("upsert_theme", { theme }),
   deleteTheme: (id: string) => invoke<void>("delete_theme", { id }),
 
-    // ── 剧情导出 ──
+  // ── 剧情导出 ──
   exportScenarioHtml: (scenarioId: string, outputPath: string) =>
     invoke<void>("export_scenario_html", { scenarioId, outputPath }),
-  
+
   // ── 图片资源 ──
   importImage: (src: string) => invoke<string>("import_image", { src }),
   deleteImage: (relative: string) => invoke<void>("delete_image", { relative }),
@@ -150,4 +151,12 @@ export const ipc = {
 
   saveTextFile: (path: string, content: string) =>
     invoke<void>("save_text_file", { path, content }),
+
+  // ── 音频资源 ──
+  importAudio: (src: string) => invoke<string>("import_audio", { src }),
+  deleteAudio: (relative: string) => invoke<void>("delete_audio", { relative }),
+  listAudios: () => invoke<string[]>("list_audios"),
+  audioAbsPath: (relative: string) =>
+    invoke<string>("audio_abs_path", { relative }),
+  listAudiosWithMeta: () => invoke<AudioMeta[]>("list_audios_with_meta"),
 };

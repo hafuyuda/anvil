@@ -4,6 +4,7 @@ import type { Card, Scenario } from "../../../core/ipc";
 import { usePlayState } from "./usePlayState";
 import { VariablePanel } from "./VariablePanel";
 import { VNStage } from "./VNStage";
+import { useSceneAudio } from "./useSceneAudio";
 
 interface Props {
   scenario: Scenario;
@@ -29,11 +30,16 @@ export function PlayView({ scenario }: Props) {
     advanceLine,
     atEnd,
     hasScript,
+    lineIndex,
     currentLine,
     currentBg,
+    currentBgm,
+    currentSfx,
     isEnding,
     endingName,
   } = usePlayState(scenario, cards, relations);
+  
+  useSceneAudio(currentId, lineIndex, currentBgm, currentSfx);
 
   const [showVariables, setShowVariables] = useState(false);
   const [showHistory, setShowHistory] = useState(false);

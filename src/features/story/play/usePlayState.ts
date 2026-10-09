@@ -44,6 +44,8 @@ export function usePlayState(
   const [lineIndex, setLineIndex] = useState(0);
   const [effectiveLines, setEffectiveLines] = useState<ScriptLine[]>([]);
   const [bgAt, setBgAt] = useState<(string | null)[]>([]);
+  const [bgmAt, setBgmAt] = useState<(string | null)[]>([]);
+  const [sfxAt, setSfxAt] = useState<string[][]>([]);
 
   const nodeIds = useMemo(
     () => new Set(scenario.node_ids),
@@ -109,32 +111,48 @@ export function usePlayState(
       .loadScript(currentId)
       .then((content) => {
         if (cancelled) return;
+
         if (!content || content.trim() === "") {
           setScript(null);
           setEffectiveLines([]);
           setBgAt([]);
+          setBgmAt([]);
+          setSfxAt([]);
         } else {
           const parsed = parseScript(content);
           setScript(parsed);
 
-          // 预处理：抽离指令行（bg / bgm / sfx），计算每一行的背景
+          // 预处理：抽离 bg / bgm / sfx 指令行，
+          // 计算每个「可渲染行」对应的背景、当前 bgm、以及之前触发的 sfx
           const eff: ScriptLine[] = [];
           const bgs: (string | null)[] = [];
+          const bgms: (string | null)[] = [];
+          const sfxs: string[][] = [];
+
           let currentBg: string | null = parsed.frontmatter.bg ?? null;
+          let currentBgm: string | null = parsed.frontmatter.bgm ?? null;
+          let pendingSfx: string[] = [];
 
           for (const line of parsed.lines) {
             if (line.type === "bg") {
               currentBg = line.image;
-            } else if (line.type === "bgm" || line.type === "sfx") {
-              // 暂不处理
+            } else if (line.type === "bgm") {
+              currentBgm = line.file;
+            } else if (line.type === "sfx") {
+              pendingSfx.push(line.file);
             } else {
               eff.push(line);
               bgs.push(currentBg);
+              bgms.push(currentBgm);
+              sfxs.push(pendingSfx);
+              pendingSfx = [];
             }
           }
 
           setEffectiveLines(eff);
           setBgAt(bgs);
+          setBgmAt(bgms);
+          setSfxAt(sfxs);
         }
         setLineIndex(0);
       })
@@ -143,6 +161,8 @@ export function usePlayState(
           setScript(null);
           setEffectiveLines([]);
           setBgAt([]);
+          setBgmAt([]);
+          setSfxAt([]);
           setLineIndex(0);
         }
       })
@@ -247,6 +267,12 @@ export function usePlayState(
   const currentBg: string | null =
     bgAt.length > 0 ? bgAt[Math.min(lineIndex, bgAt.length - 1)] : null;
 
+  const currentBgm: string | null =
+    bgmAt.length > 0 ? bgmAt[Math.min(lineIndex, bgmAt.length - 1)] : null;
+
+  const currentSfx: string[] =
+    sfxAt.length > 0 ? sfxAt[Math.min(lineIndex, sfxAt.length - 1)] : [];
+
   const isEnding = Boolean(script?.frontmatter.is_ending);
   const endingName = script?.frontmatter.ending_name ?? null;
 
@@ -272,6 +298,8 @@ export function usePlayState(
     hasScript,
     currentLine,
     currentBg,
+    currentBgm,
+    currentSfx,
     effectiveLineCount: effectiveLines.length,
     isEnding,
     endingName,

@@ -6,6 +6,8 @@ import { RelationKindEditor } from "./RelationKindEditor";
 import { newId } from "../../../lib/id";
 import { nowMs } from "../../../lib/time";
 import { useDeleteUndo } from "../../../hooks/useDeleteUndo";
+import { toast } from "../../../lib/toast";
+import { confirmDialog } from "../../../lib/confirm";
 
 export function RelationKindList() {
   const relationKinds = useProjectStore((s) => s.relationKinds) ?? [];
@@ -35,7 +37,14 @@ export function RelationKindList() {
   const deleteWithUndo = useDeleteUndo();
 
   async function handleDelete(s: RelationKind) {
-    if (!confirm(`删除「${s.name}」？可用 Ctrl+Z 撤销。`)) return;
+    if (
+      !(await confirmDialog({
+        message: `删除「${s.name}」？可用 Ctrl+Z 撤销。`,
+        confirmLabel: "删除",
+        danger: true,
+      }))
+    )
+      return;
     try {
       await deleteWithUndo({
         label: "删除关系",
@@ -50,7 +59,7 @@ export function RelationKindList() {
         },
       });
     } catch (e) {
-      alert("删除失败: " + e);
+      toast.error("删除失败: " + e);
     }
   }
 

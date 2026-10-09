@@ -7,6 +7,8 @@ import { DEFAULT_GRID } from "./constants";
 import { newId } from "../../lib/id";
 import { nowMs } from "../../lib/time";
 import { useDeleteUndo } from "../../hooks/useDeleteUndo";
+import { toast } from "../../lib/toast";
+import { confirmDialog } from "../../lib/confirm";
 
 export function BoardList() {
   const boards = useProjectStore((s) => s.boards) ?? [];
@@ -35,7 +37,15 @@ export function BoardList() {
   const deleteWithUndo = useDeleteUndo();
 
   async function handleDelete(s: Board) {
-    if (!confirm(`删除「${s.name}」？可用 Ctrl+Z 撤销。`)) return;
+    if (
+      !(await confirmDialog({
+        message: `删除「${s.name}」？可用 Ctrl+Z 撤销。`,
+        confirmLabel: "删除",
+        danger: true,
+      }))
+    )
+      return;
+      
     try {
       await deleteWithUndo({
         label: "删除棋盘",
@@ -50,7 +60,7 @@ export function BoardList() {
         },
       });
     } catch (e) {
-      alert("删除失败: " + e);
+      toast.error("删除失败: " + e);
     }
   }
 

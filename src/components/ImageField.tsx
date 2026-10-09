@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { ipc } from "../core/ipc";
+import { toast } from "../lib/toast";
+import { confirmDialog } from "../lib/confirm";
 
 interface Props {
   value: string | null | undefined;
@@ -49,13 +51,19 @@ export function ImageField({ value, onChange }: Props) {
       const relative = await ipc.importImage(src);
       onChange(relative);
     } catch (e) {
-      alert("导入图片失败: " + e);
+      toast.error("导入图片失败: " + e);
     }
   }
 
-  function clearRef() {
+  async function clearRef() {
     if (!value) return;
-    if (!confirm("移除该图片引用？文件保留在 assets/ 中。")) return;
+    if (
+      !(await confirmDialog({
+        message: "移除该图片引用？文件保留在 assets/ 中。",
+        confirmLabel: "移除",
+      }))
+    )
+      return;
     onChange(null);
   }
 

@@ -9,6 +9,7 @@ import { ipc } from "../../core/ipc";
 import { useUIStore } from "../../stores/uiStore";
 import { getRecentProjects } from "../../lib/recentProjects";
 import { openProjectAt } from "../../core/openProjectAt";
+import { toast } from "../../lib/toast";
 
 export function useGlobalCommands() {
   const openProjectHook = useOpenProject();
@@ -46,25 +47,12 @@ export function useGlobalCommands() {
 
     // ── 导航 ──
     reg({
-      id: "nav.world.cards",
-      label: "世界观 · 卡片",
+      id: "nav.world",
+      label: "世界观",
       category: "导航",
       keywords: ["world", "card", "卡片"],
       shortcut: "Ctrl+1",
-      run: () => {
-        store().setActiveModule("world");
-        store().setWorldSubView("cards");
-      },
-    });
-    reg({
-      id: "nav.world.graph",
-      label: "世界观 · 图谱",
-      category: "导航",
-      keywords: ["world", "graph", "图谱"],
-      run: () => {
-        store().setActiveModule("world");
-        store().setWorldSubView("graph");
-      },
+      run: () => store().setActiveModule("world"),
     });
     reg({
       id: "nav.story",
@@ -169,10 +157,12 @@ export function useGlobalCommands() {
           }
           const { resetTheme } = await import("../../lib/theme");
           const { clearImageCache } = await import("../../lib/imageCache");
+          const { clearAudioCache } = await import("../../lib/audioCache");
           const { setLastOpenPath } = await import("../../lib/recentProjects");
           useProjectStore.getState().closeProject();
           resetTheme();
           clearImageCache();
+          clearAudioCache();
           setLastOpenPath(null);
         },
       });
@@ -203,7 +193,6 @@ export function useGlobalCommands() {
           run: () => {
             const s = useProjectStore.getState();
             s.setActiveModule("world");
-            s.setWorldSubView("cards");
             s.selectCard(c.id);
           },
         });
@@ -223,7 +212,7 @@ export function useGlobalCommands() {
           try {
             await openProjectAt(path);
           } catch (e) {
-            alert("打开失败: " + e);
+            toast.error("打开失败: " + e);
           }
         },
       });

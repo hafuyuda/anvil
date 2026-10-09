@@ -1,8 +1,17 @@
 import type { ChatPayload } from "../../../core/ipc";
+import { HoverPreview } from "../../../components/HoverPreview";
 
-export function Avatar({ name, color }: { name: string; color: string }) {
+export function Avatar({
+  name,
+  color,
+  cardId,
+}: {
+  name: string;
+  color: string;
+  cardId?: string | null;
+}) {
   const letter = name.slice(0, 1);
-  return (
+  const inner = (
     <div
       style={{
         width: 32,
@@ -23,6 +32,15 @@ export function Avatar({ name, color }: { name: string; color: string }) {
       {letter}
     </div>
   );
+
+  if (cardId) {
+    return (
+      <HoverPreview cardId={cardId} position="anchor-right">
+        {inner}
+      </HoverPreview>
+    );
+  }
+  return inner;
 }
 
 export function NameLine({ name, color }: { name: string; color: string }) {
@@ -66,14 +84,16 @@ export function SayMessage({
   payload,
   authorName,
   color,
+  cardId,
 }: {
   payload: ChatPayload;
   authorName: string;
   color: string;
+  cardId?: string | null;
 }) {
   return (
     <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-      <Avatar name={authorName} color={color} />
+      <Avatar name={authorName} color={color} cardId={cardId} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <NameLine name={authorName} color={color} />
         <Bubble>{payload.content}</Bubble>
@@ -88,14 +108,16 @@ export function ActionMessage({
   payload,
   authorName,
   color,
+  cardId,
 }: {
   payload: ChatPayload;
   authorName: string;
   color: string;
+  cardId?: string | null;
 }) {
   return (
     <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-      <Avatar name={authorName} color={color} />
+      <Avatar name={authorName} color={color} cardId={cardId} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <NameLine name={authorName} color={color} />
         <div

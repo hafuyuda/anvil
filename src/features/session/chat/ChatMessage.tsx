@@ -100,10 +100,17 @@ function ChatBody({
     : null;
   const color = authorType?.color ?? "var(--fg-secondary)";
 
+  const cardId = payload.author_card_id ?? null;
+
   switch (event.kind) {
     case "chat.say":
       return (
-        <SayMessage payload={payload} authorName={authorName} color={color} />
+        <SayMessage
+          payload={payload}
+          authorName={authorName}
+          color={color}
+          cardId={cardId}
+        />
       );
     case "chat.action":
       return (
@@ -111,11 +118,17 @@ function ChatBody({
           payload={payload}
           authorName={authorName}
           color={color}
+          cardId={cardId}
         />
       );
     case "chat.roll":
       return (
-        <RollMessage payload={payload} authorName={authorName} color={color} />
+        <RollMessage
+          payload={payload}
+          authorName={authorName}
+          color={color}
+          cardId={cardId}
+        />
       );
     case "chat.narration":
       return <NarrationMessage payload={payload} />;

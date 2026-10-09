@@ -6,15 +6,17 @@ import { ThemePanel } from "./ThemePanel";
 import { AssetsTab } from "./AssetsTab";
 import { StatsTab } from "./StatsTab";
 import { ImageField } from "../../components/ImageField";
+import { AudioTab } from "./AudioTab";
+import { toast } from "../../lib/toast";
 
 interface Props {
   onClose: () => void;
 }
 
 export function ProjectSettingsDialog({ onClose }: Props) {
-  const [tab, setTab] = useState<"general" | "theme" | "assets" | "stats">(
-    "general",
-  );
+  const [tab, setTab] = useState<
+    "general" | "theme" | "assets" | "audio" | "stats"
+  >("general");
   const [manifest, setManifest] = useState<Manifest | null>(null);
   const [draft, setDraft] = useState<Manifest | null>(null);
   const [dirty, setDirty] = useState(false);
@@ -32,7 +34,7 @@ export function ProjectSettingsDialog({ onClose }: Props) {
         setDraft(m);
       })
       .catch((e) => {
-        alert("读取失败: " + e);
+        toast.error("读取失败: " + e);
         onCloseRef.current();
       })
       .finally(() => setLoading(false));
@@ -48,7 +50,7 @@ export function ProjectSettingsDialog({ onClose }: Props) {
   async function save() {
     if (!draft) return;
     if (!draft.name.trim()) {
-      alert("项目名不能为空");
+      toast.info("项目名不能为空");
       return;
     }
     const next: Manifest = { ...draft, updated_at: nowMs() };
@@ -58,7 +60,7 @@ export function ProjectSettingsDialog({ onClose }: Props) {
       setDraft(next);
       setDirty(false);
     } catch (e) {
-      alert("保存失败: " + e);
+      toast.error("保存失败: " + e);
     }
   }
 
@@ -74,14 +76,16 @@ export function ProjectSettingsDialog({ onClose }: Props) {
       await ipc.saveManifest(next);
       setManifest(next);
     } catch (e) {
-      alert("保存失败: " + e);
+      toast.error("保存失败: " + e);
     }
   }
 
   return (
     <Modal
       title="项目设置"
-      width={tab === "theme" ? 700 : tab === "assets" ? 720 : 480}
+      width={
+        tab === "theme" ? 700 : tab === "assets" || tab === "audio" ? 720 : 480
+      }
       onClose={onClose}
       footer={
         <>
@@ -140,7 +144,7 @@ export function ProjectSettingsDialog({ onClose }: Props) {
           className="btn btn-ghost"
           onClick={() => setTab("assets")}
           style={{
-            fontWeight: tab === "theme" ? 600 : 400,
+            fontWeight: tab === "assets" ? 600 : 400,
             borderBottom:
               tab === "theme"
                 ? "2px solid var(--accent-gold)"
@@ -152,9 +156,23 @@ export function ProjectSettingsDialog({ onClose }: Props) {
         </button>
         <button
           className="btn btn-ghost"
+          onClick={() => setTab("audio")}
+          style={{
+            fontWeight: tab === "audio" ? 600 : 400,
+            borderBottom:
+              tab === "audio"
+                ? "2px solid var(--accent-gold)"
+                : "2px solid transparent",
+            borderRadius: 0,
+          }}
+        >
+          音频资源
+        </button>
+        <button
+          className="btn btn-ghost"
           onClick={() => setTab("stats")}
           style={{
-            fontWeight: tab === "theme" ? 600 : 400,
+            fontWeight: tab === "stats" ? 600 : 400,
             borderBottom:
               tab === "theme"
                 ? "2px solid var(--accent-gold)"
@@ -251,7 +269,7 @@ export function ProjectSettingsDialog({ onClose }: Props) {
       )}
 
       {tab === "assets" && <AssetsTab />}
-
+      {tab === "audio" && <AudioTab />}
       {tab === "stats" && <StatsTab />}
     </Modal>
   );

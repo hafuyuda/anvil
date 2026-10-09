@@ -7,6 +7,8 @@ import { nowMs } from "../../../lib/time";
 import { useDeleteUndo } from "../../../hooks/useDeleteUndo";
 import { CropEditor } from "../card-type/CropEditor";
 import { ImageExtendRow } from "../card-type/ImageExtendRow";
+import { toast } from "../../../lib/toast";
+import { confirmDialog } from "../../../lib/confirm";
 
 interface Props {
   card: Card;
@@ -34,7 +36,14 @@ export function CardEditor({ card, cardType }: Props) {
   const deleteWithUndo = useDeleteUndo();
 
   async function handleDelete() {
-    if (!confirm(`确认删除卡牌「${card.name}」？可用 Ctrl+Z 撤销。`)) return;
+    if (
+      !(await confirmDialog({
+        message: `确认删除卡牌「${card.name}」？可用 Ctrl+Z 撤销。`,
+        confirmLabel: "删除",
+        danger: true,
+      }))
+    )
+      return;
     try {
       await deleteWithUndo({
         label: "删除卡牌",
@@ -48,7 +57,7 @@ export function CardEditor({ card, cardType }: Props) {
         },
       });
     } catch (e) {
-      alert("删除失败: " + e);
+      toast.error("删除失败: " + e);
     }
   }
 
@@ -80,8 +89,7 @@ export function CardEditor({ card, cardType }: Props) {
   })();
 
   const hasOverride =
-    draft.image_crop_override != null ||
-    draft.image_extend_override != null;
+    draft.image_crop_override != null || draft.image_extend_override != null;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>

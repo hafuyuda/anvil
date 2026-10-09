@@ -6,6 +6,8 @@ import { SessionEditor } from "./SessionEditor";
 import { newId } from "../../lib/id";
 import { nowMs } from "../../lib/time";
 import { useDeleteUndo } from "../../hooks/useDeleteUndo";
+import { toast } from "../../lib/toast";
+import { confirmDialog } from "../../lib/confirm";
 
 type SortKey = "updated_desc" | "updated_asc" | "created_desc" | "name";
 
@@ -49,7 +51,14 @@ export function SessionList() {
   const deleteWithUndo = useDeleteUndo();
 
   async function handleDelete(s: Session) {
-    if (!confirm(`删除「${s.name}」？可用 Ctrl+Z 撤销。`)) return;
+    if (
+      !(await confirmDialog({
+        message: `删除「${s.name}」？可用 Ctrl+Z 撤销。`,
+        confirmLabel: "删除",
+        danger: true,
+      }))
+    )
+      return;
     try {
       await deleteWithUndo({
         label: "删除会话",
@@ -64,7 +73,7 @@ export function SessionList() {
         },
       });
     } catch (e) {
-      alert("删除失败: " + e);
+      toast.error("删除失败: " + e);
     }
   }
 

@@ -1,6 +1,7 @@
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { ipc } from "../core/ipc";
 import { openProjectAt } from "../core/openProjectAt";
+import { toast } from "../lib/toast";
 
 export function useImportPack() {
   async function importPack() {
@@ -21,15 +22,15 @@ export function useImportPack() {
     try {
       await ipc.importPack(src, dest);
     } catch (e) {
-      alert("导入失败: " + e);
+      toast.error("导入失败: " + e);
       return;
     }
 
     try {
       await openProjectAt(dest);
-      alert("导入成功");
+        toast.success("导入成功");
     } catch (e) {
-      alert("打开导入的项目失败: " + e);
+      toast.error("打开导入的项目失败: " + e);
     }
   }
 

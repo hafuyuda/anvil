@@ -1,6 +1,7 @@
 import { save as saveDialog } from "@tauri-apps/plugin-dialog";
 import { ipc } from "../core/ipc";
 import { useProjectStore } from "../stores/projectStore";
+import { toast } from "../lib/toast";
 
 export function useExportPack() {
   const projectPath = useProjectStore((s) => s.projectPath);
@@ -27,9 +28,9 @@ export function useExportPack() {
 
     try {
       await ipc.exportPack(output);
-      alert(`已导出到：${output}`);
+      toast.error(`已导出到：${output}`);
     } catch (e) {
-      alert("导出失败: " + e);
+      toast.error("导出失败: " + e);
     }
   }
 

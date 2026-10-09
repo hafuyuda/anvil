@@ -8,7 +8,9 @@ import {
 import { useProjectStore } from "../../../stores/projectStore";
 import { RelationForm } from "../relation/RelationForm";
 import { useDeleteUndo } from "../../../hooks/useDeleteUndo";
-
+import { HoverPreview } from "../../../components/HoverPreview";
+import { toast } from "../../../lib/toast";
+import { confirmDialog } from "../../../lib/confirm";
 
 interface Props {
   card: Card;
@@ -58,7 +60,14 @@ export function RelationsPanel({ card }: Props) {
   const upsertRelation = useProjectStore((s) => s.upsertRelation);
 
   async function handleDelete(r: Relation) {
-    if (!confirm("确认删除这条关系？可用 Ctrl+Z 撤销。")) return;
+    if (
+      !(await confirmDialog({
+        message: "确认删除这条关系？可用 Ctrl+Z 撤销。",
+        confirmLabel: "删除",
+        danger: true,
+      }))
+    )
+      return;
     try {
       await deleteWithUndo({
         label: "删除关系",
@@ -72,7 +81,7 @@ export function RelationsPanel({ card }: Props) {
         },
       });
     } catch (e) {
-      alert("删除失败: " + e);
+      toast.error("删除失败: " + e);
     }
   }
 
@@ -82,22 +91,25 @@ export function RelationsPanel({ card }: Props) {
 
     // 显示对方卡
     let otherId: string;
-    let arrow: string;
 
     if (mode === "out") {
-      if (r.from === card.id) {
-        otherId = r.to;
-        arrow = undirected ? "⇄" : "→";
-      } else {
-        // 无向关系的反向（当前卡是 to）
-        otherId = r.from;
-        arrow = "⇄";
-      }
+      otherId = r.from === card.id ? r.to : r.from;
     } else {
-      // in：有向入边
       otherId = r.from;
-      arrow = "→";
     }
+
+    // 判断当前卡在这一侧是 from 还是 to
+    const isFrom = r.from === card.id;
+
+    // 关系名：
+    // - 无向 → 永远用 name
+    // - 有向，当前卡是 from → name
+    // - 有向，当前卡是 to   → inverse_name
+    const displayName = undirected
+      ? (k?.name ?? r.kind)
+      : isFrom
+        ? (k?.name ?? r.kind)
+        : (k?.inverse_name ?? k?.name ?? r.kind);
 
     return (
       <li
@@ -110,19 +122,22 @@ export function RelationsPanel({ card }: Props) {
           fontSize: 12,
         }}
       >
+        <HoverPreview cardId={otherId}>
+          <span
+            onClick={() => selectCard(otherId)}
+            style={{
+              color: "var(--accent-gold)",
+              cursor: "pointer",
+              textDecoration: "underline",
+            }}
+          >
+            {cardName(otherId)}
+          </span>
+        </HoverPreview>
+
+        <span style={{ color: "var(--fg-muted)" }}>的</span>
         <span style={{ color: k?.color ?? "var(--fg-secondary)" }}>
-          {k?.name ?? r.kind}
-        </span>
-        <span style={{ color: "var(--fg-muted)" }}>{arrow}</span>
-        <span
-          onClick={() => selectCard(otherId)}
-          style={{
-            color: "var(--accent-gold)",
-            cursor: "pointer",
-            textDecoration: "underline",
-          }}
-        >
-          {cardName(otherId)}
+          {displayName}
         </span>
         {r.label && (
           <span

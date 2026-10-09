@@ -7,7 +7,8 @@ import { RelationKindList } from "../relation/RelationKindList";
 import { useDeleteUndo } from "../../../hooks/useDeleteUndo";
 import { newId } from "../../../lib/id";
 import { nowMs } from "../../../lib/time";
-
+import { toast } from "../../../lib/toast";
+import { confirmDialog } from "../../../lib/confirm";
 export function CardTypeList() {
   const [subTab, setSubTab] = useState<"card" | "relation">("card");
   const selectCardType = useProjectStore((s) => s.selectCardType);
@@ -140,17 +141,24 @@ function CardTypeSection() {
       upsertCardType(copy);
       selectCardType(copy.id);
     } catch (e) {
-      alert("复制失败: " + e);
+      toast.error("复制失败: " + e);
     }
   }
 
   async function handleDelete(t: CardType) {
     const inUse = cards.filter((c) => c.type_id === t.id).length;
     if (inUse > 0) {
-      alert(`还有 ${inUse} 张卡在使用这个类型，先删除或改类型。`);
+      toast.info(`还有 ${inUse} 张卡在使用这个类型，先删除或改类型。`);
       return;
     }
-    if (!confirm(`删除类型「${t.name}」？可用 Ctrl+Z 撤销。`)) return;
+    if (
+      !(await confirmDialog({
+        message: `删除类型「${t.name}」？可用 Ctrl+Z 撤销。`,
+        confirmLabel: "删除",
+        danger: true,
+      }))
+    )
+      return;
     try {
       await deleteWithUndo({
         label: "删除卡牌类型",
@@ -165,7 +173,7 @@ function CardTypeSection() {
         },
       });
     } catch (e) {
-      alert("删除失败: " + e);
+      toast.error("删除失败: " + e);
     }
   }
 

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Command } from "../lib/commands";
+import { toast } from "../lib/toast";
 
 interface Props {
   commands: Command[];
@@ -53,7 +54,7 @@ export function CommandPalette({ commands, onClose }: Props) {
         if (cmd) {
           onClose();
           void Promise.resolve(cmd.run()).catch((err) =>
-            alert("命令执行失败: " + err)
+            toast.error("命令执行失败: " + err)
           );
         }
       }
@@ -143,7 +144,7 @@ export function CommandPalette({ commands, onClose }: Props) {
                 onClick={() => {
                   onClose();
                   void Promise.resolve(cmd.run()).catch((err) =>
-                    alert("命令执行失败: " + err)
+                    toast.error("命令执行失败: " + err)
                   );
                 }}
                 style={{

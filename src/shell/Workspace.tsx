@@ -6,17 +6,16 @@ import { openProjectAt } from "../core/openProjectAt";
 import { getRecentProjects, removeRecentProject } from "../lib/recentProjects";
 import { CardWall } from "../features/cards/card-wall/CardWall";
 import { CardTypeList } from "../features/cards/card-type/CardTypeList";
-import { GraphView } from "../features/world/GraphView";
 import { ScenarioList } from "../features/story/scenario/ScenarioList";
 import { BoardList } from "../features/board/BoardList";
 import { SessionList } from "../features/session/SessionList";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { CardGroupList } from "../features/card-groups/CardGroupList";
+import { toast } from "../lib/toast";
 
 export function Workspace() {
   const projectPath = useProjectStore((s) => s.projectPath);
   const activeModule = useProjectStore((s) => s.activeModule);
-  const worldSubView = useProjectStore((s) => s.worldSubView);
   const openProject = useOpenProject();
   const createProject = useCreateProject();
 
@@ -26,7 +25,7 @@ export function Workspace() {
     try {
       await openProjectAt(path);
     } catch (e) {
-      alert("打开失败: " + e);
+      toast.error("打开失败: " + e);
       // 清理失效记录
       removeRecentProject(path);
       setRecent(getRecentProjects());
@@ -213,14 +212,9 @@ export function Workspace() {
         overflow: "hidden",
       }}
     >
-      {activeModule === "world" && worldSubView === "cards" && (
+      {activeModule === "world" && (
         <ErrorBoundary>
           <CardWall />
-        </ErrorBoundary>
-      )}
-      {activeModule === "world" && worldSubView === "graph" && (
-        <ErrorBoundary>
-          <GraphView />
         </ErrorBoundary>
       )}
       {activeModule === "types" && (

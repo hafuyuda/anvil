@@ -5,6 +5,8 @@ import { useProjectStore } from "../../stores/projectStore";
 import { loadImage, invalidateImage } from "../../lib/imageCache";
 import { useSyncExternalStore } from "react";
 import { subscribeImageCache, getCachedImage } from "../../lib/imageCache";
+import { toast } from "../../lib/toast";
+import { confirmDialog } from "../../lib/confirm";
 
 function basename(p: string): string {
   const parts = p.split("/");
@@ -55,7 +57,7 @@ export function AssetsTab() {
       invalidateImage(relative);
       await refresh();
     } catch (e) {
-      alert("导入失败: " + e);
+      toast.error("导入失败: " + e);
     }
   }
 
@@ -63,18 +65,29 @@ export function AssetsTab() {
     const count = usageMap.get(relative) ?? 0;
     if (count > 0) {
       if (
-        !confirm(`这张图被 ${count} 张卡引用。删除后那些卡会显示空白。继续？`)
+        !(await confirmDialog({
+          message: `这张图被 ${count} 张卡引用。删除后那些卡会显示空白。继续？`,
+          confirmLabel: "删除",
+          danger: true,
+        }))
       )
         return;
     } else {
-      if (!confirm(`删除 ${basename(relative)}？`)) return;
+      if (
+        !(await confirmDialog({
+          message: `删除 ${basename(relative)}？`,
+          confirmLabel: "删除",
+          danger: true,
+        }))
+      )
+        return;
     }
     try {
       await ipc.deleteImage(relative);
       invalidateImage(relative);
       await refresh();
     } catch (e) {
-      alert("删除失败: " + e);
+      toast.error("删除失败: " + e);
     }
   }
 
@@ -84,10 +97,10 @@ export function AssetsTab() {
       const list = await ipc.listUnusedImages();
       setUnused(list);
       if (list.length === 0) {
-        alert("没有未引用的图片。");
+        toast.info("没有未引用的图片。");
       }
     } catch (e) {
-      alert("扫描失败: " + e);
+      toast.error("扫描失败: " + e);
     } finally {
       setChecking(false);
     }
@@ -95,15 +108,22 @@ export function AssetsTab() {
 
   async function handleCleanup() {
     if (!unused || unused.length === 0) return;
-    if (!confirm(`删除 ${unused.length} 张未引用的图片？`)) return;
+    if (
+      !(await confirmDialog({
+        message: `删除 ${unused.length} 张未引用的图片？`,
+        confirmLabel: "删除",
+        danger: true,
+      }))
+    )
+      return;
     try {
       const deleted = await ipc.cleanupUnusedImages();
       for (const p of deleted) invalidateImage(p);
       setUnused(null);
       await refresh();
-      alert(`已删除 ${deleted.length} 张图片。`);
+      toast.success(`已删除 ${deleted.length} 张图片。`);
     } catch (e) {
-      alert("清理失败: " + e);
+      toast.error("清理失败: " + e);
     }
   }
 

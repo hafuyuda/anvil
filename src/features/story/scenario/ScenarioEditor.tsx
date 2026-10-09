@@ -9,6 +9,7 @@ import { PlayView } from "../play/PlayView";
 import { ScriptPanel } from "../script/ScriptPanel";
 import { ScenarioSettingsTab } from "./ScenarioSettingsTab";
 import { exportScenarioMarkdown } from "./exportMarkdown";
+import { toast } from "../../../lib/toast";
 
 interface Props {
   scenario: Scenario;
@@ -62,9 +63,9 @@ export function ScenarioEditor({ scenario }: Props) {
       });
       if (!output) return;
       await ipc.saveTextFile(output, md);
-      alert(`已导出到：${output}`);
+      toast.success(`已导出到：${output}`);
     } catch (e) {
-      alert("导出失败: " + e);
+      toast.error("导出失败: " + e);
     } finally {
       setExportingMd(false);
     }
@@ -81,9 +82,9 @@ export function ScenarioEditor({ scenario }: Props) {
       });
       if (!output) return;
       await ipc.exportScenarioHtml(scenario.id, output);
-      alert(`已导出到：${output}`);
+      toast.success(`已导出到：${output}`);
     } catch (e) {
-      alert("导出失败: " + e);
+      toast.error("导出失败: " + e);
     } finally {
       setExportingHtml(false);
     }

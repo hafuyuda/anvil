@@ -4,7 +4,6 @@ import {
   Controls,
   MiniMap,
   ReactFlow,
-
   applyNodeChanges,
   type Connection,
   type Edge,
@@ -12,11 +11,17 @@ import {
   type NodeChange,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { ipc, type Card, type Relation, type Scenario } from "../../../core/ipc";
+import {
+  ipc,
+  type Card,
+  type Relation,
+  type Scenario,
+} from "../../../core/ipc";
 import { useProjectStore } from "../../../stores/projectStore";
-import { GraphNode } from "../../world/GraphNode";
+import { GraphNode } from "./GraphNode";
 import { newId } from "../../../lib/id";
 import { nowMs } from "../../../lib/time";
+import { toast } from "../../../lib/toast";
 
 interface Props {
   scenario: Scenario;
@@ -132,7 +137,7 @@ export function StoryGraphView({ scenario }: Props) {
         ? scenario.edge_kinds[0]
         : relationKinds[0]?.id;
     if (!kind) {
-      alert("请先在剧情设置里选一个允许的关系类型");
+      toast.info("请先在剧情设置里选一个允许的关系类型");
       return;
     }
     const now = nowMs();

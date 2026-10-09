@@ -1,5 +1,6 @@
 import type { StateCreator } from "zustand";
 import type { ProjectState } from "./types";
+import { toast } from "../../lib/toast";
 
 type Slice = Pick<
   ProjectState,
@@ -38,7 +39,7 @@ export const createUndoSlice: StateCreator<ProjectState, [], [], Slice> = (
       await entry.undo();
       set((st) => ({ redoStack: [...(st.redoStack ?? []), entry] }));
     } catch (e) {
-      alert("撤销失败: " + e);
+      toast.error("撤销失败: " + e);
       set((st) => ({ undoStack: [...(st.undoStack ?? []), entry] }));
     }
   },
@@ -53,7 +54,7 @@ export const createUndoSlice: StateCreator<ProjectState, [], [], Slice> = (
       await entry.redo();
       set((st) => ({ undoStack: [...(st.undoStack ?? []), entry] }));
     } catch (e) {
-      alert("重做失败: " + e);
+      toast.error("重做失败: " + e);
       set((st) => ({ redoStack: [...(st.redoStack ?? []), entry] }));
     }
   },

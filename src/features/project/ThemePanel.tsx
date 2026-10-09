@@ -7,6 +7,8 @@ import { nowMs } from "../../lib/time";
 import { readCurrentVariables } from "./theme/themeConstants";
 import { SectionLabel, ThemeItem } from "./theme/ThemeItem";
 import { ThemeVariableEditor } from "./theme/ThemeVariableEditor";
+import { toast } from "../../lib/toast";
+import { confirmDialog } from "../../lib/confirm";
 
 interface Props {
   manifestThemeId: string | null;
@@ -73,7 +75,7 @@ export function ThemePanel({ manifestThemeId, onChangeThemeId }: Props) {
   async function save() {
     if (!draft) return;
     if (!draft.name.trim()) {
-      alert("主题名不能为空");
+      toast.info("主题名不能为空");
       return;
     }
     try {
@@ -83,12 +85,19 @@ export function ThemePanel({ manifestThemeId, onChangeThemeId }: Props) {
       setSelection({ type: "project", theme: draft });
       setDirty(false);
     } catch (e) {
-      alert("保存失败: " + e);
+      toast.error("保存失败: " + e);
     }
   }
 
   async function remove(id: string) {
-    if (!confirm("删除这个主题？")) return;
+    if (
+      !(await confirmDialog({
+        message: "删除这个主题？",
+        confirmLabel: "删除",
+        danger: true,
+      }))
+    )
+      return;
     try {
       await ipc.deleteTheme(id);
       const list = await ipc.listThemes();
@@ -102,7 +111,7 @@ export function ThemePanel({ manifestThemeId, onChangeThemeId }: Props) {
         onChangeThemeId(null);
       }
     } catch (e) {
-      alert("删除失败: " + e);
+      toast.error("删除失败: " + e);
     }
   }
 

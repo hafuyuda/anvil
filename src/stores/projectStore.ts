@@ -14,7 +14,6 @@ export type {
   ProjectState,
   UndoEntry,
   ModuleKey,
-  WorldSubView,
   CardWallView,
 } from "./slices/types";
 

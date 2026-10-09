@@ -9,6 +9,10 @@ import { BoardCanvas } from "./BoardCanvas";
 import { BoardDialogs } from "./BoardDialogs";
 import { BoardBottomBar } from "./BoardBottomBar";
 import { useBoardActions } from "./useBoardActions";
+import { RelationFilterDialog } from "./RelationFilterDialog";
+import { usePileActions } from "./usePileActions";
+import { toast } from "../../lib/toast";
+import { confirmDialog } from "../../lib/confirm";
 
 interface Props {
   board: Board;
@@ -36,12 +40,14 @@ export function BoardEditor({ board }: Props) {
     addPlaceholder,
     importFromGroup,
     addPile,
-    drawFromPile,
-    shufflePile,
-    resetPile,
     deleteSelectedTokens,
   } = useBoardActions({ board: normalized, upsertBoard, pushUndo });
 
+  const { drawFromPile, shufflePile, resetPile } = usePileActions({
+    tokens: normalized.tokens ?? [],
+    applyTokens: (next, label) => savePatch({ tokens: next }, label),
+    bounds: { width: normalized.width, height: normalized.height },
+  });
   const [name, setName] = useState(normalized.name);
   const [zoom, setZoom] = useState(1);
   const [bgPickerOpen, setBgPickerOpen] = useState(false);
@@ -52,6 +58,8 @@ export function BoardEditor({ board }: Props) {
   const [addPileOpen, setAddPileOpen] = useState(false);
   const [cardPickerOpen, setCardPickerOpen] = useState(false);
   const [pileDrawTokenId, setPileDrawTokenId] = useState<string | null>(null);
+
+  const [relationFilterOpen, setRelationFilterOpen] = useState(false);
 
   useEffect(() => {
     setZoom(1);
@@ -74,7 +82,10 @@ export function BoardEditor({ board }: Props) {
     try {
       const images = await ipc.listImages();
       if (images.length === 0) {
-        const proceed = confirm("项目里还没有图片。要现在导入一张吗？");
+        const proceed = await confirmDialog({
+          message: "项目里还没有图片。要现在导入一张吗？",
+          confirmLabel: "导入",
+        });
         if (proceed) {
           const src = await openDialog({
             multiple: false,
@@ -101,7 +112,7 @@ export function BoardEditor({ board }: Props) {
       );
       setBgPickerOpen(true);
     } catch (e) {
-      alert("读取图片列表失败: " + e);
+      toast.error("读取图片列表失败: " + e);
     }
   }
 
@@ -110,6 +121,8 @@ export function BoardEditor({ board }: Props) {
   }
 
   const grid = normalized.grid;
+
+  const relationKinds = useProjectStore((s) => s.relationKinds) ?? [];
 
   return (
     <div
@@ -149,6 +162,15 @@ export function BoardEditor({ board }: Props) {
         onAddPlaceholder={() => void addPlaceholder()}
         zoom={zoom}
         onZoomChange={setZoom}
+        showRelations={normalized.show_relations ?? false}
+        onToggleRelations={(v) =>
+          savePatch({ show_relations: v }, "切换关系显示")
+        }
+        onOpenRelationFilter={() => setRelationFilterOpen(true)}
+        relationFilterCount={(normalized.visible_relation_kinds ?? []).length}
+        onShapeChange={(shape) =>
+          savePatch({ grid: { ...grid, shape } }, "修改网格形状")
+        }
       />
 
       <div
@@ -213,15 +235,33 @@ export function BoardEditor({ board }: Props) {
         onPickCard={(id) => void addCardToBoard(id)}
       />
 
+      {relationFilterOpen && (
+        <RelationFilterDialog
+          relationKinds={relationKinds}
+          selected={normalized.visible_relation_kinds ?? []}
+          onChange={(kinds) =>
+            savePatch({ visible_relation_kinds: kinds }, "修改关系过滤")
+          }
+          onClose={() => setRelationFilterOpen(false)}
+        />
+      )}
+
       <BoardBottomBar
         count={selectedTokenIds.length}
         onClear={clearTokenSelection}
         onDelete={() => {
           const ids = selectedTokenIds;
           if (ids.length === 0) return;
-          if (!confirm(`删除选中的 ${ids.length} 个 Token？可用 Ctrl+Z 撤销。`))
-            return;
-          void deleteSelectedTokens(ids).then(() => clearTokenSelection());
+          void (async () => {
+            const ok = await confirmDialog({
+              message: `删除选中的 ${ids.length} 个 Token？可用 Ctrl+Z 撤销。`,
+              confirmLabel: "删除",
+              danger: true,
+            });
+            if (!ok) return;
+            await deleteSelectedTokens(ids);
+            clearTokenSelection();
+          })();
         }}
       />
     </div>

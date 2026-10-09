@@ -5,15 +5,17 @@ export function RollMessage({
   payload,
   authorName,
   color,
+  cardId,
 }: {
   payload: ChatPayload;
   authorName: string;
   color: string;
+  cardId?: string | null;
 }) {
   const roll = payload.roll;
   return (
     <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-      <Avatar name={authorName} color={color} />
+      <Avatar name={authorName} color={color} cardId={cardId} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <NameLine name={authorName} color={color} />
         <div

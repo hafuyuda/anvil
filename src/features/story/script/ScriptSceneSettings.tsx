@@ -2,6 +2,9 @@ import { useState } from "react";
 import { ipc } from "../../../core/ipc";
 import { PickerDialog } from "../../../components/PickerDialog";
 import type { ScriptFrontmatter } from "./types";
+import { AudioSelect } from "../../../components/AudioSelect";
+import { toast } from "../../../lib/toast";
+
 
 interface Props {
   frontmatter: ScriptFrontmatter;
@@ -18,7 +21,7 @@ export function ScriptSceneSettings({ frontmatter, onChange }: Props) {
     try {
       const images = await ipc.listImages();
       if (images.length === 0) {
-        alert("项目里还没有图片。去「项目设置 → 图片资源」导入一张。");
+        toast.info("项目里还没有图片。去「项目设置 → 图片资源」导入一张。");
         return;
       }
       setImageOptions(
@@ -29,7 +32,7 @@ export function ScriptSceneSettings({ frontmatter, onChange }: Props) {
       );
       setPickerOpen(true);
     } catch (e) {
-      alert("读取图片列表失败: " + e);
+      toast.error("读取图片列表失败: " + e);
     }
   }
 
@@ -67,12 +70,10 @@ export function ScriptSceneSettings({ frontmatter, onChange }: Props) {
       </button>
 
       <span style={{ color: "var(--fg-muted)" }}>音乐</span>
-      <input
-        className="input"
-        value={frontmatter.bgm ?? ""}
-        onChange={(e) => onChange({ bgm: e.target.value || undefined })}
-        placeholder="文件名（如 tavern.mp3）"
-        style={{ fontFamily: "var(--font-mono)", fontSize: 11 }}
+      <AudioSelect
+        value={frontmatter.bgm ?? null}
+        onChange={(v) => onChange({ bgm: v ?? undefined })}
+        placeholder="— 无音乐 —"
       />
 
       <span style={{ color: "var(--fg-muted)" }}>结局</span>

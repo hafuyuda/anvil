@@ -10,7 +10,6 @@ type Slice = Pick<
   | "currentBoardId"
   | "currentSessionId"
   | "activeModule"
-  | "worldSubView"
   | "cardWallView"
   | "inspectorWidth"
   | "inspectorCollapsed"
@@ -23,7 +22,6 @@ type Slice = Pick<
   | "setCurrentBoard"
   | "setCurrentSession"
   | "setActiveModule"
-  | "setWorldSubView"
   | "setCardWallView"
   | "setInspectorWidth"
   | "toggleInspector"
@@ -46,7 +44,6 @@ export const createUISlice: StateCreator<ProjectState, [], [], Slice> = (
   currentBoardId: null,
   currentSessionId: null,
   activeModule: "world",
-  worldSubView: "cards",
   cardWallView: "card",
   inspectorWidth: 320,
   inspectorCollapsed: false,
@@ -94,7 +91,6 @@ export const createUISlice: StateCreator<ProjectState, [], [], Slice> = (
     set({ currentSessionId, selectedTokenId: null }),
 
   setActiveModule: (activeModule) => set({ activeModule }),
-  setWorldSubView: (worldSubView) => set({ worldSubView }),
   setCardWallView: (cardWallView) => set({ cardWallView }),
 
   setInspectorWidth: (w) =>

@@ -4,6 +4,8 @@ import { useProjectStore } from "../../../stores/projectStore";
 import { FieldInput } from "../../../components/FieldInput";
 import { newId } from "../../../lib/id";
 import { nowMs } from "../../../lib/time";
+import { toast } from "../../../lib/toast";
+
 
 interface Props {
   fromCardId: string;
@@ -42,11 +44,11 @@ export function RelationForm({ fromCardId, fromTypeId, onDone }: Props) {
 
   async function handleSave() {
     if (!kind) {
-      alert("请选择关系类型");
+      toast.info("请选择关系类型");
       return;
     }
     if (!toId) {
-      alert("请选择目标卡牌");
+      toast.info("请选择目标卡牌");
       return;
     }
     
@@ -65,7 +67,7 @@ export function RelationForm({ fromCardId, fromTypeId, onDone }: Props) {
       upsertRelation(relation);
       onDone();
     } catch (e) {
-      alert("保存失败: " + e);
+      toast.error("保存失败: " + e);
     }
   }
 

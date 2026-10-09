@@ -158,6 +158,7 @@ export interface GridConfig {
   offset_y: number;
   visible: boolean;
   snap: boolean;
+  shape?: string;
 }
 
 export interface PileData {
@@ -192,6 +193,8 @@ export interface Board {
   grid: GridConfig;
   background?: string | null;
   tokens: Token[];
+  show_relations?: boolean;
+  visible_relation_kinds?: string[];
   created_at: number;
   updated_at: number;
 }
@@ -343,4 +346,10 @@ export interface ProjectStats {
   sessions: number;
   events: number;
   images: number;
+}
+
+export interface AudioMeta {
+  path: string;
+  size: number;
+  ref_count: number;
 }

@@ -12,7 +12,7 @@ import type {
 
 export type ModuleKey =
   "world" | "story" | "board" | "cardGroups" | "session" | "types";
-export type WorldSubView = "cards" | "graph";
+
 export type CardWallView = "card" | "list";
 
 export interface UndoEntry {
@@ -107,7 +107,6 @@ export interface ProjectState {
   currentBoardId: string | null;
   currentSessionId: string | null;
   activeModule: ModuleKey;
-  worldSubView: WorldSubView;
   cardWallView: CardWallView;
   inspectorWidth: number;
   inspectorCollapsed: boolean;
@@ -121,7 +120,6 @@ export interface ProjectState {
   setCurrentBoard: (id: string | null) => void;
   setCurrentSession: (id: string | null) => void;
   setActiveModule: (m: ModuleKey) => void;
-  setWorldSubView: (v: WorldSubView) => void;
   setCardWallView: (v: CardWallView) => void;
   setInspectorWidth: (w: number) => void;
   toggleInspector: () => void;

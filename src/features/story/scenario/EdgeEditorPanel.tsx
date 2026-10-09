@@ -9,6 +9,8 @@ import { useProjectStore } from "../../../stores/projectStore";
 import { useDraft } from "../../../hooks/useDraft";
 import { validateEffects } from "../effects";
 import { useDeleteUndo } from "../../../hooks/useDeleteUndo";
+import { toast } from "../../../lib/toast";
+import { confirmDialog } from "../../../lib/confirm";
 
 interface Props {
   relation: Relation;
@@ -83,7 +85,14 @@ export function EdgeEditorPanel({ relation, scenario }: Props) {
   const deleteWithUndo = useDeleteUndo();
 
   async function handleDelete() {
-    if (!confirm("删除这条关系？可用 Ctrl+Z 撤销。")) return;
+    if (
+      !(await confirmDialog({
+        message: "删除这条关系？可用 Ctrl+Z 撤销。",
+        confirmLabel: "删除",
+        danger: true,
+      }))
+    )
+      return;
     const snapshot = { ...draft };
     try {
       await deleteWithUndo({
@@ -99,7 +108,7 @@ export function EdgeEditorPanel({ relation, scenario }: Props) {
         },
       });
     } catch (e) {
-      alert("删除失败: " + e);
+      toast.error("删除失败: " + e);
     }
   }
 

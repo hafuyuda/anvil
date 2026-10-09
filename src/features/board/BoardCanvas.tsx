@@ -3,6 +3,7 @@ import type { Board, GridConfig, Token } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
 import { useImageUrl } from "../../hooks/useImageUrl";
 import { BoardToken } from "./BoardToken";
+import { RelationLines } from "./RelationLines";
 
 interface Props {
   board: Board;
@@ -57,6 +58,9 @@ export function BoardCanvas({
   zoomRef.current = zoom;
   const onZoomRef = useRef(onZoomChange);
   onZoomRef.current = onZoomChange;
+
+  const relations = useProjectStore((s) => s.relations) ?? [];
+  const relationKinds = useProjectStore((s) => s.relationKinds) ?? [];
 
   // 本地 token 镜像与 store 同步
   useEffect(() => {
@@ -254,31 +258,54 @@ export function BoardCanvas({
   const gridLines: React.ReactNode[] = [];
   if (grid.visible && grid.size > 0) {
     const step = grid.size;
-    for (let x = 0; x <= board.width; x += step) {
-      gridLines.push(
-        <line
-          key={`vx${x}`}
-          x1={x}
-          y1={0}
-          x2={x}
-          y2={board.height}
-          stroke="var(--border-subtle)"
-          strokeWidth={0.5}
-        />,
-      );
+    const shape = grid.shape ?? "square";
+
+    if (shape === "square" || shape === "vertical") {
+      for (let x = 0; x <= board.width; x += step) {
+        gridLines.push(
+          <line
+            key={`vx${x}`}
+            x1={x}
+            y1={0}
+            x2={x}
+            y2={board.height}
+            stroke="var(--border-subtle)"
+            strokeWidth={0.5}
+          />,
+        );
+      }
     }
-    for (let y = 0; y <= board.height; y += step) {
-      gridLines.push(
-        <line
-          key={`hy${y}`}
-          x1={0}
-          y1={y}
-          x2={board.width}
-          y2={y}
-          stroke="var(--border-subtle)"
-          strokeWidth={0.5}
-        />,
-      );
+
+    if (shape === "square" || shape === "horizontal") {
+      for (let y = 0; y <= board.height; y += step) {
+        gridLines.push(
+          <line
+            key={`hy${y}`}
+            x1={0}
+            y1={y}
+            x2={board.width}
+            y2={y}
+            stroke="var(--border-subtle)"
+            strokeWidth={0.5}
+          />,
+        );
+      }
+    }
+
+    if (shape === "dots") {
+      for (let x = 0; x <= board.width; x += step) {
+        for (let y = 0; y <= board.height; y += step) {
+          gridLines.push(
+            <circle
+              key={`d${x}-${y}`}
+              cx={x}
+              cy={y}
+              r={1}
+              fill="var(--border-default)"
+            />,
+          );
+        }
+      }
     }
   }
 
@@ -353,6 +380,15 @@ export function BoardCanvas({
             >
               {gridLines}
             </svg>
+          )}
+
+          {board.show_relations && (
+            <RelationLines
+              board={board}
+              tokens={tokens.filter((t) => t.visible)}
+              relations={relations}
+              relationKinds={relationKinds}
+            />
           )}
 
           {tokens

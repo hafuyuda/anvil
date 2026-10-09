@@ -5,6 +5,10 @@ fn default_true() -> bool {
     true
 }
 
+fn default_shape() -> String {
+    "square".into()
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GridConfig {
     pub size: f64,
@@ -16,6 +20,8 @@ pub struct GridConfig {
     pub visible: bool,
     #[serde(default = "default_true")]
     pub snap: bool,
+    #[serde(default = "default_shape")]
+    pub shape: String,
 }
 
 impl Default for GridConfig {
@@ -26,6 +32,7 @@ impl Default for GridConfig {
             offset_y: 0.0,
             visible: true,
             snap: true,
+            shape: "square".into(),
         }
     }
 }
@@ -92,6 +99,10 @@ pub struct Board {
     pub background: Option<String>,
     #[serde(default)]
     pub tokens: Vec<Token>,
+    #[serde(default)]
+    pub show_relations: bool,
+    #[serde(default)]
+    pub visible_relation_kinds: Vec<String>,
     pub created_at: i64,
     pub updated_at: i64,
 }

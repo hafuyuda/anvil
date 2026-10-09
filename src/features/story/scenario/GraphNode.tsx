@@ -1,6 +1,6 @@
 import { Handle, Position, type NodeProps } from "@xyflow/react";
-import { useProjectStore } from "../../stores/projectStore";
-import { CardFrame } from "../../components/CardFrame";
+import { useProjectStore } from "../../../stores/projectStore";
+import { CardFrame } from "../../../components/CardFrame";
 
 interface GraphNodeData {
   dim?: boolean;

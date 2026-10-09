@@ -3,6 +3,7 @@ import { type Token } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
 import { ScaledCardFrame } from "../../components/ScaledCardFrame";
 import { useDeleteUndo } from "../../hooks/useDeleteUndo";
+import { confirmDialog } from "../../lib/confirm";
 
 interface Props {
   token: Token;
@@ -23,10 +24,10 @@ export function TokenInspector({ token, onSave, onDelete, onClose }: Props) {
   const cardTypes = useProjectStore((s) => s.cardTypes) ?? [];
   const selectCard = useProjectStore((s) => s.selectCard);
   const setActiveModule = useProjectStore((s) => s.setActiveModule);
-  const setWorldSubView = useProjectStore((s) => s.setWorldSubView);
 
   const [draft, setDraft] = useState<Token>(token);
   const [dirty, setDirty] = useState(false);
+  const [aspectLocked, setAspectLocked] = useState(false);
 
   // token 切换 → 完全重置 draft
   useEffect(() => {
@@ -46,6 +47,28 @@ export function TokenInspector({ token, onSave, onDelete, onClose }: Props) {
     setDirty(true);
   }
 
+  function setWidth(v: number) {
+    if (!aspectLocked) {
+      update({ w: v });
+      return;
+    }
+    const curW = draft.w ?? 140;
+    const curH = draft.h ?? 205;
+    const ratio = curH / curW;
+    update({ w: v, h: Math.round(v * ratio) });
+  }
+
+  function setHeight(v: number) {
+    if (!aspectLocked) {
+      update({ h: v });
+      return;
+    }
+    const curW = draft.w ?? 140;
+    const curH = draft.h ?? 205;
+    const ratio = curW / curH;
+    update({ h: v, w: Math.round(v * ratio) });
+  }
+
   async function save() {
     await onSave(draft);
     setDirty(false);
@@ -54,7 +77,14 @@ export function TokenInspector({ token, onSave, onDelete, onClose }: Props) {
   const deleteWithUndo = useDeleteUndo();
 
   async function handleDelete() {
-    if (!confirm("删除该 Token？可用 Ctrl+Z 撤销。")) return;
+    if (
+      !(await confirmDialog({
+        message: "删除该 Token？可用 Ctrl+Z 撤销。",
+        confirmLabel: "删除",
+        danger: true,
+      }))
+    )
+      return;
     await deleteWithUndo({
       label: "删除 Token",
       do: async () => {
@@ -70,7 +100,6 @@ export function TokenInspector({ token, onSave, onDelete, onClose }: Props) {
   function jumpToCard() {
     if (!linkedCard) return;
     setActiveModule("world");
-    setWorldSubView("cards");
     selectCard(linkedCard.id);
   }
 
@@ -153,22 +182,42 @@ export function TokenInspector({ token, onSave, onDelete, onClose }: Props) {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "1fr 1fr",
+              gridTemplateColumns: "1fr 1fr auto",
               gap: 8,
+              alignItems: "end",
             }}
           >
             <LabeledInput
               label="宽"
               type="number"
               value={String(draft.w ?? 140)}
-              onChange={(v) => update({ w: Number(v) || 140 })}
+              onChange={(v) => setWidth(Number(v) || 140)}
             />
             <LabeledInput
               label="高"
               type="number"
               value={String(draft.h ?? 205)}
-              onChange={(v) => update({ h: Number(v) || 205 })}
+              onChange={(v) => setHeight(Number(v) || 205)}
             />
+            <button
+              className="btn btn-icon"
+              onClick={() => setAspectLocked((v) => !v)}
+              title={aspectLocked ? "解除宽高比锁定" : "锁定宽高比"}
+              style={{
+                height: 26,
+                fontSize: 12,
+                padding: "0 8px",
+                background: aspectLocked
+                  ? "var(--bg-raised)"
+                  : "var(--bg-surface)",
+                borderColor: aspectLocked
+                  ? "var(--accent-gold)"
+                  : "var(--border-default)",
+                color: aspectLocked ? "var(--accent-gold)" : "var(--fg-muted)",
+              }}
+            >
+              {aspectLocked ? "🔒" : "🔓"}
+            </button>
           </div>
 
           <div

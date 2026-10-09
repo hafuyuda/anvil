@@ -4,6 +4,7 @@ import { useProjectStore } from "../../stores/projectStore";
 import { Modal } from "../../components/Modal";
 import { newId } from "../../lib/id";
 import { nowMs } from "../../lib/time";
+import { toast } from "../../lib/toast";
 
 interface Props {
   cardIds: string[];
@@ -26,7 +27,7 @@ export function AddToGroupDialog({ cardIds, onClose, onDone }: Props) {
       const existing = new Set(group.card_ids);
       const toAdd = cardIds.filter((id) => !existing.has(id));
       if (toAdd.length === 0) {
-        alert(`这批卡已全部在「${group.name}」里了。`);
+        toast.info(`这批卡已全部在「${group.name}」里了。`);
         onClose();
         return;
       }
@@ -39,7 +40,7 @@ export function AddToGroupDialog({ cardIds, onClose, onDone }: Props) {
       upsertCardGroup(next);
       onDone(group.name, toAdd.length);
     } catch (e) {
-      alert("加入卡组失败: " + e);
+      toast.error("加入卡组失败: " + e);
     } finally {
       setBusy(false);
     }
@@ -48,7 +49,7 @@ export function AddToGroupDialog({ cardIds, onClose, onDone }: Props) {
   async function createAndAdd() {
     const name = newName.trim();
     if (!name) {
-      alert("卡组名不能为空");
+      toast.info("卡组名不能为空");
       return;
     }
     if (busy) return;
@@ -67,7 +68,7 @@ export function AddToGroupDialog({ cardIds, onClose, onDone }: Props) {
       upsertCardGroup(g);
       onDone(name, cardIds.length);
     } catch (e) {
-      alert("新建卡组失败: " + e);
+      toast.error("新建卡组失败: " + e);
     } finally {
       setBusy(false);
     }

@@ -7,8 +7,8 @@ export function useCardWallFilters(cards: Card[], cardTypes: CardType[]) {
   const [query, setQuery] = useState("");
   const [ftsIds, setFtsIds] = useState<string[] | null>(null);
   const [typeFilter, setTypeFilter] = useState<string>("");
-  const [sortKey, setSortKey] = useState<SortKey>("updated_at");
-  const [sortAsc, setSortAsc] = useState(false);
+  const [sortKey, setSortKey] = useState<SortKey>("type");
+  const [sortAsc, setSortAsc] = useState(true);
 
   // FTS 搜索（≥3 字符），150ms 防抖
   useEffect(() => {

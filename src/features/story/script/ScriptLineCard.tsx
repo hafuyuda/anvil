@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { ScriptLine } from "./types";
+import { AudioSelect } from "../../../components/AudioSelect";
 
 const TYPE_LABELS: { value: ScriptLine["type"]; label: string }[] = [
   { value: "narration", label: "旁白" },
@@ -186,18 +187,13 @@ export function ScriptLineCard({
         )}
 
         {line.type === "sfx" && (
-          <input
-            ref={primaryRef}
-            className="input"
-            value={line.file}
-            onChange={(e) => onChange({ ...line, file: e.target.value })}
-            onKeyDown={handleKeyDown}
-            placeholder="音效文件名"
-            style={{
-              fontSize: 11,
-              fontFamily: "var(--font-mono)",
-            }}
-          />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <AudioSelect
+              value={line.file || null}
+              onChange={(v) => onChange({ ...line, file: v ?? "" })}
+              placeholder="— 无音效 —"
+            />
+          </div>
         )}
       </div>
 

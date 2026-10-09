@@ -1,13 +1,11 @@
-import {
-  ipc,
-  type Relation,
-  type Scenario,
-} from "../../../core/ipc";
+import { ipc, type Relation, type Scenario } from "../../../core/ipc";
 import { useProjectStore } from "../../../stores/projectStore";
 import { newId } from "../../../lib/id";
 import { nowMs } from "../../../lib/time";
 import { ScenarioNodesEditor } from "./ScenarioNodesEditor";
 import { ScenarioVariablesEditor } from "./ScenarioVariablesEditor";
+import { toast } from "../../../lib/toast";
+import { confirmDialog } from "../../../lib/confirm";
 
 interface Props {
   draft: Scenario;
@@ -36,19 +34,21 @@ export function ScenarioSettingsTab({ draft, update, dirty, commit }: Props) {
       (r) => !r.meta?.scenario_id && ids.has(r.from) && ids.has(r.to),
     );
     if (candidates.length === 0) {
-      alert("节点之间没有可导入的世界观关系。");
+      toast.info("节点之间没有可导入的世界观关系。");
       return;
     }
     if (
-      !confirm(
-        `导入 ${candidates.length} 条世界观关系到本剧情？\n\n` +
+      !(await confirmDialog({
+        title: "导入世界观关系",
+        message:
+          `导入 ${candidates.length} 条世界观关系到本剧情？\n\n` +
           `原关系保留不动，会复制一份到本剧情。\n` +
           `复制后的关系只能在剧情图里看到和编辑。`,
-      )
+        confirmLabel: "导入",
+      }))
     ) {
       return;
     }
-
     for (const r of candidates) {
       const copied: Relation = {
         ...r,

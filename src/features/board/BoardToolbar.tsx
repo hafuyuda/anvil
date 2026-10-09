@@ -1,4 +1,5 @@
 import type { GridConfig } from "../../core/ipc";
+import { GRID_SHAPES } from "./constants";
 
 interface Props {
   name: string;
@@ -26,6 +27,13 @@ interface Props {
 
   zoom: number;
   onZoomChange: (z: number) => void;
+
+  showRelations: boolean;
+  onToggleRelations: (v: boolean) => void;
+  onOpenRelationFilter: () => void;
+  relationFilterCount: number;
+
+  onShapeChange: (shape: string) => void;
 }
 
 export function BoardToolbar({
@@ -49,6 +57,11 @@ export function BoardToolbar({
   onAddPlaceholder,
   zoom,
   onZoomChange,
+  showRelations,
+  onToggleRelations,
+  onOpenRelationFilter,
+  relationFilterCount,
+  onShapeChange,
 }: Props) {
   return (
     <div
@@ -98,6 +111,20 @@ export function BoardToolbar({
           style={{ width: 64 }}
         />
       </label>
+
+      <select
+        className="select"
+        value={grid.shape ?? "square"}
+        onChange={(e) => onShapeChange(e.target.value)}
+        style={{ width: 80 }}
+        disabled={!grid.visible}
+      >
+        {GRID_SHAPES.map((s) => (
+          <option key={s.value} value={s.value}>
+            {s.label}
+          </option>
+        ))}
+      </select>
 
       <label
         style={{
@@ -149,6 +176,21 @@ export function BoardToolbar({
       </button>
       <button className="btn" onClick={onOpenAddPile} style={{ fontSize: 12 }}>
         从卡组加卡盒
+      </button>
+      <Toggle
+        label="显示关系"
+        checked={showRelations}
+        onChange={onToggleRelations}
+      />
+      <button
+        className="btn"
+        onClick={onOpenRelationFilter}
+        disabled={!showRelations}
+        style={{ fontSize: 12 }}
+        title="按关系类型过滤"
+      >
+        关系过滤
+        {relationFilterCount > 0 && `（${relationFilterCount}）`}
       </button>
       <button
         className="btn btn-primary"

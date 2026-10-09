@@ -6,6 +6,8 @@ import { ScenarioEditor } from "./ScenarioEditor";
 import { newId } from "../../../lib/id";
 import { nowMs } from "../../../lib/time";
 import { useDeleteUndo } from "../../../hooks/useDeleteUndo";
+import { toast } from "../../../lib/toast";
+import { confirmDialog } from "../../../lib/confirm";
 
 export function ScenarioList() {
   const scenarios = useProjectStore((s) => s.scenarios) ?? [];
@@ -35,7 +37,14 @@ export function ScenarioList() {
   const upsertScenario = useProjectStore((s) => s.upsertScenario);
 
   async function handleDelete(s: Scenario) {
-    if (!confirm(`删除剧情「${s.name}」？可用 Ctrl+Z 撤销。`)) return;
+    if (
+      !(await confirmDialog({
+        message: `删除剧情「${s.name}」？可用 Ctrl+Z 撤销。`,
+        confirmLabel: "删除",
+        danger: true,
+      }))
+    )
+      return;
     try {
       await deleteWithUndo({
         label: "删除剧情",
@@ -50,7 +59,7 @@ export function ScenarioList() {
         },
       });
     } catch (e) {
-      alert("删除失败: " + e);
+      toast.error("删除失败: " + e);
     }
   }
 

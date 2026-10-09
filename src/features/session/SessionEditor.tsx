@@ -22,6 +22,8 @@ import { EventEditorDialog } from "./EventEditorDialog";
 import { usePileActions } from "../board/usePileActions";
 import { PileDrawDialog } from "../board/PileDrawDialog";
 import { makeUndoId } from "../../lib/id";
+import { toast } from "../../lib/toast";
+import { confirmDialog } from "../../lib/confirm";
 
 interface Props {
   session: Session;
@@ -139,13 +141,14 @@ export function SessionEditor({ session }: Props) {
     try {
       await ipc.upsertSession(next);
     } catch (e) {
-      alert("保存失败: " + e);
+      toast.error("保存失败: " + e);
     }
   }
 
   const { drawFromPile, shufflePile, resetPile } = usePileActions({
     tokens: session.tokens,
     applyTokens: (next, label) => savePatch({ tokens: next }, label),
+    bounds: { width: effectiveBoard.width, height: effectiveBoard.height },
   });
 
   async function savePatch(patch: Partial<Session>, undoLabel?: string) {
@@ -180,7 +183,7 @@ export function SessionEditor({ session }: Props) {
       const updated = await ipc.listEvents(session.id);
       setEvents(updated);
     } catch (e) {
-      alert("记录事件失败: " + e);
+      toast.error("记录事件失败: " + e);
     }
   }
 
@@ -189,11 +192,13 @@ export function SessionEditor({ session }: Props) {
       await savePatch({ board_id: null, tokens: [] });
       return;
     }
-    if (
-      session.tokens.length > 0 &&
-      !confirm("切换棋盘会清空本会话的 Token，继续？")
-    ) {
-      return;
+    if (session.tokens.length > 0) {
+      const ok = await confirmDialog({
+        message: "切换棋盘会清空本会话的 Token，继续？",
+        confirmLabel: "切换",
+        danger: true,
+      });
+      if (!ok) return;
     }
     const b = boards.find((x) => x.id === boardId);
     if (!b) return;
@@ -227,19 +232,26 @@ export function SessionEditor({ session }: Props) {
       const updated = await ipc.listEvents(session.id);
       setEvents(updated);
     } catch (e) {
-      alert("保存失败: " + e);
+      toast.error("保存失败: " + e);
       throw e;
     }
   }
 
   async function handleDeleteEvent(event: GameEvent) {
-    if (!confirm(`删除这条消息？#${event.seq}`)) return;
+    if (
+      !(await confirmDialog({
+        message: `删除这条消息？#${event.seq}`,
+        confirmLabel: "删除",
+        danger: true,
+      }))
+    )
+      return;
     try {
       await ipc.deleteEvent(session.id, event.seq);
       const updated = await ipc.listEvents(session.id);
       setEvents(updated);
     } catch (e) {
-      alert("删除失败: " + e);
+      toast.error("删除失败: " + e);
     }
   }
 

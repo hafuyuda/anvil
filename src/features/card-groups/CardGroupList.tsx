@@ -6,6 +6,8 @@ import { CardGroupEditor } from "./CardGroupEditor";
 import { useDeleteUndo } from "../../hooks/useDeleteUndo";
 import { newId } from "../../lib/id";
 import { nowMs } from "../../lib/time";
+import { toast } from "../../lib/toast";
+import { confirmDialog } from "../../lib/confirm";
 
 export function CardGroupList() {
   const cardGroups = useProjectStore((s) => s.cardGroups) ?? [];
@@ -31,7 +33,14 @@ export function CardGroupList() {
   const deleteWithUndo = useDeleteUndo();
 
   async function handleDelete(g: CardGroup) {
-    if (!confirm(`删除卡组「${g.name}」？可用 Ctrl+Z 撤销。`)) return;
+    if (
+      !(await confirmDialog({
+        message: `删除卡组「${g.name}」？可用 Ctrl+Z 撤销。`,
+        confirmLabel: "删除",
+        danger: true,
+      }))
+    )
+      return;
     try {
       await deleteWithUndo({
         label: "删除卡组",
@@ -46,7 +55,7 @@ export function CardGroupList() {
         },
       });
     } catch (e) {
-      alert("删除失败: " + e);
+      toast.error("删除失败: " + e);
     }
   }
 

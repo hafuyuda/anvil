@@ -11,6 +11,7 @@ import { useProjectStore } from "../../stores/projectStore";
 import { MergePackInfoCard } from "./MergePackInfoCard";
 import { TypeMapRow, KindMapRow } from "./MergePackMappingRows";
 import { MergePackIncludeList } from "./MergePackIncludeList";
+import { toast } from "../../lib/toast";
 
 interface Props {
   onClose: () => void;
@@ -81,7 +82,7 @@ export function MergePackDialog({ onClose }: Props) {
       setIncludeSessions(insp.sessions.map((s) => s.id));
       setIncludeCardGroups(insp.card_groups.map((g) => g.id));
     } catch (e) {
-      alert("读取资源包失败: " + e);
+      toast.error("读取资源包失败: " + e);
       setSrc(null);
     } finally {
       setLoading(false);
@@ -121,7 +122,7 @@ export function MergePackDialog({ onClose }: Props) {
       if (result.skipped_types.length > 0) {
         lines.push(`跳过类型：${result.skipped_types.join("、")}`);
       }
-      alert("合并完成\n\n" + lines.join("\n"));
+      toast.success("合并完成\n\n" + lines.join("\n"));
 
       if (projectPath) {
         try {
@@ -142,7 +143,7 @@ export function MergePackDialog({ onClose }: Props) {
       }
       onClose();
     } catch (e) {
-      alert("合并失败: " + e);
+      toast.error("合并失败: " + e);
     } finally {
       setMerging(false);
     }

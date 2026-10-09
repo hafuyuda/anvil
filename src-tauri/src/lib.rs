@@ -82,6 +82,12 @@ pub fn run() {
             append_event,
             update_event,
             delete_event,
+            // audio
+            import_audio,
+            delete_audio,
+            list_audios,
+            audio_abs_path,
+            list_audios_with_meta,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

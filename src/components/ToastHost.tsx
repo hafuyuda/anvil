@@ -7,7 +7,6 @@ interface ActiveToast extends ToastPayload {
   createdAt: number;
 }
 
-// 模块级缓存，供 useSyncExternalStore 用
 let cached: ActiveToast[] = [];
 const hostListeners = new Set<() => void>();
 
@@ -36,7 +35,6 @@ function getSnapshot(): ActiveToast[] {
   return cached;
 }
 
-// 一次注册，把 toast 事件接入缓存
 let bridged = false;
 function bridge() {
   if (bridged) return;
@@ -57,7 +55,7 @@ export function ToastHost() {
         display: "flex",
         flexDirection: "column",
         gap: 8,
-        zIndex: 2000,
+        zIndex: 3000,
         pointerEvents: "none",
       }}
     >

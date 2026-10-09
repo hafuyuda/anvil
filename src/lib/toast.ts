@@ -6,19 +6,26 @@ export interface ToastPayload {
   message: string;
 }
 
-const listeners = new Set<(t: ToastPayload) => void>();
+type Listener = (t: ToastPayload) => void;
+
+const listeners = new Set<Listener>();
+
+let seq = 0;
+function nextId(): string {
+  seq += 1;
+  return `t${seq}-${Date.now().toString(36)}`;
+}
 
 function emit(kind: ToastKind, message: string) {
-  const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  const payload: ToastPayload = { id, kind, message };
+  const payload: ToastPayload = { id: nextId(), kind, message };
   for (const fn of listeners) fn(payload);
 }
 
 export const toast = {
-  info: (message: string) => emit("info", message),
-  success: (message: string) => emit("success", message),
-  error: (message: string) => emit("error", message),
-  subscribe: (fn: (t: ToastPayload) => void) => {
+  info: (msg: string) => emit("info", msg),
+  success: (msg: string) => emit("success", msg),
+  error: (msg: string) => emit("error", msg),
+  subscribe: (fn: Listener): (() => void) => {
     listeners.add(fn);
     return () => {
       listeners.delete(fn);

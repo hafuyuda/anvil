@@ -13,8 +13,6 @@ export function LeftNav() {
   const projectPath = useProjectStore((s) => s.projectPath);
   const activeModule = useProjectStore((s) => s.activeModule);
   const setActiveModule = useProjectStore((s) => s.setActiveModule);
-  const worldSubView = useProjectStore((s) => s.worldSubView);
-  const setWorldSubView = useProjectStore((s) => s.setWorldSubView);
   const cards = useProjectStore((s) => s.cards) ?? [];
   const cardTypes = useProjectStore((s) => s.cardTypes) ?? [];
   const relations = useProjectStore((s) => s.relations) ?? [];
@@ -47,31 +45,6 @@ export function LeftNav() {
             </span>
             {m.label}
           </NavButton>
-
-          {m.key === "world" && activeModule === "world" && projectPath && (
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: 1,
-                marginTop: 2,
-                paddingLeft: 14,
-              }}
-            >
-              <SubNavButton
-                active={worldSubView === "cards"}
-                onClick={() => setWorldSubView("cards")}
-              >
-                卡片
-              </SubNavButton>
-              <SubNavButton
-                active={worldSubView === "graph"}
-                onClick={() => setWorldSubView("graph")}
-              >
-                图谱
-              </SubNavButton>
-            </div>
-          )}
         </div>
       ))}
 
@@ -142,34 +115,7 @@ function NavButton({
   );
 }
 
-function SubNavButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        textAlign: "left",
-        padding: "4px 8px",
-        border: "none",
-        borderRadius: "var(--radius-sm)",
-        background: active ? "var(--bg-surface)" : "transparent",
-        color: active ? "var(--fg-primary)" : "var(--fg-secondary)",
-        fontSize: 12,
-        cursor: "pointer",
-        fontFamily: "inherit",
-      }}
-    >
-      {children}
-    </button>
-  );
-}
+
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (

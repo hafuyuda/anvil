@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { ipc, type ProjectStats } from "../../core/ipc";
+import { toast } from "../../lib/toast";
+import { confirmDialog } from "../../lib/confirm";
 
 export function StatsTab() {
   const [stats, setStats] = useState<ProjectStats | null>(null);
@@ -12,7 +14,7 @@ export function StatsTab() {
       const s = await ipc.projectStats();
       setStats(s);
     } catch (e) {
-      alert("读取统计失败: " + e);
+      toast.error("读取统计失败: " + e);
     } finally {
       setLoading(false);
     }
@@ -23,13 +25,19 @@ export function StatsTab() {
   }, []);
 
   async function handleRebuildIndex() {
-    if (!confirm("重建 SQLite 索引？这会扫描所有卡片。")) return;
+    if (
+      !(await confirmDialog({
+        message: "重建 SQLite 索引？这会扫描所有卡片。",
+        confirmLabel: "重建",
+      }))
+    )
+      return;
     setRebuilding(true);
     try {
       await ipc.rebuildIndex();
-      alert("索引已重建。");
+      toast.success("索引已重建。");
     } catch (e) {
-      alert("重建失败: " + e);
+      toast.error("重建失败: " + e);
     } finally {
       setRebuilding(false);
     }

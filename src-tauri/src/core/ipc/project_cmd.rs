@@ -6,14 +6,36 @@ use std::path::PathBuf;
 use tauri::State;
 
 #[tauri::command]
-pub fn open_project(state: State<AppState>, path: String) -> Result<(), String> {
-    let p = Project::open(path).map_err(|e| e.to_string())?;
+pub fn open_project(
+    app: tauri::AppHandle,
+    state: State<AppState>,
+    path: String,
+) -> Result<(), String> {
+    use tauri::Manager;
+
+    // 先关闭旧项目的 scope
+    if let Some(old) = state.project.lock().unwrap().as_ref() {
+        let _ = app.asset_protocol_scope().forbid_directory(&old.root, true);
+    }
+
+    let p = Project::open(&path).map_err(|e| e.to_string())?;
+
+    // 允许新项目目录访问
+    app.asset_protocol_scope()
+        .allow_directory(&p.root, true)
+        .map_err(|e| format!("添加资源访问权限失败: {e}"))?;
+
     *state.project.lock().unwrap() = Some(p);
     Ok(())
 }
 
 #[tauri::command]
-pub fn close_project(state: State<AppState>) -> Result<(), String> {
+pub fn close_project(app: tauri::AppHandle, state: State<AppState>) -> Result<(), String> {
+    use tauri::Manager;
+
+    if let Some(p) = state.project.lock().unwrap().as_ref() {
+        let _ = app.asset_protocol_scope().forbid_directory(&p.root, true);
+    }
     *state.project.lock().unwrap() = None;
     Ok(())
 }
@@ -329,4 +351,42 @@ pub fn export_scenario_html(
     let p = guard.as_ref().ok_or("no project open")?;
     p.export_scenario_html(&scenario_id, &PathBuf::from(output_path))
         .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn import_audio(state: State<AppState>, src: String) -> Result<String, String> {
+    let guard = state.project.lock().unwrap();
+    let p = guard.as_ref().ok_or("no project open")?;
+    p.import_audio(&PathBuf::from(src))
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn delete_audio(state: State<AppState>, relative: String) -> Result<(), String> {
+    let guard = state.project.lock().unwrap();
+    let p = guard.as_ref().ok_or("no project open")?;
+    p.delete_audio(&relative).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn list_audios(state: State<AppState>) -> Result<Vec<String>, String> {
+    let guard = state.project.lock().unwrap();
+    let p = guard.as_ref().ok_or("no project open")?;
+    p.list_audios().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn audio_abs_path(state: State<AppState>, relative: String) -> Result<String, String> {
+    let guard = state.project.lock().unwrap();
+    let p = guard.as_ref().ok_or("no project open")?;
+    p.audio_abs_path(&relative).map_err(|e| e.to_string())
+}
+
+use crate::core::store::assets::AudioMeta;
+
+#[tauri::command]
+pub fn list_audios_with_meta(state: State<AppState>) -> Result<Vec<AudioMeta>, String> {
+    let guard = state.project.lock().unwrap();
+    let p = guard.as_ref().ok_or("no project open")?;
+    p.list_audios_with_meta().map_err(|e| e.to_string())
 }

@@ -14,6 +14,9 @@ import { ipc } from "../core/ipc";
 import { MergePackDialog } from "../features/project/MergePackDialog";
 import { tryAutoOpenLastProject } from "../core/openProjectAt";
 import { ToastHost } from "../components/ToastHost";
+import { useAppSettings } from "../hooks/useAppSettings";
+import { applyFontScale } from "../lib/fontScale";
+import { ConfirmHost } from "../components/ConfirmHost";
 
 export function AppShell() {
   const projectPath = useProjectStore((s) => s.projectPath);
@@ -82,6 +85,12 @@ export function AppShell() {
     void tryAutoOpenLastProject();
   }, []);
 
+  const appSettings = useAppSettings();
+
+  useEffect(() => {
+    applyFontScale(appSettings.fontScale);
+  }, [appSettings.fontScale]);
+
   return (
     <div
       style={{
@@ -100,13 +109,16 @@ export function AppShell() {
         <Inspector />
       </div>
       <StatusBar />
+      
+      <ToastHost />
+      
+      <ConfirmHost />
 
       {paletteOpen && (
         <CommandPalette commands={commands} onClose={closePalette} />
       )}
 
       {mergePackOpen && <MergePackDialog onClose={closeMergePack} />}
-      <ToastHost />
     </div>
   );
 }

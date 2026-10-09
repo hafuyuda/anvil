@@ -5,6 +5,8 @@ import { useDraft } from "../../../hooks/useDraft";
 import { nowMs } from "../../../lib/time";
 import { FieldList } from "./FieldList";
 import { CardFrameEditor } from "./CardFrameEditor";
+import { toast } from "../../../lib/toast";
+import { confirmDialog } from "../../../lib/confirm";
 
 interface Props {
   cardType: CardType;
@@ -19,18 +21,18 @@ export function CardTypeEditor({ cardType }: Props) {
       const visible = d.fields.filter((f) => !f.deprecated);
 
       if (visible.some((f) => !f.key.trim())) {
-        alert("字段 key 不能为空");
+        toast.info("字段 key 不能为空");
         return false;
       }
       const keys = visible.map((f) => f.key);
       const dup = keys.find((k, i) => keys.indexOf(k) !== i);
       if (dup) {
-        alert(`字段 key 重复：${dup}`);
+        toast.info(`字段 key 重复：${dup}`);
         return false;
       }
       const bad = visible.find((f) => !/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(f.key));
       if (bad) {
-        alert(
+        toast.info(
           `字段 key 格式不合法：${bad.key}（只允许字母、数字、下划线，字母开头）`,
         );
         return false;
@@ -71,8 +73,15 @@ export function CardTypeEditor({ cardType }: Props) {
     update({ fields: [...draft.fields, field] });
   }
 
-  function removeField(index: number) {
-    if (!confirm("确认删除该字段？已有数据会保留但不显示。")) return;
+  async function removeField(index: number) {
+    if (
+      !(await confirmDialog({
+        message: "确认删除该字段？已有数据会保留但不显示。",
+        confirmLabel: "删除",
+        danger: true,
+      }))
+    )
+      return;
     update({
       fields: draft.fields.map((f, i) =>
         i === index ? { ...f, deprecated: true } : f,

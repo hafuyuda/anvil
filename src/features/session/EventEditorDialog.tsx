@@ -6,6 +6,7 @@ import {
   isChatKind,
 } from "../../core/ipc";
 import { Modal } from "../../components/Modal";
+import { toast } from "../../lib/toast";
 
 interface Props {
   event: GameEvent;
@@ -70,7 +71,7 @@ export function EventEditorDialog({ event, onSave, onClose }: Props) {
       await onSave(payload, note.trim() ? note.trim() : undefined);
       onClose();
     } catch (e) {
-      alert("保存失败: " + e);
+      toast.error("保存失败: " + e);
     } finally {
       setSaving(false);
     }

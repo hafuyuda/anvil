@@ -12,6 +12,8 @@ import { CardGridView } from "./CardGridView";
 import { CardListView } from "./CardListView";
 import { useCardWallFilters } from "./useCardWallFilters";
 import { AddToGroupDialog } from "../../card-groups/AddToGroupDialog";
+import { toast } from "../../../lib/toast";
+import { confirmDialog } from "../../../lib/confirm";
 
 export function CardWall() {
   const {
@@ -47,7 +49,7 @@ export function CardWall() {
 
   async function handleAddCard() {
     if (cardTypes.length === 0) {
-      alert("请先创建一个卡牌类型");
+      toast.info("请先创建一个卡牌类型");
       return;
     }
     if (cardTypes.length === 1) {
@@ -72,7 +74,7 @@ export function CardWall() {
       addCard(card);
       selectCard(card.id);
     } catch (e) {
-      alert("保存失败: " + e);
+      toast.error("保存失败: " + e);
     }
   }
 
@@ -80,7 +82,13 @@ export function CardWall() {
 
   async function handleSeed() {
     if (!projectPath) return;
-    if (!confirm("将写入示例类型和卡牌，当前项目为空才会生效。继续？")) return;
+    if (
+      !(await confirmDialog({
+        message: "将写入示例类型和卡牌，当前项目为空才会生效。继续？",
+        confirmLabel: "继续",
+      }))
+    )
+      return;
     try {
       await ipc.seedExampleWorld();
       const [
@@ -114,7 +122,7 @@ export function CardWall() {
         newCardGroups,
       );
     } catch (e) {
-      alert("载入示例失败: " + e);
+      toast.error("载入示例失败: " + e);
     }
   }
 
@@ -155,13 +163,13 @@ export function CardWall() {
       await ipc.upsertBoard(next);
       upsertBoard(next);
     } catch (e) {
-      alert("添加失败: " + e);
+      toast.error("添加失败: " + e);
     }
   }
 
   function handleAddToBoard(cardList: Card[]) {
     if (boards.length === 0) {
-      alert("请先在「棋盘」里创建一个棋盘");
+      toast.info("请先在「棋盘」里创建一个棋盘");
       return;
     }
     if (boards.length === 1) {
@@ -182,7 +190,11 @@ export function CardWall() {
     if (cardsToDelete.length === 0) return;
 
     if (
-      !confirm(`删除选中的 ${cardsToDelete.length} 张卡牌？可用 Ctrl+Z 撤销。`)
+      !(await confirmDialog({
+        message: `删除选中的 ${cardsToDelete.length} 张卡牌？可用 Ctrl+Z 撤销。`,
+        confirmLabel: "删除",
+        danger: true,
+      }))
     )
       return;
 
@@ -217,7 +229,7 @@ export function CardWall() {
         },
       });
     } catch (e) {
-      alert("删除失败: " + e);
+      toast.error("删除失败: " + e);
     }
   }
 
@@ -409,7 +421,7 @@ export function CardWall() {
           onDone={(groupName, added) => {
             setAddToGroupOpen(false);
             clearCardSelection();
-            alert(`已把 ${added} 张卡加入「${groupName}」。`);
+            toast.success(`已把 ${added} 张卡加入「${groupName}」。`);
           }}
         />
       )}

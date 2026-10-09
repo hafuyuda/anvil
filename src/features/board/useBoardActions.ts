@@ -2,10 +2,10 @@ import { ipc, type Board, type CardGroup, type Token } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
 import { useDeleteUndo } from "../../hooks/useDeleteUndo";
 import { nowMs } from "../../lib/time";
-import { newId } from "../../lib/id";
+import { newId, makeUndoId } from "../../lib/id";
 import { gridPosition, shuffle } from "./tokenPlacement";
 import { usePileActions } from "./usePileActions";
-import { makeUndoId } from "../../lib/id";
+import { toast } from "../../lib/toast";
 
 interface UndoEntry {
   id: string;
@@ -18,6 +18,30 @@ interface Args {
   board: Board;
   upsertBoard: (b: Board) => void;
   pushUndo: (entry: UndoEntry) => void;
+}
+
+/**
+ * 检查新 token 是否超出棋盘边界，超出则返回扩充后的新宽高。
+ * 返回 null 表示无需扩充。
+ */
+function computeBoardExpansion(
+  tokens: Token[],
+  currentW: number,
+  currentH: number,
+): { width: number; height: number } | null {
+  let maxX = currentW;
+  let maxY = currentH;
+  for (const t of tokens) {
+    const w = t.w ?? 140;
+    const h = t.h ?? 205;
+    maxX = Math.max(maxX, t.x + w);
+    maxY = Math.max(maxY, t.y + h);
+  }
+  // 加两格留白（按默认 token 尺寸的网格：180×240）
+  const newW = Math.ceil((maxX + 180) / 100) * 100;
+  const newH = Math.ceil((maxY + 240) / 100) * 100;
+  if (newW === currentW && newH === currentH) return null;
+  return { width: newW, height: newH };
 }
 
 /**
@@ -57,7 +81,7 @@ export function useBoardActions({ board, upsertBoard, pushUndo }: Args) {
         });
       }
     } catch (e) {
-      alert("保存失败: " + e);
+      toast.error("保存失败: " + e);
     }
   }
 
@@ -124,7 +148,7 @@ export function useBoardActions({ board, upsertBoard, pushUndo }: Args) {
   async function importFromGroup(group: CardGroup, shuffleOn: boolean) {
     const valid = group.card_ids.filter((id) => cards.some((c) => c.id === id));
     if (valid.length === 0) {
-      alert("该卡组里没有可用的卡牌。");
+      toast.info("该卡组里没有可用的卡牌。");
       return;
     }
 
@@ -151,9 +175,17 @@ export function useBoardActions({ board, upsertBoard, pushUndo }: Args) {
       };
     });
 
+    const allTokens = [...existing, ...newTokens];
+    const expansion = computeBoardExpansion(
+      allTokens,
+      board.width,
+      board.height,
+    );
+
     const next: Board = {
       ...board,
-      tokens: [...existing, ...newTokens],
+      tokens: allTokens,
+      ...(expansion ?? {}),
       updated_at: nowMs(),
     };
 
@@ -161,14 +193,14 @@ export function useBoardActions({ board, upsertBoard, pushUndo }: Args) {
       await ipc.upsertBoard(next);
       upsertBoard(next);
     } catch (e) {
-      alert("导入失败: " + e);
+      toast.error("导入失败: " + e);
     }
   }
 
   async function addPile(group: CardGroup) {
     const valid = group.card_ids.filter((id) => cards.some((c) => c.id === id));
     if (valid.length === 0) {
-      alert("该卡组里没有可用的卡牌。");
+      toast.info("该卡组里没有可用的卡牌。");
       return;
     }
 
@@ -197,9 +229,17 @@ export function useBoardActions({ board, upsertBoard, pushUndo }: Args) {
       },
     };
 
+    const allTokens = [...existing, pileToken];
+    const expansion = computeBoardExpansion(
+      allTokens,
+      board.width,
+      board.height,
+    );
+
     const next: Board = {
       ...board,
-      tokens: [...existing, pileToken],
+      tokens: allTokens,
+      ...(expansion ?? {}),
       updated_at: nowMs(),
     };
 
@@ -207,7 +247,7 @@ export function useBoardActions({ board, upsertBoard, pushUndo }: Args) {
       await ipc.upsertBoard(next);
       upsertBoard(next);
     } catch (e) {
-      alert("创建卡盒失败: " + e);
+      toast.error("创建卡盒失败: " + e);
     }
   }
 
