@@ -1,77 +1,61 @@
-import type { Card, CardType } from "../../core/ipc";
-import { SIZE_MAP, type CardFrameSize } from "./types";
-import { mapCard } from "./mapping";
-import { useImageUrl } from "../../hooks/useImageUrl";
+import type { CardType } from "../../../core/ipc";
+import { SIZE_MAP, type CardFrameSize } from "../types";
+import type { CardContent, CardFeatures } from "../mapping";
+import { CardImage } from "../primitives/CardImage";
+import { CardShell } from "../primitives/CardShell";
+import { CardInner } from "../primitives/CardInner";
 
 interface Props {
-  card: Card;
   cardType: CardType;
   size?: CardFrameSize;
+  content: CardContent;
+  features: CardFeatures;
   selected?: boolean;
   onClick?: () => void;
 }
 
-/**
- * 中性「数据卡」风格。
- * 无色金属质感，深色底 + 强调色细描边，偏功能展示。
- */
 export function CardFrameGeneric({
-  card,
   cardType,
   size = "medium",
+  content,
+  features,
   selected = false,
   onClick,
 }: Props) {
   const spec = SIZE_MAP[size];
-  const m = mapCard(card, cardType);
   const accent = cardType.color ?? "var(--card-frame-default-accent)";
 
-  const displayBody = m.body.length > 0 ? m.body : (cardType.description ?? "");
-  const imageUrl = useImageUrl(m.image);
+  const displayBody =
+    content.body.length > 0 ? content.body : (cardType.description ?? "");
 
   const accentLine = `color-mix(in srgb, ${accent} 45%, transparent)`;
   const accentSoft = `color-mix(in srgb, ${accent} 18%, transparent)`;
   const titleBarBg = `color-mix(in srgb, ${accent} 22%, var(--card-generic-bg))`;
 
   const hasStats =
-    m.atk !== undefined || m.def !== undefined || m.hp !== undefined;
+    content.atk !== undefined ||
+    content.def !== undefined ||
+    content.hp !== undefined;
 
   return (
-    <div
+    <CardShell
+      width={spec.w}
+      height={spec.h}
+      borderRadius={spec.borderRadius}
+      padding={3}
+      background="var(--card-generic-outer)"
+      border={`1px solid ${accentLine}`}
+      shadow="var(--card-generic-shadow)"
+      shadowSelected="var(--card-generic-shadow-selected)"
+      accent={accent}
+      selected={selected}
       onClick={onClick}
-      style={{
-        width: spec.w,
-        height: spec.h,
-        borderRadius: spec.borderRadius,
-        padding: 3,
-        boxSizing: "border-box",
-        background: "var(--card-generic-outer)",
-        border: `1px solid ${accentLine}`,
-        boxShadow: selected
-          ? `0 0 0 2px var(--bg-panel), 0 0 0 4px ${accent}, var(--card-generic-shadow-selected)`
-          : "var(--card-generic-shadow)",
-        cursor: onClick ? "pointer" : "default",
-        display: "flex",
-        flexDirection: "column",
-        userSelect: "none",
-        transition: "box-shadow 0.15s, transform 0.15s",
-        transform: selected ? "translateY(-2px)" : "none",
-      }}
     >
-      <div
-        style={{
-          flex: 1,
-          minHeight: 0,
-          borderRadius: spec.borderRadius - 2,
-          background: "var(--card-generic-bg)",
-          padding: spec.padding,
-          boxSizing: "border-box",
-          display: "flex",
-          flexDirection: "column",
-          gap: spec.padding / 2,
-          overflow: "hidden",
-          position: "relative",
-        }}
+      <CardInner
+        borderRadius={spec.borderRadius - 2}
+        padding={spec.padding}
+        background="var(--card-generic-bg)"
+        gap={spec.padding / 2}
       >
         {/* 标题栏 */}
         <div
@@ -96,9 +80,9 @@ export function CardFrameGeneric({
               whiteSpace: "nowrap",
               fontFamily: "var(--font-title)",
             }}
-            title={m.title}
+            title={content.title}
           >
-            {m.title}
+            {content.title}
           </span>
           <span
             style={{
@@ -112,8 +96,7 @@ export function CardFrameGeneric({
           </span>
         </div>
 
-        {/* 副标题 */}
-        {m.subtitle && (
+        {content.subtitle && (
           <div
             style={{
               fontSize: spec.metaSize,
@@ -124,41 +107,21 @@ export function CardFrameGeneric({
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
             }}
-            title={m.subtitle}
+            title={content.subtitle}
           >
-            {m.subtitle}
+            {content.subtitle}
           </div>
         )}
 
-        {/* 图像区 */}
-        <div
-          style={{
-            height: spec.imageHeight,
-            flexShrink: 0,
-            borderRadius: 3,
-            overflow: "hidden",
-            border: `1px solid ${accentSoft}`,
-            background: `color-mix(in srgb, ${accent} 10%, var(--card-generic-bg))`,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            position: "relative",
-          }}
-        >
-          {imageUrl ? (
-            <img
-              src={imageUrl}
-              alt=""
-              draggable={false}
-              style={{
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
-                display: "block",
-                userSelect: "none",
-              }}
-            />
-          ) : (
+        <CardImage
+          path={content.image}
+          crop={features.crop}
+          extend={features.extend}
+          height={spec.imageHeight}
+          borderRadius={3}
+          border={`1px solid ${accentSoft}`}
+          background={`color-mix(in srgb, ${accent} 10%, var(--card-generic-bg))`}
+          fallback={
             <div
               style={{
                 fontSize: spec.titleSize * 2.2,
@@ -169,12 +132,11 @@ export function CardFrameGeneric({
                 userSelect: "none",
               }}
             >
-              {m.title.slice(0, 2) || "?"}
+              {content.title.slice(0, 2) || "?"}
             </div>
-          )}
-        </div>
+          }
+        />
 
-        {/* 类型行 + 等级 */}
         <div
           style={{
             display: "flex",
@@ -196,26 +158,25 @@ export function CardFrameGeneric({
               whiteSpace: "nowrap",
               flex: 1,
             }}
-            title={m.typeLine}
+            title={content.typeLine}
           >
-            {m.typeLine}
+            {content.typeLine}
           </span>
-          {m.level !== undefined && (
+          {content.level !== undefined && (
             <span
               style={{
                 color: "var(--card-generic-text)",
                 fontFamily: "var(--font-mono)",
                 flexShrink: 0,
               }}
-              title={m.levelLabel}
+              title={content.levelLabel}
             >
-              {m.levelLabel ? `${m.levelLabel} ` : ""}
-              {m.level}
+              {content.levelLabel ? `${content.levelLabel} ` : ""}
+              {content.level}
             </span>
           )}
         </div>
 
-        {/* 正文 */}
         <div
           style={{
             flex: 1,
@@ -232,7 +193,6 @@ export function CardFrameGeneric({
         >
           {displayBody}
 
-          {/* 底部渐隐 */}
           <div
             style={{
               position: "absolute",
@@ -246,7 +206,6 @@ export function CardFrameGeneric({
           />
         </div>
 
-        {/* 属性行 */}
         {hasStats && (
           <div
             style={{
@@ -262,33 +221,33 @@ export function CardFrameGeneric({
               borderTop: `1px solid ${accentSoft}`,
             }}
           >
-            {m.atk !== undefined && (
+            {content.atk !== undefined && (
               <span>
                 <span style={{ color: "var(--card-generic-text-dim)" }}>
-                  {m.atkLabel ?? "ATK"}
+                  {content.atkLabel ?? "ATK"}
                 </span>{" "}
-                {m.atk}
+                {content.atk}
               </span>
             )}
-            {m.def !== undefined && (
+            {content.def !== undefined && (
               <span>
                 <span style={{ color: "var(--card-generic-text-dim)" }}>
-                  {m.defLabel ?? "DEF"}
+                  {content.defLabel ?? "DEF"}
                 </span>{" "}
-                {m.def}
+                {content.def}
               </span>
             )}
-            {m.hp !== undefined && (
+            {content.hp !== undefined && (
               <span>
                 <span style={{ color: "var(--card-generic-text-dim)" }}>
-                  {m.hpLabel ?? "HP"}
+                  {content.hpLabel ?? "HP"}
                 </span>{" "}
-                {m.hp}
+                {content.hp}
               </span>
             )}
           </div>
         )}
-      </div>
-    </div>
+      </CardInner>
+    </CardShell>
   );
 }

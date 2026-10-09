@@ -93,10 +93,10 @@ git checkout -b fix/your-bugfix
 **例子**：
 
 ```text
-feat: add structured script editor
+feat: add silver foil effect
 
-剧本 tab 默认显示结构视图，每行一个卡片，
-支持拖拽排序与类型切换。源码视图保留为高级模式。
+闪卡风格新增「银箔」，与金箔共用触发字段。
+数据层加 foil_style 字段，渲染层按 variant 选择颜色。
 ```
 
 ### 5. 推送并开 PR
@@ -142,9 +142,24 @@ src/
 │   ├── toast.ts · confirm.ts · runWithError.ts
 │   ├── dice.ts · appSettings.ts · commands.ts
 │   └── recentProjects.ts · saveRegistry.ts
-├── hooks/              # 通用 hook（useDraft / useKeyboard / ...）
-├── components/         # 跨 feature 通用组件
-│   ├── CardFrame/      # 卡牌渲染（5 风格 + 卡背 + 覆盖层）
+├── hooks/              # 通用 hook
+├── components/
+│   ├── CardFrame/      # 卡牌渲染
+│   │   ├── index.tsx
+│   │   ├── types.ts
+│   │   ├── mapping.ts           # mapContent + resolveFeatures
+│   │   ├── primitives/          # 基础构件
+│   │   │   ├── CardShell.tsx
+│   │   │   ├── CardInner.tsx
+│   │   │   ├── CardImage.tsx
+│   │   │   ├── CardBack.tsx
+│   │   │   └── FoilOverlay.tsx
+│   │   └── styles/              # 风格实现
+│   │       ├── YuGiOh.tsx
+│   │       ├── Generic.tsx
+│   │       ├── Minimal.tsx
+│   │       ├── MTG.tsx
+│   │       └── Pokemon.tsx
 │   ├── Modal.tsx · Toolbar.tsx · PickerDialog.tsx
 │   ├── ToastHost.tsx · ConfirmHost.tsx
 │   ├── HoverPreview.tsx · AudioSelect.tsx · ImageField.tsx
@@ -155,25 +170,23 @@ src/
 ├── themes/             # 内置主题
 ├── features/
 │   ├── cards/          # ★ 共享核心
-│   │   ├── card/       # 单卡编辑 + 关系面板
-│   │   ├── card-type/  # 卡牌类型与卡框
-│   │   ├── card-wall/  # 卡片墙
-│   │   └── relation/   # 关系类型与表单
-│   ├── card-groups/    # 卡组
-│   ├── world/          # 世界观（当前仅入口）
-│   ├── story/          # 剧情
-│   │   ├── scenario/   # 设计 + 导出
+│   │   ├── card/ · card-type/ · card-wall/ · relation/
+│   ├── card-groups/
+│   ├── world/          # 世界观（仅入口）
+│   ├── story/
+│   │   ├── scenario/   # 剧情设计 + 导出
+│   │   │   └── inspector/   # 检查器内容
 │   │   ├── play/       # 视觉小说运行 + 音频
-│   │   └── script/     # 剧本解析 / 编辑 / 序列化
-│   ├── board/          # 棋盘
-│   ├── session/        # 跑团
-│   │   └── chat/       # 对话流
-│   ├── project/        # 项目设置
-│   ├── app/            # 应用设置
-│   └── commands/       # 命令注册
+│   │   ├── script/     # 剧本解析 / 编辑 / 序列化
+│   │   └── effects.ts
+│   ├── board/
+│   ├── session/chat/
+│   ├── project/
+│   ├── app/
+│   └── commands/
 └── stores/
-    ├── projectStore.ts # 组合 slices
-    └── slices/         # 按领域拆分
+    ├── projectStore.ts
+    └── slices/
 ```
 
 **关键**：`features/cards/` 是共享核心，所有功能都通过它读写卡牌。**不要绕过它私建卡模型。**
@@ -184,11 +197,15 @@ src/
 
 - **每个 feature 一个目录**，内部按子领域再分组（`card/`、`card-wall/`、`card-type/`、`relation/`）。
 - **feature 顶层不放散文件**，要么是容器组件，要么是子目录。
-- **子目录内不放转发文件**。旧式的 `Xxx.tsx` 转发 + `xxx/` 实现的模式已废弃。
+- **子目录内不放转发文件**。
 - **`components/` 放跨 feature 通用组件**。若某组件只被一个 feature 用，它应该在那个 feature 里。
+- **`components/CardFrame/` 分三层**：
+  - `index.tsx` / `types.ts` / `mapping.ts` — 分派、类型、数据映射
+  - `primitives/` — 基础构件（Shell / Inner / Image / Back / Foil）
+  - `styles/` — 五种风格实现
 - **`features/` 之间不互相引用内部文件**。需要共享，提升到 `components/` 或 `lib/`。
-  - 已知例外：`session/SessionEditor` 引 `board/BoardCanvas`，`story/scenario/StoryGraphView` 引同目录的 `GraphNode`。
-- **新增文件时先问：半年后的自己打开这个目录，能否一眼猜到它在这里。** 猜不到就换个位置。
+  - 已知例外：`session/SessionEditor` 引 `board/BoardCanvas`。
+- **新增文件时先问：半年后的自己打开这个目录，能否一眼猜到它在这里。**
 
 ---
 
@@ -196,14 +213,14 @@ src/
 
 ### Rust
 
-- 用 `rustfmt` 格式化（默认配置即可）
+- 用 `rustfmt` 格式化
 - 命名清晰，注释写「为什么」
 - 错误用 `anyhow::Result`，命令层转 `String`
 - 存储层每个领域一个文件（`cards.rs` / `relations.rs` / ...）
 
 ### TypeScript / React
 
-- 用 Prettier 格式化（配置见项目根）
+- 用 Prettier 格式化
 - 组件文件 PascalCase，hook 文件 camelCase
 - 状态用 Zustand，不要用 Context 传业务状态
 - 每个功能模块一个目录，主组件放在目录入口
@@ -212,7 +229,7 @@ src/
 ### 通用
 
 - **不要提交调试代码**：`console.log` / `println!` / `dbg!`
-  - 例外：`eprintln!` 用于容错日志，可以保留
+  - 例外：`eprintln!` 用于容错日志
 - **不要提交注释掉的代码块**
 - **不要引入大依赖** 未经讨论
 
@@ -239,35 +256,33 @@ src/
 
 项目是一个文件夹，文本文件是唯一真相源。SQLite 只是可删除、可重建的索引。
 
-**不要**把 SQLite 当作数据存储，只当作查询加速器。
-
 ### 4. 字段只增不减
 
 `FieldDef` 删除时用 `deprecated = true`，不要真删。旧数据保留。
 
 ### 5. 高频操作不过 IPC
 
-棋盘拖拽、节点图移动在前端内存跑，操作结束再写回。不要每帧调 Rust。
+棋盘拖拽在前端内存跑，操作结束再写回。
 
 ### 6. 输入密集处不用 HTML5 DnD
 
-Windows 上 Tauri 的 WebView2 会拦截 HTML5 拖放，破坏 IME。用 `@dnd-kit`（基于 Pointer Events）。
+Windows 上 Tauri 的 WebView2 会拦截 HTML5 拖放，破坏 IME。用 `@dnd-kit`。
 
 ### 7. 颜色走 CSS 变量
 
-不要硬编码颜色值。所有颜色在 `src/index.css` 定义。`theme.ts` 是 JS 侧镜像。
+不要硬编码颜色值。所有颜色在 `src/index.css` 定义。
 
 ### 8. `serde(default)` 保护旧数据
 
-新增 Rust 结构体字段时用 `#[serde(default)]`，保证旧项目文件能读。seed 里的结构体字面量用 `..Default::default()` 收尾。
+新增 Rust 结构体字段时用 `#[serde(default)]`，保证旧项目文件能读。
 
 ### 9. 弹窗里的 onClose 用 ref 稳定
 
-Modal、对话框等组件的 `onClose` prop 经常是父组件内联箭头函数。effect 里用 ref 模式读，避免 effect 重跑冲掉用户编辑。
+Modal、对话框等组件的 `onClose` prop 经常是父组件内联箭头函数。effect 里用 ref 模式读，避免 effect 重跑。
 
 ### 10. 结构化编辑器是主视图
 
-视觉小说剧本、卡框配置等结构化内容，默认显示表单化的行卡片视图。源码 / JSON 视图作为高级模式保留。
+视觉小说剧本、卡框配置等结构化内容，默认显示表单化的行卡片视图。
 
 ### 11. 错误处理走统一入口
 
@@ -280,6 +295,23 @@ Modal、对话框等组件的 `onClose` prop 经常是父组件内联箭头函�
 
 不要用 base64 传输音频。用 `convertFileSrc(audioAbsPath(path))`。项目打开时动态添加 asset protocol scope，关闭时移除。
 
+### 13. 卡框渲染分层
+
+- `mapContent(card, cardType)` → `CardContent`（纯数据：title / subtitle / body / image / stats）
+- `resolveFeatures(card, cardType)` → `CardFeatures`（视觉处理：crop / extend / foil / foilVariant）
+- 风格组件**只接收 `content`**，不关心 `features` 怎么触发
+- `CardFrame/index.tsx` 组装：算 content + features → 分派风格 → 需要时包 `FoilOverlay`
+
+**加新风格**：在 `styles/` 新建组件，接收 `{ cardType, size, content, features, selected, onClick }`。在 `types.ts` 的 `CardFrameStyle` 联合类型加值，在 `CARD_FRAME_STYLE_LABELS` 加映射，在 `index.tsx` 的 switch 加分支。
+
+**加新闪卡效果**：`FoilOverlay` 的 `VARIANTS` 表加一项，`index.css` 加变量，`FoilTriggerRow` 加下拉选项，`resolveFeatures` 加规范化逻辑。**不改任何风格组件。**
+
+### 14. 动画走合成属性
+
+`transform` / `opacity` 由 GPU 合成线程执行。**不要用 `background-position` / `mixBlendMode` / `filter` 等触发主线程重绘的属性做循环动画。**
+
+闪卡的流光用 `transform: translate3d`。如果加新动画，同样遵循此约束。
+
 ---
 
 ## 技术债 · 顺手改
@@ -287,8 +319,6 @@ Modal、对话框等组件的 `onClose` prop 经常是父组件内联箭头函�
 以下项目**不单独占一批**。改动相关文件时如遇到，顺手处理。
 
 ### 内联样式 → 组件
-
-以下模式优先用组件替代：
 
 ```tsx
 // 区块小标题
@@ -311,15 +341,30 @@ color: "var(--fg-muted)", fontSize: 12
 → <Toggle label="文字" checked={...} onChange={...} />
 ```
 
-**不抽**：
+**不抽**：`Mono`（input inline style 无法包裹）、`LabeledInput`（差异大于共性）、`Divider`（与 flex 耦合）。
 
-- `Mono`（`fontFamily: var(--font-mono)`）——绝大多数是 input 的 inline style，无法包裹
-- `LabeledInput`——各处 gap / 内层标签元素差异大于共性
-- `Divider`——常与 flex 布局耦合
+### useEffect 依赖数组
 
-### 大文件二次拆分
+部分 effect 的依赖数组可能包含不稳定引用。改到相关文件时核实：
 
-`SessionEditor.tsx`（435 行）、`BoardCanvas.tsx`（423 行）、`CardWall.tsx`（418 行）、`TokenInspector.tsx`（400 行）目前在可接受边缘。如果未来增长，参考已拆过的 `BoardEditor` / `ChatMessage` / `ThemePanel` / `CardGroupEditor` 的模式。
+- 如果 effect 里只注册监听器，用 ref 模式读 `onClose` 等
+- 如果 effect 里读了 state，依赖要准确
+
+### 单元测试
+
+项目当前**没有单元测试**。值得补的地方：
+
+- `lib/dice.ts` —— 骰子解析与求值
+- `story/script/parser.ts` + `serializer.ts` —— 剧本 parse ↔ serialize 往返
+- `story/effects.ts` —— 条件求值 + 效果
+
+### CI 增强
+
+当前只跑 `tsc --noEmit`。可以加：
+
+- `cargo check`
+- `cargo fmt --check`
+- `prettier --check src/`
 
 ---
 
@@ -355,9 +400,9 @@ pnpm prettier --write src/
 
 1. 打开项目 → 载入示例世界 → 数据完整
 2. 卡片墙 → 搜索、筛选、多选、批量操作、排序
-3. 类型 → 字段编辑、拖拽排序、卡框映射、闪卡触发、裁剪、出框、卡背、类型复制
+3. 类型 → 字段编辑、拖拽排序、卡框映射、闪卡触发（含风格切换）、裁剪、出框、卡背、类型复制
 4. 关系 → 面板显示方向、反向名、悬浮预览
-5. 剧情 → 设置、节点图、剧本（结构 + 源码双视图）、运行、条件、效果、骰子
+5. 剧情 → 场景 tab、剧本（结构 + 源码双视图）、检查器（场景 / 剧情两 tab）、分支添加、运行全屏、条件、效果、骰子
 6. 剧情 → 导出 Markdown / HTML
 7. 棋盘 → 拖拽、缩放、旋转、背景、网格形状、卡盒抽牌、翻牌、占位、关系线、边界扩充
 8. 卡组 → 新建、加卡、导入棋盘、加卡盒
@@ -384,15 +429,15 @@ pnpm prettier --write src/
 
 - 检查 `tauri.conf.json` 里 `assetProtocol.enable` 是否为 `true`
 - 检查 `csp` 里 `media-src` 是否包含 `asset:` 和 `http://asset.localhost`
-- 项目打开时会动态添加 scope，关闭时移除。如果手动改了项目路径，重开项目
+- 项目打开时会动态添加 scope，关闭时移除
 
 ### 窗口空白
 
-DevTools（Tauri 窗口右键 → Inspect）看 Console 报错。多半是某个组件抛异常，检查 ErrorBoundary 显示的信息。
+DevTools（Tauri 窗口右键 → Inspect）看 Console 报错。
 
 ### Windows 上拖拽不工作
 
-检查 `tauri.conf.json` 里没有 `dragDropEnabled: false`（这会破坏 IME）。
+检查 `tauri.conf.json` 里没有 `dragDropEnabled: false`。
 
 ### 中文搜索无效
 
@@ -400,23 +445,23 @@ FTS 用 trigram，短查询（< 3 字符）走内存过滤。这是设计。
 
 ### 对话框里改的状态被外部冲掉
 
-如果对话框内部有 effect 依赖 `onClose` 等不稳定引用，父组件重渲染会导致 effect 重跑。用 ref 稳定回调，effect 依赖数组尽量空。
+如果对话框内部有 effect 依赖 `onClose` 等不稳定引用，用 ref 稳定回调。
 
 ### 拖动 token 后删除，界面延迟一拍
 
-`BoardCanvas` 里 `localTokens` 是拖拽时的本地镜像。同步 effect 必须**先比较长度和 id 集合**，再逐项比字段。只比字段会比不出来「增删」。
+`BoardCanvas` 里 `localTokens` 是拖拽时的本地镜像。同步 effect 必须**先比较长度和 id 集合**，再逐项比字段。
 
 ### Rust 编译报 `missing field XXX`
 
-新增结构体字段后，所有结构体字面量都要补。`seed.rs` 已改为从内置 pack 加载，不再有大量字面量。
+新增结构体字段后，所有结构体字面量都要补。
 
 ### Rust 编译报 `prefix X is unknown`
 
-HTML / CSS / JS 嵌在 Rust raw string 里时，用 `r##"..."##`（双 #），因为代码里会出现 `"#xxx`（十六进制颜色、CSS 选择器）。
+HTML / CSS / JS 嵌在 Rust raw string 里时，用 `r##"..."##`（双 #），因为代码里会出现 `"#xxx`。
 
 ### 结构化编辑器输入框「选了没反应」
 
-React 里连续两次 `setState` 会基于同一个旧 state 计算。合并更新成一个 `onChange({ ...patch })`，不要用两个独立回调。
+React 里连续两次 `setState` 会基于同一个旧 state 计算。合并更新成一个 `onChange({ ...patch })`。
 
 ### Vite 报 `does not provide an export named`
 
@@ -424,7 +469,11 @@ React 里连续两次 `setState` 会基于同一个旧 state 计算。合并更�
 
 ### `include_bytes!` 不生效
 
-`include_bytes!` 是编译期嵌入。pack 文件改了必须重新编译（`pnpm tauri dev` 重启或 `cargo build`）。
+`include_bytes!` 是编译期嵌入。pack 文件改了必须重新编译。
+
+### 闪卡动画卡顿
+
+CSS 动画如果用 `background-position` / `mixBlendMode`，会落到主线程重绘。用 `transform: translate3d` 和 `will-change: transform`。参见 `FoilOverlay.tsx`。
 
 ---
 
@@ -432,7 +481,7 @@ React 里连续两次 `setState` 会基于同一个旧 state 计算。合并更�
 
 - 开 [Issue](https://github.com/hafuyuda/anvil/issues) 描述问题
 - PR 里直接问
-- 不确定的方向先开 Issue 讨论，避免大改动返工
+- 不确定的方向先开 Issue 讨论
 
 ---
 

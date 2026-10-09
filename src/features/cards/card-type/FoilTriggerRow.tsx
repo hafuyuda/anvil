@@ -4,14 +4,17 @@ export function FoilTriggerRow({
   cardType,
   fieldKey,
   values,
+  foilStyle,
   onChange,
 }: {
   cardType: CardType;
   fieldKey: string | null;
   values: string[];
+  foilStyle: string | null;
   onChange: (patch: {
     foil_field?: string | null;
     foil_values?: string[];
+    foil_style?: string | null;
   }) => void;
 }) {
   const fields = cardType.fields.filter((f) => !f.deprecated);
@@ -178,6 +181,26 @@ export function FoilTriggerRow({
                   </span>
                 </label>
               )}
+
+              <label
+                style={{
+                  fontSize: 12,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 2,
+                  marginTop: 4,
+                }}
+              >
+                <span style={{ color: "var(--fg-muted)" }}>风格</span>
+                <select
+                  className="select"
+                  value={foilStyle ?? "gold"}
+                  onChange={(e) => onChange({ foil_style: e.target.value })}
+                >
+                  <option value="gold">金箔</option>
+                  <option value="silver">银箔</option>
+                </select>
+              </label>
 
               {fieldMissing && (
                 <div

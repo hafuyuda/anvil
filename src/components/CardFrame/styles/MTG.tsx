@@ -1,81 +1,64 @@
-import type { Card, CardType } from "../../core/ipc";
-import { SIZE_MAP, type CardFrameSize } from "./types";
-import { mapCard } from "./mapping";
-import { CardImage } from "./CardImage";
+import type { CardType } from "../../../core/ipc";
+import { SIZE_MAP, type CardFrameSize } from "../types";
+import type { CardContent, CardFeatures } from "../mapping";
+import { CardImage } from "../primitives/CardImage";
+import { CardShell } from "../primitives/CardShell";
+import { CardInner } from "../primitives/CardInner";
 
 interface Props {
-  card: Card;
   cardType: CardType;
   size?: CardFrameSize;
+  content: CardContent;
+  features: CardFeatures;
   selected?: boolean;
   onClick?: () => void;
 }
 
-/**
- * 万智牌风格。
- * 深色石质外框 + 顶部标题条 + 中段艺术图 + 底部羊皮纸文字栏。
- */
 export function CardFrameMTG({
-  card,
   cardType,
   size = "medium",
+  content,
+  features,
   selected = false,
   onClick,
 }: Props) {
   const spec = SIZE_MAP[size];
-  const m = mapCard(card, cardType);
   const accent = cardType.color ?? "var(--card-frame-default-accent)";
 
-  const displayBody = m.body.length > 0 ? m.body : (cardType.description ?? "");
+  const displayBody =
+    content.body.length > 0 ? content.body : (cardType.description ?? "");
+
   const accentSoft = `color-mix(in srgb, ${accent} 40%, transparent)`;
   const accentStrong = `color-mix(in srgb, ${accent} 65%, transparent)`;
   const titleBarBg = `linear-gradient(180deg, ${accent} 0%, color-mix(in srgb, ${accent} 70%, #000) 100%)`;
 
   const hasStats =
-    m.atk !== undefined || m.def !== undefined || m.hp !== undefined;
+    content.atk !== undefined ||
+    content.def !== undefined ||
+    content.hp !== undefined;
 
-  // MTG 右上角是费用/等级，用星号填充
-  const pips = m.level ? Math.min(m.level, 8) : 0;
+  const pips = content.level ? Math.min(content.level, 8) : 0;
 
   return (
-    <div
+    <CardShell
+      width={spec.w}
+      height={spec.h}
+      borderRadius={spec.borderRadius}
+      padding={4}
+      background="linear-gradient(145deg, var(--card-mtg-outer-1) 0%, var(--card-mtg-outer-2) 100%)"
+      shadow="var(--card-mtg-shadow)"
+      shadowSelected="var(--card-mtg-shadow-selected)"
+      accent={accent}
+      selected={selected}
       onClick={onClick}
-      style={{
-        width: spec.w,
-        height: spec.h,
-        borderRadius: spec.borderRadius,
-        padding: 4,
-        boxSizing: "border-box",
-        background:
-          "linear-gradient(145deg, var(--card-mtg-outer-1) 0%, var(--card-mtg-outer-2) 100%)",
-        boxShadow: selected
-          ? `0 0 0 2px var(--bg-panel), 0 0 0 4px ${accent}, var(--card-mtg-shadow-selected)`
-          : "var(--card-mtg-shadow)",
-        cursor: onClick ? "pointer" : "default",
-        display: "flex",
-        flexDirection: "column",
-        userSelect: "none",
-        transition: "box-shadow 0.15s, transform 0.15s",
-        transform: selected ? "translateY(-2px)" : "none",
-      }}
     >
-      <div
-        style={{
-          flex: 1,
-          minHeight: 0,
-          borderRadius: spec.borderRadius - 2,
-          background: "var(--card-mtg-bg)",
-          border: `1px solid var(--card-mtg-inner-border)`,
-          padding: spec.padding,
-          boxSizing: "border-box",
-          display: "flex",
-          flexDirection: "column",
-          gap: 4,
-          overflow: "hidden",
-          position: "relative",
-        }}
+      <CardInner
+        borderRadius={spec.borderRadius - 2}
+        padding={spec.padding}
+        background="var(--card-mtg-bg)"
+        border="1px solid var(--card-mtg-inner-border)"
+        gap={4}
       >
-        {/* 顶部标题条 */}
         <div
           style={{
             display: "flex",
@@ -100,9 +83,9 @@ export function CardFrameMTG({
               fontFamily: "var(--font-title)",
               letterSpacing: 0.3,
             }}
-            title={m.title}
+            title={content.title}
           >
-            {m.title}
+            {content.title}
           </span>
           {pips > 0 && (
             <span
@@ -114,14 +97,13 @@ export function CardFrameMTG({
                 marginLeft: 4,
                 letterSpacing: -1,
               }}
-              title={`${m.levelLabel ?? "等级"} ${m.level}`}
+              title={`${content.levelLabel ?? "等级"} ${content.level}`}
             >
               {"●".repeat(pips)}
             </span>
           )}
         </div>
 
-        {/* 类型行 */}
         <div
           style={{
             fontSize: spec.typeSize,
@@ -132,16 +114,15 @@ export function CardFrameMTG({
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
           }}
-          title={m.typeLine}
+          title={content.typeLine}
         >
-          {m.typeLine}
+          {content.typeLine}
         </div>
 
-        {/* 艺术图 */}
         <CardImage
-          path={m.image}
-          crop={m.crop}
-          extend={m.extend}
+          path={content.image}
+          crop={features.crop}
+          extend={features.extend}
           height={spec.imageHeight}
           borderRadius={2}
           border={`1px solid ${accentSoft}`}
@@ -157,11 +138,11 @@ export function CardFrameMTG({
                 userSelect: "none",
               }}
             >
-              {m.title.slice(0, 2) || "?"}
+              {content.title.slice(0, 2) || "?"}
             </div>
           }
         />
-        {/* 底部文字栏 */}
+
         <div
           style={{
             flex: 1,
@@ -209,25 +190,25 @@ export function CardFrameMTG({
                 borderRadius: 2,
               }}
             >
-              {m.atk !== undefined && (
+              {content.atk !== undefined && (
                 <span>
-                  {m.atkLabel ?? "ATK"}/{m.atk}
+                  {content.atkLabel ?? "ATK"}/{content.atk}
                 </span>
               )}
-              {m.def !== undefined && (
+              {content.def !== undefined && (
                 <span>
-                  {m.defLabel ?? "DEF"}/{m.def}
+                  {content.defLabel ?? "DEF"}/{content.def}
                 </span>
               )}
-              {m.hp !== undefined && (
+              {content.hp !== undefined && (
                 <span>
-                  {m.hpLabel ?? "HP"}/{m.hp}
+                  {content.hpLabel ?? "HP"}/{content.hp}
                 </span>
               )}
             </div>
           )}
         </div>
-      </div>
-    </div>
+      </CardInner>
+    </CardShell>
   );
 }

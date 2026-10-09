@@ -1,63 +1,58 @@
-import type { Card, CardType } from "../../core/ipc";
-import { SIZE_MAP, type CardFrameSize } from "./types";
-import { mapCard } from "./mapping";
+import type { CardType } from "../../../core/ipc";
+import { SIZE_MAP, type CardFrameSize } from "../types";
+import type { CardContent, CardFeatures } from "../mapping";
+import { CardShell } from "../primitives/CardShell";
 
 interface Props {
-  card: Card;
   cardType: CardType;
   size?: CardFrameSize;
+  content: CardContent;
+  features: CardFeatures;
   selected?: boolean;
   onClick?: () => void;
 }
 
-/**
- * 极简「条目卡」风格。
- * 无外框、无图像区，只有标题 + 正文 + 属性，大量留白。
- */
 export function CardFrameMinimal({
-  card,
   cardType,
   size = "medium",
+  content,
+  features,
   selected = false,
   onClick,
 }: Props) {
   const spec = SIZE_MAP[size];
-  const m = mapCard(card, cardType);
   const accent = cardType.color ?? "var(--card-frame-default-accent)";
 
-  const displayBody = m.body.length > 0 ? m.body : (cardType.description ?? "");
+  const displayBody =
+    content.body.length > 0 ? content.body : (cardType.description ?? "");
 
   const accentLine = `color-mix(in srgb, ${accent} 55%, transparent)`;
   const accentSoft = `color-mix(in srgb, ${accent} 25%, transparent)`;
 
   const hasStats =
-    m.atk !== undefined || m.def !== undefined || m.hp !== undefined;
+    content.atk !== undefined ||
+    content.def !== undefined ||
+    content.hp !== undefined;
+
+  // minimal 无图像区，features 未使用，但保留在 props 里统一接口
+  void features;
 
   return (
-    <div
+    <CardShell
+      width={spec.w}
+      height={spec.h}
+      borderRadius={spec.borderRadius}
+      padding={spec.padding + 4}
+      background="var(--card-minimal-bg)"
+      border={`1px solid ${accentSoft}`}
+      borderLeft={`3px solid ${accentLine}`}
+      shadow="var(--card-minimal-shadow)"
+      shadowSelected="var(--card-minimal-shadow-selected)"
+      accent={accent}
+      selected={selected}
       onClick={onClick}
-      style={{
-        width: spec.w,
-        height: spec.h,
-        borderRadius: spec.borderRadius,
-        padding: spec.padding + 4,
-        boxSizing: "border-box",
-        background: "var(--card-minimal-bg)",
-        border: `1px solid ${accentSoft}`,
-        borderLeft: `3px solid ${accentLine}`,
-        boxShadow: selected
-          ? `0 0 0 2px var(--bg-panel), 0 0 0 4px ${accent}, var(--card-minimal-shadow-selected)`
-          : "var(--card-minimal-shadow)",
-        cursor: onClick ? "pointer" : "default",
-        display: "flex",
-        flexDirection: "column",
-        userSelect: "none",
-        transition: "box-shadow 0.15s, transform 0.15s",
-        transform: selected ? "translateY(-2px)" : "none",
-        overflow: "hidden",
-      }}
+      style={{ overflow: "hidden" }}
     >
-      {/* 标题 */}
       <div
         style={{
           fontSize: spec.titleSize + 1,
@@ -70,13 +65,12 @@ export function CardFrameMinimal({
           flexShrink: 0,
           letterSpacing: 0.3,
         }}
-        title={m.title}
+        title={content.title}
       >
-        {m.title}
+        {content.title}
       </div>
 
-      {/* 副标题 */}
-      {m.subtitle && (
+      {content.subtitle && (
         <div
           style={{
             fontSize: spec.metaSize,
@@ -88,13 +82,12 @@ export function CardFrameMinimal({
             flexShrink: 0,
             fontStyle: "italic",
           }}
-          title={m.subtitle}
+          title={content.subtitle}
         >
-          {m.subtitle}
+          {content.subtitle}
         </div>
       )}
 
-      {/* 类型行 */}
       <div
         style={{
           fontSize: spec.typeSize,
@@ -108,13 +101,12 @@ export function CardFrameMinimal({
           flexShrink: 0,
           fontFamily: "var(--font-mono)",
         }}
-        title={m.typeLine}
+        title={content.typeLine}
       >
         {cardType.icon ? `${cardType.icon} ` : ""}
-        {m.typeLine}
+        {content.typeLine}
       </div>
 
-      {/* 正文 */}
       <div
         style={{
           flex: 1,
@@ -144,8 +136,7 @@ export function CardFrameMinimal({
         />
       </div>
 
-      {/* 属性 + 等级 */}
-      {(hasStats || m.level !== undefined) && (
+      {(hasStats || content.level !== undefined) && (
         <div
           style={{
             flexShrink: 0,
@@ -169,37 +160,37 @@ export function CardFrameMinimal({
               whiteSpace: "nowrap",
             }}
           >
-            {m.level !== undefined &&
-              `${m.levelLabel ? `${m.levelLabel} ` : "Lv "}${m.level}`}
+            {content.level !== undefined &&
+              `${content.levelLabel ? `${content.levelLabel} ` : "Lv "}${content.level}`}
           </span>
           <span style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-            {m.atk !== undefined && (
+            {content.atk !== undefined && (
               <span>
                 <span style={{ color: "var(--card-minimal-text-dim)" }}>
-                  {m.atkLabel ?? "ATK"}
+                  {content.atkLabel ?? "ATK"}
                 </span>{" "}
-                {m.atk}
+                {content.atk}
               </span>
             )}
-            {m.def !== undefined && (
+            {content.def !== undefined && (
               <span>
                 <span style={{ color: "var(--card-minimal-text-dim)" }}>
-                  {m.defLabel ?? "DEF"}
+                  {content.defLabel ?? "DEF"}
                 </span>{" "}
-                {m.def}
+                {content.def}
               </span>
             )}
-            {m.hp !== undefined && (
+            {content.hp !== undefined && (
               <span>
                 <span style={{ color: "var(--card-minimal-text-dim)" }}>
-                  {m.hpLabel ?? "HP"}
+                  {content.hpLabel ?? "HP"}
                 </span>{" "}
-                {m.hp}
+                {content.hp}
               </span>
             )}
           </span>
         </div>
       )}
-    </div>
+    </CardShell>
   );
 }

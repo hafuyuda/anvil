@@ -1,11 +1,11 @@
 import type { Card, CardType } from "../../core/ipc";
-import { CardFrameYuGiOh } from "./CardFrameYuGiOh";
-import { CardFrameGeneric } from "./CardFrameGeneric";
-import { CardFrameMinimal } from "./CardFrameMinimal";
-import { CardFrameMTG } from "./CardFrameMTG";
-import { CardFramePokemon } from "./CardFramePokemon";
-import { FoilOverlay } from "./FoilOverlay";
-import { mapCard } from "./mapping";
+import { CardFrameYuGiOh } from "./styles/YuGiOh";
+import { CardFrameGeneric } from "./styles/Generic";
+import { CardFrameMinimal } from "./styles/Minimal";
+import { CardFrameMTG } from "./styles/MTG";
+import { CardFramePokemon } from "./styles/Pokemon";
+import { FoilOverlay } from "./primitives/FoilOverlay";
+import { mapContent, resolveFeatures } from "./mapping";
 import {
   DEFAULT_CARD_FRAME_STYLE,
   SIZE_MAP,
@@ -29,7 +29,6 @@ interface Props {
   size?: CardFrameSize;
   style?: CardFrameStyle;
   selected?: boolean;
-  /** 视图是否启用闪卡渲染。数据是否该闪由 card_frame.foil_field / foil_values 决定 */
   foil?: boolean;
   onClick?: () => void;
 }
@@ -59,7 +58,19 @@ export function CardFrame({
   onClick,
 }: Props) {
   const resolved = resolveStyle(style, cardType);
-  const common = { card, cardType, size, selected, onClick };
+
+  // 内容与特性只算一次，传给风格组件
+  const content = mapContent(card, cardType);
+  const features = resolveFeatures(card, cardType);
+
+  const common = {
+    cardType,
+    size,
+    content,
+    features,
+    selected,
+    onClick,
+  };
 
   function renderStyle() {
     switch (resolved) {
@@ -77,9 +88,8 @@ export function CardFrame({
     }
   }
 
-  // 闪卡：prop 启用 且 数据命中触发条件。
-  // foil 为 false 时短路，不调用 mapCard，保持非闪卡场景零开销。
-  const shouldFoil = foil === true && mapCard(card, cardType).foil === true;
+  // 闪卡：prop 启用 且 数据命中触发条件
+  const shouldFoil = foil === true && features.foil === true;
 
   if (!shouldFoil) {
     return renderStyle();
@@ -97,7 +107,7 @@ export function CardFrame({
       }}
     >
       {renderStyle()}
-      <FoilOverlay radius={spec.borderRadius} />
+      <FoilOverlay radius={spec.borderRadius} variant={features.foilVariant} />
     </div>
   );
 }

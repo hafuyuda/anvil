@@ -32,6 +32,10 @@ type Slice = Pick<
   | "toggleTokenSelection"
   | "clearTokenSelection"
   | "setTokenSelection"
+  | "currentScenarioId"
+  | "currentSceneId"
+  | "setCurrentScenario"
+  | "setCurrentScene"
 >;
 
 export const createUISlice: StateCreator<ProjectState, [], [], Slice> = (
@@ -49,6 +53,8 @@ export const createUISlice: StateCreator<ProjectState, [], [], Slice> = (
   inspectorCollapsed: false,
   selectedCardIds: [],
   selectedTokenIds: [],
+  currentScenarioId: null,
+  currentSceneId: null,
 
   selectCard: (selectedCardId) =>
     set({
@@ -164,4 +170,8 @@ export const createUISlice: StateCreator<ProjectState, [], [], Slice> = (
       selectedEdgeId: null,
       selectedCardIds: [],
     }),
+
+  setCurrentScenario: (currentScenarioId) =>
+    set({ currentScenarioId, currentSceneId: null }),
+  setCurrentScene: (currentSceneId) => set({ currentSceneId }),
 });

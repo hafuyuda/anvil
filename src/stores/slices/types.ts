@@ -112,6 +112,10 @@ export interface ProjectState {
   inspectorCollapsed: boolean;
   selectedCardIds: string[];
   selectedTokenIds: string[];
+  currentScenarioId: string | null;
+  currentSceneId: string | null;
+  setCurrentScenario: (id: string | null) => void;
+  setCurrentScene: (id: string | null) => void;
 
   selectCard: (id: string | null) => void;
   selectToken: (id: string | null) => void;

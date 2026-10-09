@@ -1,6 +1,10 @@
 import type { Card, CardType, CropRect, ImageExtend } from "../../core/ipc";
 
-export interface CardMapping {
+/**
+ * 卡牌的「内容」——从 Card.values 里提取的显示数据。
+ * 不涉及该不该显示、怎么显示。
+ */
+export interface CardContent {
   title: string;
   subtitle?: string;
   typeLine: string;
@@ -14,142 +18,104 @@ export interface CardMapping {
   hpLabel?: string;
   body: string;
   image?: string;
-  crop: CropRect | null;
-  extend: ImageExtend | null;
-  foil: boolean;
 }
 
 /**
- * 判断一个值是否命中触发集合。
- * 覆盖：string / number / bool / string[]（multi_enum / tags / ref）。
+ * 卡牌的「特性」——附加的视觉处理（裁剪、出框、闪卡）。
+ * 决定「怎么做」，而不是「做什么」。
  */
-function matchesFoil(value: unknown, targets: Set<string>): boolean {
-  if (typeof value === "string") return targets.has(value);
-  if (typeof value === "number") return targets.has(String(value));
-  if (typeof value === "boolean") return targets.has(String(value));
-  if (Array.isArray(value)) {
-    return value.some((x) => typeof x === "string" && targets.has(x));
-  }
-  return false;
+export interface CardFeatures {
+  crop: CropRect | null;
+  extend: ImageExtend | null;
+  foil: boolean;
+  foilVariant: "gold" | "silver";
 }
 
-export function mapCard(card: Card, cardType: CardType): CardMapping {
+// ────────────────────────────────────────────────────────────
+// 内容提取
+// ────────────────────────────────────────────────────────────
+
+export function mapContent(card: Card, cardType: CardType): CardContent {
   const cfg = cardType.card_frame;
-
   if (cfg) {
-    const levelLabel =
-      cfg.level_label && cfg.level_label.trim()
-        ? cfg.level_label.trim()
-        : undefined;
-
-    const atkLabel =
-      cfg.atk_label && cfg.atk_label.trim() ? cfg.atk_label.trim() : undefined;
-
-    const defLabel =
-      cfg.def_label && cfg.def_label.trim() ? cfg.def_label.trim() : undefined;
-
-    const hpLabel =
-      cfg.hp_label && cfg.hp_label.trim() ? cfg.hp_label.trim() : undefined;
-
-    const title =
-      cfg.title && typeof card.values[cfg.title] === "string"
-        ? (card.values[cfg.title] as string)
-        : card.name;
-
-    const subtitle =
-      cfg.subtitle && typeof card.values[cfg.subtitle] === "string"
-        ? (card.values[cfg.subtitle] as string)
-        : undefined;
-
-    const level =
-      cfg.level && typeof card.values[cfg.level] === "number"
-        ? (card.values[cfg.level] as number)
-        : undefined;
-
-    const atk =
-      cfg.atk && typeof card.values[cfg.atk] === "number"
-        ? (card.values[cfg.atk] as number)
-        : undefined;
-
-    const def =
-      cfg.def && typeof card.values[cfg.def] === "number"
-        ? (card.values[cfg.def] as number)
-        : undefined;
-
-    const hp =
-      cfg.hp && typeof card.values[cfg.hp] === "number"
-        ? (card.values[cfg.hp] as number)
-        : undefined;
-
-    const typeLine =
-      cfg.type_line && typeof card.values[cfg.type_line] === "string"
-        ? (card.values[cfg.type_line] as string)
-        : cardType.name;
-
-    const image =
-      cfg.image && typeof card.values[cfg.image] === "string"
-        ? (card.values[cfg.image] as string)
-        : findImageField(card, cardType);
-
-    // 裁剪与出框：卡级 override 优先，类型级 fallback
-    const crop = card.image_crop_override ?? cfg.image_crop ?? null;
-    const extend = card.image_extend_override ?? cfg.image_extend ?? null;
-
-    const bodyParts: string[] = [];
-    for (const key of cfg.body) {
-      const v = card.values[key];
-      if (typeof v === "string" && v.trim()) {
-        bodyParts.push(v);
-      } else if (Array.isArray(v) && v.length > 0) {
-        bodyParts.push((v as unknown[]).join(" / "));
-      }
-    }
-
-    // 闪卡触发：foil_field 指向的字段值命中 foil_values
-    // 支持字符串 / 数字 / 布尔 / 数组（多选枚举 / 标签 / 引用）
-    let foil = false;
-    if (cfg.foil_field && cfg.foil_values.length > 0) {
-      const v = card.values[cfg.foil_field];
-      foil = matchesFoil(v, new Set(cfg.foil_values));
-    }
-
-    return {
-      title,
-      subtitle,
-      typeLine,
-      level,
-      levelLabel,
-      atk,
-      atkLabel,
-      def,
-      defLabel,
-      hp,
-      hpLabel,
-      body: bodyParts.join("\n"),
-      image,
-      foil,
-      crop,
-      extend,
-    };
+    return contentFromConfig(card, cardType, cfg);
   }
-
-  return fallbackMap(card, cardType);
+  return contentFallback(card, cardType);
 }
 
-function findImageField(card: Card, cardType: CardType): string | undefined {
-  for (const f of cardType.fields) {
-    if (f.deprecated) continue;
-    if (f.ty.kind === "image") {
-      const v = card.values[f.key];
-      if (typeof v === "string" && v.trim()) {
-        return v;
-      }
+function contentFromConfig(
+  card: Card,
+  cardType: CardType,
+  cfg: NonNullable<CardType["card_frame"]>,
+): CardContent {
+  const title =
+    cfg.title && typeof card.values[cfg.title] === "string"
+      ? (card.values[cfg.title] as string)
+      : card.name;
+
+  const subtitle =
+    cfg.subtitle && typeof card.values[cfg.subtitle] === "string"
+      ? (card.values[cfg.subtitle] as string)
+      : undefined;
+
+  const level =
+    cfg.level && typeof card.values[cfg.level] === "number"
+      ? (card.values[cfg.level] as number)
+      : undefined;
+
+  const atk =
+    cfg.atk && typeof card.values[cfg.atk] === "number"
+      ? (card.values[cfg.atk] as number)
+      : undefined;
+
+  const def =
+    cfg.def && typeof card.values[cfg.def] === "number"
+      ? (card.values[cfg.def] as number)
+      : undefined;
+
+  const hp =
+    cfg.hp && typeof card.values[cfg.hp] === "number"
+      ? (card.values[cfg.hp] as number)
+      : undefined;
+
+  const typeLine =
+    cfg.type_line && typeof card.values[cfg.type_line] === "string"
+      ? (card.values[cfg.type_line] as string)
+      : cardType.name;
+
+  const image =
+    cfg.image && typeof card.values[cfg.image] === "string"
+      ? (card.values[cfg.image] as string)
+      : findImageField(card, cardType);
+
+  const bodyParts: string[] = [];
+  for (const key of cfg.body) {
+    const v = card.values[key];
+    if (typeof v === "string" && v.trim()) {
+      bodyParts.push(v);
+    } else if (Array.isArray(v) && v.length > 0) {
+      bodyParts.push((v as unknown[]).join(" / "));
     }
   }
-  return undefined;
+
+  return {
+    title,
+    subtitle,
+    typeLine,
+    level,
+    levelLabel: cfg.level_label?.trim() || undefined,
+    atk,
+    atkLabel: cfg.atk_label?.trim() || undefined,
+    def,
+    defLabel: cfg.def_label?.trim() || undefined,
+    hp,
+    hpLabel: cfg.hp_label?.trim() || undefined,
+    body: bodyParts.join("\n"),
+    image,
+  };
 }
 
-function fallbackMap(card: Card, cardType: CardType): CardMapping {
+function contentFallback(card: Card, cardType: CardType): CardContent {
   const fields = cardType.fields
     .filter((f) => !f.deprecated)
     .sort((a, b) => a.order - b.order);
@@ -238,8 +204,56 @@ function fallbackMap(card: Card, cardType: CardType): CardMapping {
     hp,
     body: bodyParts.join("\n"),
     image,
-    crop: card.image_crop_override ?? null,
-    extend: card.image_extend_override ?? null,
-    foil: false,
   };
+}
+
+function findImageField(card: Card, cardType: CardType): string | undefined {
+  for (const f of cardType.fields) {
+    if (f.deprecated) continue;
+    if (f.ty.kind === "image") {
+      const v = card.values[f.key];
+      if (typeof v === "string" && v.trim()) {
+        return v;
+      }
+    }
+  }
+  return undefined;
+}
+
+// ────────────────────────────────────────────────────────────
+// 特性触发
+// ────────────────────────────────────────────────────────────
+
+export function resolveFeatures(card: Card, cardType: CardType): CardFeatures {
+  const cfg = cardType.card_frame;
+
+  // 裁剪 / 出框：卡级 override 优先，类型级 fallback
+  const crop = card.image_crop_override ?? cfg?.image_crop ?? null;
+  const extend = card.image_extend_override ?? cfg?.image_extend ?? null;
+
+  // 闪卡：foil_field 指向的字段值命中 foil_values
+  let foil = false;
+  if (cfg?.foil_field && cfg.foil_values && cfg.foil_values.length > 0) {
+    const v = card.values[cfg.foil_field];
+    foil = matchesFoil(v, new Set(cfg.foil_values));
+  }
+
+  const foilVariant: "gold" | "silver" =
+    cfg?.foil_style === "silver" ? "silver" : "gold";
+
+  return { crop, extend, foil, foilVariant };
+}
+
+/**
+ * 判断一个值是否命中触发集合。
+ * 覆盖：string / number / bool / string[]（multi_enum / tags / ref）。
+ */
+function matchesFoil(value: unknown, targets: Set<string>): boolean {
+  if (typeof value === "string") return targets.has(value);
+  if (typeof value === "number") return targets.has(String(value));
+  if (typeof value === "boolean") return targets.has(String(value));
+  if (Array.isArray(value)) {
+    return value.some((x) => typeof x === "string" && targets.has(x));
+  }
+  return false;
 }

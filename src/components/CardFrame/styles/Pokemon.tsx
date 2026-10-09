@@ -1,79 +1,62 @@
-import type { Card, CardType } from "../../core/ipc";
-import { SIZE_MAP, type CardFrameSize } from "./types";
-import { mapCard } from "./mapping";
-
-import { CardImage } from "./CardImage";
+import type { CardType } from "../../../core/ipc";
+import { SIZE_MAP, type CardFrameSize } from "../types";
+import type { CardContent, CardFeatures } from "../mapping";
+import { CardImage } from "../primitives/CardImage";
+import { CardShell } from "../primitives/CardShell";
+import { CardInner } from "../primitives/CardInner";
 
 interface Props {
-  card: Card;
   cardType: CardType;
   size?: CardFrameSize;
+  content: CardContent;
+  features: CardFeatures;
   selected?: boolean;
   onClick?: () => void;
 }
 
-/**
- * 宝可梦风格。
- * 浅色底 + 顶部标题条 + 艺术图 + 类型图标行 + 正文 + 右下 HP/等级。
- */
 export function CardFramePokemon({
-  card,
   cardType,
   size = "medium",
+  content,
+  features,
   selected = false,
   onClick,
 }: Props) {
   const spec = SIZE_MAP[size];
-  const m = mapCard(card, cardType);
   const accent = cardType.color ?? "var(--card-frame-default-accent)";
 
-  const displayBody = m.body.length > 0 ? m.body : (cardType.description ?? "");
+  const displayBody =
+    content.body.length > 0 ? content.body : (cardType.description ?? "");
 
   const accentSoft = `color-mix(in srgb, ${accent} 45%, transparent)`;
   const accentStrong = `color-mix(in srgb, ${accent} 70%, #000)`;
   const titleBarBg = `linear-gradient(180deg, color-mix(in srgb, ${accent} 85%, #fff) 0%, ${accent} 100%)`;
 
-  // 宝可梦风格：右上角显示 HP
-  const hpText = m.hp !== undefined ? `${m.hpLabel ?? "HP"} ${m.hp}` : null;
+  const hpText =
+    content.hp !== undefined
+      ? `${content.hpLabel ?? "HP"} ${content.hp}`
+      : null;
 
   return (
-    <div
+    <CardShell
+      width={spec.w}
+      height={spec.h}
+      borderRadius={spec.borderRadius + 2}
+      padding={4}
+      background="linear-gradient(160deg, var(--card-pokemon-outer-1) 0%, var(--card-pokemon-outer-2) 100%)"
+      shadow="var(--card-pokemon-shadow)"
+      shadowSelected="var(--card-pokemon-shadow-selected)"
+      accent={accent}
+      selected={selected}
       onClick={onClick}
-      style={{
-        width: spec.w,
-        height: spec.h,
-        borderRadius: spec.borderRadius + 2,
-        padding: 4,
-        boxSizing: "border-box",
-        background: `linear-gradient(160deg, var(--card-pokemon-outer-1) 0%, var(--card-pokemon-outer-2) 100%)`,
-        boxShadow: selected
-          ? `0 0 0 2px var(--bg-panel), 0 0 0 4px ${accent}, var(--card-pokemon-shadow-selected)`
-          : "var(--card-pokemon-shadow)",
-        cursor: onClick ? "pointer" : "default",
-        display: "flex",
-        flexDirection: "column",
-        userSelect: "none",
-        transition: "box-shadow 0.15s, transform 0.15s",
-        transform: selected ? "translateY(-2px)" : "none",
-      }}
     >
-      <div
-        style={{
-          flex: 1,
-          minHeight: 0,
-          borderRadius: spec.borderRadius,
-          background: "var(--card-pokemon-bg)",
-          padding: spec.padding,
-          boxSizing: "border-box",
-          display: "flex",
-          flexDirection: "column",
-          gap: spec.padding / 2,
-          overflow: "hidden",
-          border: `1px solid var(--card-pokemon-inner-border)`,
-          position: "relative",
-        }}
+      <CardInner
+        borderRadius={spec.borderRadius}
+        padding={spec.padding}
+        background="var(--card-pokemon-bg)"
+        border="1px solid var(--card-pokemon-inner-border)"
+        gap={spec.padding / 2}
       >
-        {/* 顶部：标题 + HP */}
         <div
           style={{
             display: "flex",
@@ -94,9 +77,9 @@ export function CardFramePokemon({
               fontFamily: "var(--font-title)",
               flex: 1,
             }}
-            title={m.title}
+            title={content.title}
           >
-            {m.title}
+            {content.title}
           </span>
           {hpText && (
             <span
@@ -113,7 +96,6 @@ export function CardFramePokemon({
           )}
         </div>
 
-        {/* 副标题 / 类型条 */}
         <div
           style={{
             display: "flex",
@@ -137,33 +119,32 @@ export function CardFramePokemon({
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
               flex: 1,
-              fontStyle: m.subtitle ? "normal" : "italic",
+              fontStyle: content.subtitle ? "normal" : "italic",
             }}
-            title={m.subtitle ?? m.typeLine}
+            title={content.subtitle ?? content.typeLine}
           >
-            {m.subtitle ?? m.typeLine}
+            {content.subtitle ?? content.typeLine}
           </span>
-          {m.level !== undefined && (
+          {content.level !== undefined && (
             <span
               style={{
                 flexShrink: 0,
                 fontFamily: "var(--font-mono)",
               }}
-              title={m.levelLabel}
+              title={content.levelLabel}
             >
-              {m.levelLabel ? `${m.levelLabel} ` : "Lv "}
-              {m.level}
+              {content.levelLabel ? `${content.levelLabel} ` : "Lv "}
+              {content.level}
             </span>
           )}
         </div>
 
-        {/* 艺术图 */}
         <CardImage
-          path={m.image}
-          crop={m.crop}
-          extend={m.extend}
+          path={content.image}
+          crop={features.crop}
+          extend={features.extend}
           height={spec.imageHeight}
-        borderRadius={3}
+          borderRadius={3}
           border={`2px solid ${accentSoft}`}
           background={`linear-gradient(180deg, color-mix(in srgb, ${accent} 25%, var(--card-pokemon-art-bg)) 0%, color-mix(in srgb, ${accent} 10%, var(--card-pokemon-art-bg)) 100%)`}
           fallback={
@@ -177,12 +158,11 @@ export function CardFramePokemon({
                 userSelect: "none",
               }}
             >
-              {m.title.slice(0, 2) || "?"}
+              {content.title.slice(0, 2) || "?"}
             </div>
           }
         />
 
-        {/* 正文 */}
         <div
           style={{
             flex: 1,
@@ -194,7 +174,7 @@ export function CardFramePokemon({
             overflow: "hidden",
             position: "relative",
             paddingBottom:
-              m.atk !== undefined || m.def !== undefined
+              content.atk !== undefined || content.def !== undefined
                 ? spec.statSize + 2
                 : 0,
           }}
@@ -215,8 +195,7 @@ export function CardFramePokemon({
           />
         </div>
 
-        {/* 底部 ATK / DEF */}
-        {(m.atk !== undefined || m.def !== undefined) && (
+        {(content.atk !== undefined || content.def !== undefined) && (
           <div
             style={{
               flexShrink: 0,
@@ -231,25 +210,25 @@ export function CardFramePokemon({
               borderTop: `1px solid ${accentSoft}`,
             }}
           >
-            {m.atk !== undefined && (
+            {content.atk !== undefined && (
               <span>
                 <span style={{ color: "var(--card-pokemon-text-dim)" }}>
-                  {m.atkLabel ?? "ATK"}
+                  {content.atkLabel ?? "ATK"}
                 </span>{" "}
-                {m.atk}
+                {content.atk}
               </span>
             )}
-            {m.def !== undefined && (
+            {content.def !== undefined && (
               <span>
                 <span style={{ color: "var(--card-pokemon-text-dim)" }}>
-                  {m.defLabel ?? "DEF"}
+                  {content.defLabel ?? "DEF"}
                 </span>{" "}
-                {m.def}
+                {content.def}
               </span>
             )}
           </div>
         )}
-      </div>
-    </div>
+      </CardInner>
+    </CardShell>
   );
 }

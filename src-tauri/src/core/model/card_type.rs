@@ -63,6 +63,8 @@ pub struct CardFrameConfig {
     #[serde(default)]
     pub foil_values: Vec<String>,
     #[serde(default)]
+    pub foil_style: Option<String>, // "gold" | "silver"
+    #[serde(default)]
     pub image_crop: Option<CropRect>,
     #[serde(default)]
     pub image_extend: Option<ImageExtend>,

@@ -3,9 +3,9 @@ import { ipc, type Board, type Session, type Token } from "../core/ipc";
 import { useProjectStore } from "../stores/projectStore";
 import { CardEditor } from "../features/cards/card/CardEditor";
 import { TokenInspector } from "../features/board/TokenInspector";
-import { EdgeEditorPanel } from "../features/story/scenario/EdgeEditorPanel";
 import { CardTypePreview } from "../features/cards/card-type/CardTypePreview";
 import { nowMs } from "../lib/time";
+import { ScenarioInspector } from "../features/story/scenario/inspector/ScenarioInspector";
 
 export function Inspector() {
   const activeModule = useProjectStore((s) => s.activeModule);
@@ -138,9 +138,7 @@ export function Inspector() {
     ? (relations.find((r) => r.id === selectedEdgeId) ?? null)
     : null;
 
-  const edgeScenario = edge?.meta?.scenario_id
-    ? (scenarios.find((s) => s.id === edge.meta.scenario_id) ?? null)
-    : null;
+
 
   const card = cards.find((c) => c.id === selectedCardId) ?? null;
   const cardType = card
@@ -190,11 +188,15 @@ export function Inspector() {
   const header =
     activeModule === "types"
       ? "卡框预览"
-      : token
-        ? "Token"
-        : edge
-          ? "关系"
-          : "检查器";
+      : activeModule === "story"
+        ? selectedEdgeId
+          ? "分支"
+          : "剧情"
+        : token
+          ? "Token"
+          : edge
+            ? "关系"
+            : "检查器";
 
   return (
     <>
@@ -267,6 +269,8 @@ export function Inspector() {
           </>
         )}
 
+        {activeModule === "story" && <ScenarioInspector />}
+        
         {/* 其他模块：token / edge / card */}
         {activeModule !== "types" && (
           <>
@@ -277,14 +281,6 @@ export function Inspector() {
                 onSave={handleTokenSave}
                 onDelete={handleTokenDelete}
                 onClose={() => selectToken(null)}
-              />
-            )}
-
-            {!token && edge && (
-              <EdgeEditorPanel
-                key={edge.id}
-                relation={edge}
-                scenario={edgeScenario}
               />
             )}
 

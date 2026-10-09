@@ -75,6 +75,7 @@ export interface CardFrameConfig {
   foil_values: string[];
   image_crop?: CropRect | null;
   image_extend?: ImageExtend | null;
+  foil_style?: string | null;
 }
 
 export interface CardType {

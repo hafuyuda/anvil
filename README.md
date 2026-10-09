@@ -11,13 +11,13 @@ Anvil 把世界观搭建、分支故事、棋盘推演、跑团记录统一在�
 ## 特性
 
 - **卡牌核心** — 自定义卡牌类型与字段，从文本、数字到图片、引用、枚举，字段只增不减，旧数据永不丢失。支持类型复制。
-- **关系图谱** — 卡与卡之间的边是一等公民，独立于卡片字段。悬停卡名查看悬浮预览。
-- **分支故事** — 场景卡 + 条件边 + 变量 + 效果。跑图时自动求值，条件满足才可通行。
+- **关系系统** — 卡与卡之间的边是一等公民，独立于卡片字段。关系面板显示方向与反向名，鼠标悬停查看对方卡片预览。
+- **分支故事** — 场景卡 + 条件边 + 变量 + 效果。写剧本时在检查器里就地添加分支，一键全屏试玩。
 - **视觉小说** — 结构化剧本编辑器（行卡片 + 拖拽排序 + 源码模式）、打字机对白、立绘表情、背景切换、结局标记、背景音乐和音效播放。导出 Markdown 剧本和单文件 HTML 阅读器。
-- **棋盘推演** — HTML 层渲染，支持拖拽、缩放、旋转、背景图、网格形状切换、卡盒抽牌、翻牌、占位 Token、关系线叠加。Token 用同一套卡框渲染。
+- **棋盘推演** — HTML 层渲染，支持拖拽、缩放、旋转、背景图、网格形状切换（方格 / 点阵 / 横线 / 竖线）、卡盒抽牌、翻牌、占位 Token、世界观关系线叠加。Token 用同一套卡框渲染。
 - **跑团对话** — 舞台 + 对话流 + 角色面板。消息写入 JSONL，可回放、可编辑、可删除。会话内支持卡盒抽牌。
-- **卡组管理** — 有序的卡 ID 集合。一键铺开到棋盘，或作为卡盒抽牌。导入时自动扩充棋盘边界。
-- **TCG 卡牌渲染** — 五种卡框风格（游戏王 / 通用 / 极简 / 万智牌 / 宝可梦），ATK / DEF / HP / 等级标签可自定义。支持图像裁剪、出框、闪卡、卡背、翻牌。
+- **卡组管理** — 有序的卡 ID 集合。一键铺开到棋盘（自动扩充边界），或作为卡盒抽牌。
+- **TCG 卡牌渲染** — 五种卡框风格（游戏王 / 通用 / 极简 / 万智牌 / 宝可梦），ATK / DEF / HP / 等级标签可自定义。支持图像裁剪、出框、闪卡（金箔 / 银箔）、卡背、翻牌。
 - **本地优先** — 项目是一个文件夹，文本真相源，可用 git 管理。SQLite 只是可删除、可重建的索引。
 - **资源包** — 导出 / 导入 / 合并 `.anvilpack`，类型映射、只导类型、选择性导入。
 - **项目级主题** — 所有颜色走 CSS 变量，可切换、可自定义、可导出。
@@ -30,11 +30,7 @@ Anvil 把世界观搭建、分支故事、棋盘推演、跑团记录统一在�
 
 ## 截图
 
-![alt text](docs/screenshot-start-menu.png)
-![alt text](docs/screenshot-card-wall.png)
-![alt text](docs/screenshot-story.png)
-![alt text](docs/screenshot-board.png)
-![alt text](docs/screenshot-session.png)
+![alt text](docs/start-menu.png)
 
 ```text
 docs/
@@ -58,9 +54,7 @@ docs/
 | 资源包     | zip + walkdir                                             |
 | 前端       | React + TypeScript + Vite                                 |
 | 状态       | Zustand                                                   |
-| 节点图     | React Flow (@xyflow/react)                                |
 | 拖拽排序   | @dnd-kit                                                  |
-| 力导向布局 | d3-force                                                  |
 | 包管理器   | pnpm                                                      |
 
 ---
@@ -96,6 +90,11 @@ pnpm tauri build
 
 产物在 `src-tauri/target/release/bundle/`。
 
+**Windows 提供两种格式**：
+
+- `Anvil_x.y.z_x64-setup.exe` —— 推荐。无需管理员权限，双击安装
+- `Anvil_x.y.z_x64_en-US.msi` —— 适合企业环境或需要静默安装
+
 ---
 
 ## 项目结构
@@ -104,11 +103,11 @@ pnpm tauri build
 anvil/
 ├── src-tauri/
 │   ├── assets/
-│   │   └── example_world.anvilpack   # 内置示例世界
+│   │   └── example_world.anvilpack   # 内置示例世界（编译嵌入）
 │   └── src/
 │       ├── core/
 │       │   ├── model/          # Card / CardType / Relation / Scenario / Board / Session / CardGroup
-│       │   ├── store/          # 文本文件读写 + 索引 + 资源包（按领域拆分）
+│       │   ├── store/          # 文本文件读写 + 索引 + 资源包
 │       │   ├── index/          # SQLite 索引 + FTS
 │       │   ├── eval/           # 条件求值
 │       │   └── ipc/            # Tauri 命令（按领域拆分）
@@ -124,8 +123,8 @@ anvil/
 │   │   ├── dice.ts · appSettings.ts · commands.ts
 │   │   └── recentProjects.ts · saveRegistry.ts
 │   ├── hooks/              # 通用 hook（useDraft / useKeyboard / useAppSettings / ...）
-│   ├── components/         # 通用组件
-│   │   ├── CardFrame/      # 卡牌渲染（5 风格 + 卡背 + 覆盖层）
+│   ├── components/
+│   │   ├── CardFrame/      # 卡牌渲染（分层：primitives + styles）
 │   │   ├── Modal.tsx · Toolbar.tsx · PickerDialog.tsx
 │   │   ├── ToastHost.tsx · ConfirmHost.tsx
 │   │   ├── HoverPreview.tsx · AudioSelect.tsx · ImageField.tsx
@@ -143,7 +142,7 @@ anvil/
 │   │   ├── card-groups/    # 卡组
 │   │   ├── world/          # 世界观（当前仅入口）
 │   │   ├── story/
-│   │   │   ├── scenario/   # 剧情设计（节点图、连线、条件、效果、导出）
+│   │   │   ├── scenario/   # 剧情设计（场景 tab、导出）
 │   │   │   ├── play/       # 视觉小说运行 + 音频
 │   │   │   ├── script/     # 剧本解析、编辑、序列化
 │   │   │   └── effects.ts  # 共享条件与效果
@@ -156,6 +155,27 @@ anvil/
 │   │   └── commands/       # 全局命令注册
 │   └── stores/             # Zustand（slice 模式）
 └── package.json
+```
+
+**卡牌渲染分层**：
+
+```text
+components/CardFrame/
+├── index.tsx              分派器
+├── types.ts               类型 + SIZE_MAP + 预设
+├── mapping.ts             mapContent + resolveFeatures
+├── primitives/            基础构件
+│   ├── CardShell.tsx      外层容器（选中态、尺寸、过渡）
+│   ├── CardInner.tsx      内层容器
+│   ├── CardImage.tsx      图像区（裁剪 / 出框）
+│   ├── CardBack.tsx       卡背
+│   └── FoilOverlay.tsx    闪卡覆盖层
+└── styles/                风格实现
+    ├── YuGiOh.tsx
+    ├── Generic.tsx
+    ├── Minimal.tsx
+    ├── MTG.tsx
+    └── Pokemon.tsx
 ```
 
 ---
@@ -244,7 +264,6 @@ MyWorld.anvil/
 ## 致谢
 
 - [Tauri](https://tauri.app/)
-- [React Flow](https://reactflow.dev/)
 - [d3-force](https://github.com/d3/d3-force)
 - [Zustand](https://github.com/pmndrs/zustand)
 - [@dnd-kit](https://dndkit.com/)

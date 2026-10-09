@@ -317,6 +317,7 @@ export function CardFrameEditor({
         cardType={cardType}
         fieldKey={cfg.foil_field ?? null}
         values={cfg.foil_values ?? []}
+        foilStyle={cfg.foil_style ?? null}
         onChange={(patch) => onChange({ ...cfg, ...patch })}
       />
 
