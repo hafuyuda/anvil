@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { ipc, type AudioMeta } from "../../core/ipc";
 import { loadAudio, invalidateAudio } from "../../lib/audioCache";
-import { toast } from "../../lib/toast";
 import { confirmDialog } from "../../lib/confirm";
 import { runWithError } from "../../lib/runWithError";
+import { EmptyState } from "../../components/EmptyState";
 
 function basename(p: string): string {
   const parts = p.split("/");
@@ -101,18 +101,7 @@ export function AudioTab() {
       )}
 
       {!loading && items.length === 0 && (
-        <div
-          style={{
-            padding: 24,
-            textAlign: "center",
-            color: "var(--fg-muted)",
-            fontSize: 12,
-            border: "1px dashed var(--border-default)",
-            borderRadius: "var(--radius-md)",
-          }}
-        >
-          还没有音频。点「导入音频」开始。
-        </div>
+        <EmptyState>还没有音频。点「导入音频」开始。</EmptyState>
       )}
 
       {items.length > 0 && (

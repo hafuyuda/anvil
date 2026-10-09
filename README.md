@@ -11,19 +11,20 @@ Anvil 把世界观搭建、分支故事、棋盘推演、跑团记录统一在�
 ## 特性
 
 - **卡牌核心** — 自定义卡牌类型与字段，从文本、数字到图片、引用、枚举，字段只增不减，旧数据永不丢失。支持类型复制。
-- **关系图谱** — 卡与卡之间的边是一等公民，独立于卡片字段。图谱视图用 d3-force 力导向布局，支持连线、过滤、搜索。
+- **关系图谱** — 卡与卡之间的边是一等公民，独立于卡片字段。悬停卡名查看悬浮预览。
 - **分支故事** — 场景卡 + 条件边 + 变量 + 效果。跑图时自动求值，条件满足才可通行。
-- **视觉小说** — 结构化剧本编辑器（行卡片 + 拖拽排序 + 源码模式）、打字机对白、立绘表情、背景切换、结局标记。导出 Markdown 剧本。
-- **棋盘推演** — HTML 层渲染，支持拖拽、缩放、旋转、背景图、卡盒抽牌、翻牌、占位。Token 用同一套卡框渲染。
+- **视觉小说** — 结构化剧本编辑器（行卡片 + 拖拽排序 + 源码模式）、打字机对白、立绘表情、背景切换、结局标记、背景音乐和音效播放。导出 Markdown 剧本和单文件 HTML 阅读器。
+- **棋盘推演** — HTML 层渲染，支持拖拽、缩放、旋转、背景图、网格形状切换、卡盒抽牌、翻牌、占位 Token、关系线叠加。Token 用同一套卡框渲染。
 - **跑团对话** — 舞台 + 对话流 + 角色面板。消息写入 JSONL，可回放、可编辑、可删除。会话内支持卡盒抽牌。
-- **卡组管理** — 有序的卡 ID 集合。一键铺开到棋盘，或作为卡盒抽牌。
-- **TCG 卡牌渲染** — 五种卡框风格（游戏王 / 通用 / 极简 / 万智牌 / 宝可梦），ATK / DEF / HP / 等级标签可自定义。支持图像裁剪、出框、闪卡、卡背。
+- **卡组管理** — 有序的卡 ID 集合。一键铺开到棋盘，或作为卡盒抽牌。导入时自动扩充棋盘边界。
+- **TCG 卡牌渲染** — 五种卡框风格（游戏王 / 通用 / 极简 / 万智牌 / 宝可梦），ATK / DEF / HP / 等级标签可自定义。支持图像裁剪、出框、闪卡、卡背、翻牌。
 - **本地优先** — 项目是一个文件夹，文本真相源，可用 git 管理。SQLite 只是可删除、可重建的索引。
 - **资源包** — 导出 / 导入 / 合并 `.anvilpack`，类型映射、只导类型、选择性导入。
 - **项目级主题** — 所有颜色走 CSS 变量，可切换、可自定义、可导出。
-- **应用设置** — 跨项目偏好独立存储：默认卡框风格、打字机速度、自动保存延迟等。
+- **应用设置** — 跨项目偏好独立存储：默认卡框风格、打字机速度、自动保存延迟、界面缩放等。
 - **命令面板** — `Ctrl+K` 打开，所有操作可搜可执行。
 - **撤销 / 重做 / 自动保存** — 覆盖单卡编辑、删除、批量操作、卡盒抽牌。
+- **内置示例世界** — 开箱即用的「铁砧堡」演示项目，覆盖全部功能。
 
 ---
 
@@ -34,7 +35,6 @@ Anvil 把世界观搭建、分支故事、棋盘推演、跑团记录统一在�
 ```text
 docs/
 ├── screenshot-card-wall.png
-├── screenshot-graph.png
 ├── screenshot-story.png
 ├── screenshot-board.png
 └── screenshot-session.png
@@ -98,23 +98,37 @@ pnpm tauri build
 
 ```text
 anvil/
-├── src-tauri/src/
-│   ├── core/
-│   │   ├── model/          # Card / CardType / Relation / Scenario / Board / Session / CardGroup
-│   │   ├── store/          # 文本文件读写 + 索引 + 资源包（按领域拆分）
-│   │   ├── index/          # SQLite 索引 + FTS
-│   │   ├── eval/           # 条件求值
-│   │   └── ipc/            # Tauri 命令（按领域拆分）
-│   └── lib.rs
+├── src-tauri/
+│   ├── assets/
+│   │   └── example_world.anvilpack   # 内置示例世界
+│   └── src/
+│       ├── core/
+│       │   ├── model/          # Card / CardType / Relation / Scenario / Board / Session / CardGroup
+│       │   ├── store/          # 文本文件读写 + 索引 + 资源包（按领域拆分）
+│       │   ├── index/          # SQLite 索引 + FTS
+│       │   ├── eval/           # 条件求值
+│       │   └── ipc/            # Tauri 命令（按领域拆分）
+│       └── lib.rs
 ├── src/
-├── core/               # IPC 类型 + 项目级纯函数
-│   ├── ipc/            # 前端 IPC 类型 + invoke 封装
-│   ├── openProjectAt.ts
-│   └── applyProjectTheme.ts
-│   ├── lib/                # 通用工具（id / time / theme / imageCache / dice / commands / appSettings）
-├── hooks/              # React hooks（useDraft / useKeyboard /useOpenProject / ...）
-│   ├── components/         # 通用组件（CardFrame / Toolbar / Modal / ...）
-│   ├── shell/              # 五段布局（TopBar / LeftNav / Workspace / Inspector / StatusBar）
+│   ├── core/               # IPC 类型与封装 + 项目级动作
+│   │   ├── ipc/            # 前端 IPC 类型与 invoke 封装
+│   │   └── use*.ts         # 打开/创建/导入/导出
+│   ├── lib/                # 通用工具
+│   │   ├── id.ts · time.ts · theme.ts
+│   │   ├── imageCache.ts · audioCache.ts
+│   │   ├── toast.ts · confirm.ts · runWithError.ts
+│   │   ├── dice.ts · appSettings.ts · commands.ts
+│   │   └── recentProjects.ts · saveRegistry.ts
+│   ├── hooks/              # 通用 hook（useDraft / useKeyboard / useAppSettings / ...）
+│   ├── components/         # 通用组件
+│   │   ├── CardFrame/      # 卡牌渲染（5 风格 + 卡背 + 覆盖层）
+│   │   ├── Modal.tsx · Toolbar.tsx · PickerDialog.tsx
+│   │   ├── ToastHost.tsx · ConfirmHost.tsx
+│   │   ├── HoverPreview.tsx · AudioSelect.tsx · ImageField.tsx
+│   │   ├── SectionLabel.tsx · EmptyState.tsx
+│   │   ├── Toggle.tsx · LabeledBlock.tsx
+│   │   └── ...
+│   ├── shell/              # 五段布局
 │   ├── themes/             # 内置主题定义
 │   ├── features/
 │   │   ├── cards/          # ★ 共享核心
@@ -123,10 +137,10 @@ anvil/
 │   │   │   ├── card-type/  # 卡牌类型、字段、卡框配置
 │   │   │   └── relation/   # 关系类型与关系表单
 │   │   ├── card-groups/    # 卡组
-│   │   ├── world/          # 图谱
+│   │   ├── world/          # 世界观（当前仅入口）
 │   │   ├── story/
 │   │   │   ├── scenario/   # 剧情设计（节点图、连线、条件、效果、导出）
-│   │   │   ├── play/       # 视觉小说运行
+│   │   │   ├── play/       # 视觉小说运行 + 音频
 │   │   │   ├── script/     # 剧本解析、编辑、序列化
 │   │   │   └── effects.ts  # 共享条件与效果
 │   │   ├── board/          # 棋盘
@@ -161,8 +175,10 @@ MyWorld.anvil/
 ├── sessions/<uuid>/
 │   ├── session.json
 │   └── events.jsonl
-├── scripts/<uuid>.md
-├── assets/images/
+├── scripts/<uuid>.md           # 场景剧本（Markdown）
+├── assets/
+│   ├── images/<uuid>.<ext>
+│   └── audio/<uuid>.<ext>
 └── .anvil/index.db             # 索引，不提交 git
 ```
 
@@ -193,6 +209,7 @@ MyWorld.anvil/
 - **不做账号系统。** 本地文件，无云同步。
 - **不做 Web 服务端。** 桌面应用，无后端。
 - **不做 TCG 卡组（对战用）。** 卡组是引用集合，不是牌组策略。
+- **不做视觉小说的完整演出引擎。** HTML 导出支持文本 / 立绘 / 背景 / 点击推进 / 选择 / 条件，不含动画、转场、音频导出、存档、打包 EXE。想要完整演出，请把剧本导入 Ren'Py 或 Godot。
 
 ---
 
@@ -209,6 +226,8 @@ MyWorld.anvil/
   4. PR 描述清楚「做了什么」和「为什么」
 
 代码风格：命名清晰，注释写「为什么」而不是「是什么」。
+
+详见 [`CONTRIBUTING.md`](CONTRIBUTING.md)。
 
 ---
 

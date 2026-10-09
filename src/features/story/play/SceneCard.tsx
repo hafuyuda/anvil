@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import type { Card } from "../../../core/ipc";
 import type { LastRoll } from "./usePlayState";
+import { SectionLabel } from "../../../components/SectionLabel";
 
 interface Props {
   card: Card;
@@ -40,17 +41,10 @@ export function SceneCard({ card, cards, lastRolls }: Props) {
         marginBottom: 16,
       }}
     >
-      <div
-        style={{
-          fontSize: 10,
-          color: "var(--fg-muted)",
-          textTransform: "uppercase",
-          letterSpacing: 1,
-          marginBottom: 6,
-        }}
-      >
+      <SectionLabel variant="block" style={{ marginBottom: 6 }}>
         当前场景
-      </div>
+      </SectionLabel>
+      
       <div
         style={{
           fontSize: 20,

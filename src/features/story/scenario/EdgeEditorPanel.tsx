@@ -11,6 +11,8 @@ import { validateEffects } from "../effects";
 import { useDeleteUndo } from "../../../hooks/useDeleteUndo";
 import { confirmDialog } from "../../../lib/confirm";
 import { runWithError } from "../../../lib/runWithError";
+import { SectionLabel } from "../../../components/SectionLabel";
+import { LabeledBlock } from "../../../components/LabeledBlock";
 
 interface Props {
   relation: Relation;
@@ -124,17 +126,8 @@ export function EdgeEditorPanel({ relation, scenario }: Props) {
           fontSize: 12,
         }}
       >
-        <div
-          style={{
-            fontSize: 10,
-            color: "var(--fg-muted)",
-            textTransform: "uppercase",
-            letterSpacing: 1,
-            marginBottom: 4,
-          }}
-        >
-          从 → 到
-        </div>
+        <SectionLabel>从 → 到</SectionLabel>
+
         <div style={{ color: "var(--fg-primary)" }}>
           <span
             style={{ cursor: "pointer", color: "var(--accent-gold)" }}
@@ -366,31 +359,6 @@ export function EdgeEditorPanel({ relation, scenario }: Props) {
           {JSON.stringify(draft, null, 2)}
         </pre>
       </details>
-    </div>
-  );
-}
-
-function LabeledBlock({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <div
-        style={{
-          fontSize: 10,
-          color: "var(--fg-muted)",
-          textTransform: "uppercase",
-          letterSpacing: 1,
-          marginBottom: 4,
-        }}
-      >
-        {label}
-      </div>
-      {children}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import type { GridConfig } from "../../core/ipc";
 import { GRID_SHAPES } from "./constants";
+import { Toggle } from "../../components/Toggle";
 
 interface Props {
   name: string;
@@ -260,36 +261,5 @@ export function BoardToolbar({
         </button>
       </div>
     </div>
-  );
-}
-
-function Toggle({
-  label,
-  checked,
-  onChange,
-}: {
-  label: string;
-  checked: boolean;
-  onChange: (v: boolean) => void;
-}) {
-  return (
-    <label
-      style={{
-        fontSize: 12,
-        display: "flex",
-        gap: 4,
-        alignItems: "center",
-        color: "var(--fg-secondary)",
-        cursor: "pointer",
-      }}
-    >
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        style={{ accentColor: "var(--accent-gold)" }}
-      />
-      {label}
-    </label>
   );
 }

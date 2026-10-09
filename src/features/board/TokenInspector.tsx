@@ -4,6 +4,8 @@ import { useProjectStore } from "../../stores/projectStore";
 import { ScaledCardFrame } from "../../components/ScaledCardFrame";
 import { useDeleteUndo } from "../../hooks/useDeleteUndo";
 import { confirmDialog } from "../../lib/confirm";
+import { SectionLabel } from "../../components/SectionLabel";
+import { EmptyState } from "../../components/EmptyState";
 
 interface Props {
   token: Token;
@@ -137,20 +139,11 @@ export function TokenInspector({ token, onSave, onDelete, onClose }: Props) {
           </button>
         </div>
       ) : (
-        <div
-          style={{
-            padding: 12,
-            border: "1px dashed var(--border-default)",
-            borderRadius: "var(--radius-md)",
-            color: "var(--fg-muted)",
-            fontSize: 12,
-            textAlign: "center",
-          }}
-        >
+        <EmptyState padding={12}>
           未关联卡牌
           <br />
           纯装饰 Token
-        </div>
+        </EmptyState>
       )}
 
       <div
@@ -159,17 +152,7 @@ export function TokenInspector({ token, onSave, onDelete, onClose }: Props) {
           paddingTop: 10,
         }}
       >
-        <div
-          style={{
-            fontSize: 10,
-            color: "var(--fg-muted)",
-            textTransform: "uppercase",
-            letterSpacing: 1,
-            marginBottom: 8,
-          }}
-        >
-          Token 调整
-        </div>
+        <SectionLabel variant="block">Token 调整</SectionLabel>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <LabeledInput

@@ -122,21 +122,35 @@ git push -u origin feat/your-feature
 ```text
 src-tauri/src/
 ├── core/
-│   ├── model/          # 数据模型（Card / CardType / Relation / ...）
+│   ├── model/          # 数据模型
 │   ├── store/          # 文本文件读写 + 索引 + 资源包
+│   │   ├── seed.rs     # 从内置 pack 解压示例世界
+│   │   ├── export_html.rs
+│   │   └── assets.rs   # 图片 + 音频
 │   ├── index/          # SQLite 索引 + FTS
 │   ├── eval/           # 条件求值
 │   └── ipc/            # Tauri 命令
 └── lib.rs
 
 src/
-├── core/               # IPC 类型 + 项目级纯函数
+├── core/               # IPC 类型 + 项目级动作
 │   ├── ipc/            # 前端 IPC 类型 + invoke 封装
-│   ├── openProjectAt.ts
-│   └── applyProjectTheme.ts
-├── lib/                # 通用工具（id / time / theme / dice / ...）
-├── hooks/              # React hooks（useDraft / useKeyboard / useOpenProject / ...）
+│   └── use*.ts         # 打开/创建/导入/导出等
+├── lib/                # 通用工具
+│   ├── id.ts · time.ts · theme.ts
+│   ├── imageCache.ts · audioCache.ts
+│   ├── toast.ts · confirm.ts · runWithError.ts
+│   ├── dice.ts · appSettings.ts · commands.ts
+│   └── recentProjects.ts · saveRegistry.ts
+├── hooks/              # 通用 hook（useDraft / useKeyboard / ...）
 ├── components/         # 跨 feature 通用组件
+│   ├── CardFrame/      # 卡牌渲染（5 风格 + 卡背 + 覆盖层）
+│   ├── Modal.tsx · Toolbar.tsx · PickerDialog.tsx
+│   ├── ToastHost.tsx · ConfirmHost.tsx
+│   ├── HoverPreview.tsx · AudioSelect.tsx · ImageField.tsx
+│   ├── SectionLabel.tsx · EmptyState.tsx
+│   ├── Toggle.tsx · LabeledBlock.tsx
+│   └── ...
 ├── shell/              # 五段布局
 ├── themes/             # 内置主题
 ├── features/
@@ -146,10 +160,10 @@ src/
 │   │   ├── card-wall/  # 卡片墙
 │   │   └── relation/   # 关系类型与表单
 │   ├── card-groups/    # 卡组
-│   ├── world/          # 图谱
+│   ├── world/          # 世界观（当前仅入口）
 │   ├── story/          # 剧情
 │   │   ├── scenario/   # 设计 + 导出
-│   │   ├── play/       # 运行
+│   │   ├── play/       # 视觉小说运行 + 音频
 │   │   └── script/     # 剧本解析 / 编辑 / 序列化
 │   ├── board/          # 棋盘
 │   ├── session/        # 跑团
@@ -169,11 +183,11 @@ src/
 ## 目录约定
 
 - **每个 feature 一个目录**，内部按子领域再分组（`card/`、`card-wall/`、`card-type/`、`relation/`）。
-- **feature 顶层不放散文件**，要么是容器组件（`XxxList`、`XxxEditor`），要么是子目录。
-- **子目录内不放转发文件**。旧式的 `Xxx.tsx` 转发 + `xxx/` 实现的模式已废弃，直接指向子目录版本。
-- **`components/` 放跨 feature 通用组件**（`CardFrame`、`Modal`、`Toolbar`）。若某组件只被一个 feature 用，它应该在那个 feature 里。
+- **feature 顶层不放散文件**，要么是容器组件，要么是子目录。
+- **子目录内不放转发文件**。旧式的 `Xxx.tsx` 转发 + `xxx/` 实现的模式已废弃。
+- **`components/` 放跨 feature 通用组件**。若某组件只被一个 feature 用，它应该在那个 feature 里。
 - **`features/` 之间不互相引用内部文件**。需要共享，提升到 `components/` 或 `lib/`。
-  - 已知例外：`session/SessionEditor` 引 `board/BoardCanvas`，`story/scenario/StoryGraphView` 引 `world/GraphNode`。
+  - 已知例外：`session/SessionEditor` 引 `board/BoardCanvas`，`story/scenario/StoryGraphView` 引同目录的 `GraphNode`。
 - **新增文件时先问：半年后的自己打开这个目录，能否一眼猜到它在这里。** 猜不到就换个位置。
 
 ---
@@ -206,7 +220,7 @@ src/
 
 ## 关键约束
 
-这几条是整个架构的命脉，请务必遵守：
+这几条是整个架构的命脉，请务必遵守。
 
 ### 1. 卡牌是唯一内容实体
 
@@ -255,43 +269,57 @@ Modal、对话框等组件的 `onClose` prop 经常是父组件内联箭头函�
 
 视觉小说剧本、卡框配置等结构化内容，默认显示表单化的行卡片视图。源码 / JSON 视图作为高级模式保留。
 
+### 11. 错误处理走统一入口
+
+- 成功 / 失败提示：`toast.info` / `toast.success` / `toast.error`
+- 用户确认：`await confirmDialog({ ... })`
+- try-catch 包装：`await runWithError(() => ipc.xxx(), "xxx失败")`
+- **不要用 `alert()` 和 `window.confirm()`**（`lib/confirm.ts` 里的 fallback 除外）
+
+### 12. 音频走 asset protocol
+
+不要用 base64 传输音频。用 `convertFileSrc(audioAbsPath(path))`。项目打开时动态添加 asset protocol scope，关闭时移除。
+
 ---
 
 ## 技术债 · 顺手改
 
-以下项目不单独占一批。改动相关文件时如遇到，请顺手处理。不做专项重构。
+以下项目**不单独占一批**。改动相关文件时如遇到，顺手处理。
 
-### alert → toast
+### 内联样式 → 组件
 
-全项目约 85 处 `alert()`。目标是统一为 `toast.error()` / `toast.success()` / `toast.info()`。
+以下模式优先用组件替代：
 
-基础设施（`lib/toast.ts` + `components/ToastHost.tsx`）尚未落地。等落地后，改到某文件时顺手替换：
+```tsx
+// 区块小标题
+fontSize: 10, color: "var(--fg-muted)", textTransform: "uppercase",
+letterSpacing: 1, marginBottom: 4
+→ <SectionLabel>...</SectionLabel>
 
-- `alert("xxx失败: " + e)` → `toast.error("xxx失败: " + e)`
-- `alert("已导出到：" + path)` → `toast.success(...)`
-- `alert("请先创建...")` → `toast.info(...)`
+// 字段标签（略大、字距略松）
+fontSize: 11, color: "var(--fg-muted)", textTransform: "uppercase",
+letterSpacing: 0.5, marginBottom: 4
+→ <SectionLabel variant="field">...</SectionLabel>
 
-### confirm → confirmDialog
+// 空状态（虚线框 + 居中弱文字）
+border: "1px dashed var(--border-default)", textAlign: "center",
+color: "var(--fg-muted)", fontSize: 12
+→ <EmptyState>...</EmptyState>
 
-全项目 26 处 `confirm()`。目标是换成异步 `confirmDialog()`，与项目视觉一致。
-
-**不专门做一批**。每处都要改控制流：
-
-```ts
-// 旧
-if (!confirm("确认删除？")) return;
-await doDelete();
-
-// 新
-if (!(await confirmDialog("确认删除？"))) return;
-await doDelete();
+// checkbox + 文字
+<label><input type="checkbox" />文字</label>
+→ <Toggle label="文字" checked={...} onChange={...} />
 ```
 
-调用它的函数如果原本是同步的，要改成 `async`，级联向上。
+**不抽**：
 
-改到某文件时顺手替换，不要跨文件牵连。
+- `Mono`（`fontFamily: var(--font-mono)`）——绝大多数是 input 的 inline style，无法包裹
+- `LabeledInput`——各处 gap / 内层标签元素差异大于共性
+- `Divider`——常与 flex 布局耦合
 
-`lib/confirm.ts` 尚未实现。
+### 大文件二次拆分
+
+`SessionEditor.tsx`（435 行）、`BoardCanvas.tsx`（423 行）、`CardWall.tsx`（418 行）、`TokenInspector.tsx`（400 行）目前在可接受边缘。如果未来增长，参考已拆过的 `BoardEditor` / `ChatMessage` / `ThemePanel` / `CardGroupEditor` 的模式。
 
 ---
 
@@ -326,16 +354,16 @@ pnpm prettier --write src/
 提交 PR 前请手动验证：
 
 1. 打开项目 → 载入示例世界 → 数据完整
-2. 卡片墙 → 搜索、筛选、多选、批量操作
-3. 类型 → 字段编辑、拖拽排序、卡框映射、闪卡触发、裁剪、出框、卡背
-4. 图谱 → 拖拽、连线、过滤、点击节点/边
+2. 卡片墙 → 搜索、筛选、多选、批量操作、排序
+3. 类型 → 字段编辑、拖拽排序、卡框映射、闪卡触发、裁剪、出框、卡背、类型复制
+4. 关系 → 面板显示方向、反向名、悬浮预览
 5. 剧情 → 设置、节点图、剧本（结构 + 源码双视图）、运行、条件、效果、骰子
-6. 剧情 → 导出 Markdown → 检查文件内容
-7. 棋盘 → 拖拽、缩放、旋转、背景、卡盒抽牌、翻牌、占位
+6. 剧情 → 导出 Markdown / HTML
+7. 棋盘 → 拖拽、缩放、旋转、背景、网格形状、卡盒抽牌、翻牌、占位、关系线、边界扩充
 8. 卡组 → 新建、加卡、导入棋盘、加卡盒
 9. 跑团 → 对话、掷骰、消息编辑、事件日志、会话内卡盒
-10. 项目设置 → 主题、图片资源、数据统计、默认卡背
-11. 应用设置 → 默认卡框风格、打字机速度
+10. 项目设置 → 主题、图片资源、音频资源、数据统计、默认卡背
+11. 应用设置 → 默认卡框风格、打字机速度、界面缩放
 12. 导出 → 导入 → 合并
 
 如果你加了新功能，请在 PR 描述里说明验证步骤。
@@ -351,6 +379,12 @@ pnpm prettier --write src/
 ### 图片不显示
 
 图片用 base64 加载，大图会慢。检查 `assets/images/` 里文件是否存在。
+
+### 音频不播放
+
+- 检查 `tauri.conf.json` 里 `assetProtocol.enable` 是否为 `true`
+- 检查 `csp` 里 `media-src` 是否包含 `asset:` 和 `http://asset.localhost`
+- 项目打开时会动态添加 scope，关闭时移除。如果手动改了项目路径，重开项目
 
 ### 窗口空白
 
@@ -374,7 +408,11 @@ FTS 用 trigram，短查询（< 3 字符）走内存过滤。这是设计。
 
 ### Rust 编译报 `missing field XXX`
 
-新增结构体字段后，所有结构体字面量都要补。`seed.rs` 里通常用 `..Default::default()` 收尾。
+新增结构体字段后，所有结构体字面量都要补。`seed.rs` 已改为从内置 pack 加载，不再有大量字面量。
+
+### Rust 编译报 `prefix X is unknown`
+
+HTML / CSS / JS 嵌在 Rust raw string 里时，用 `r##"..."##`（双 #），因为代码里会出现 `"#xxx`（十六进制颜色、CSS 选择器）。
 
 ### 结构化编辑器输入框「选了没反应」
 
@@ -383,6 +421,10 @@ React 里连续两次 `setState` 会基于同一个旧 state 计算。合并更�
 ### Vite 报 `does not provide an export named`
 
 通常是模块编译失败，Vite 静默处理导致导出丢失。先看 `tsc --noEmit` 的真实报错，或完全重启 dev server。
+
+### `include_bytes!` 不生效
+
+`include_bytes!` 是编译期嵌入。pack 文件改了必须重新编译（`pnpm tauri dev` 重启或 `cargo build`）。
 
 ---
 
@@ -397,3 +439,4 @@ React 里连续两次 `setState` 会基于同一个旧 state 计算。合并更�
 ## 协议
 
 贡献的代码默认采用项目的 [MIT 协议](LICENSE)。
+

@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import type { CardGroup } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
 import { Modal } from "../../components/Modal";
+import { SectionLabel } from "../../components/SectionLabel";
+import { EmptyState } from "../../components/EmptyState";
 
 interface Props {
   onClose: () => void;
@@ -62,31 +64,14 @@ export function AddFromGroupDialog({ onClose, onImport }: Props) {
       }
     >
       {cardGroups.length === 0 && (
-        <div
-          style={{
-            padding: 24,
-            textAlign: "center",
-            color: "var(--fg-muted)",
-            fontSize: 12,
-            border: "1px dashed var(--border-default)",
-            borderRadius: "var(--radius-md)",
-          }}
-        >
-          还没有卡组。去「卡组」模块创建一个。
-        </div>
+        <EmptyState>还没有卡组。去「卡组」模块创建一个。</EmptyState>
       )}
 
       {cardGroups.length > 0 && (
         <>
-          <div
-            style={{
-              fontSize: 11,
-              color: "var(--fg-muted)",
-              marginBottom: 6,
-            }}
-          >
+          <SectionLabel variant="field" style={{ marginBottom: 6 }}>
             选择卡组
-          </div>
+          </SectionLabel>
           <ul
             style={{
               listStyle: "none",
@@ -175,15 +160,10 @@ export function AddFromGroupDialog({ onClose, onImport }: Props) {
           </ul>
 
           <div style={{ marginTop: 12 }}>
-            <div
-              style={{
-                fontSize: 11,
-                color: "var(--fg-muted)",
-                marginBottom: 6,
-              }}
-            >
+            <SectionLabel variant="field" style={{ marginBottom: 6 }}>
               铺开顺序
-            </div>
+            </SectionLabel>
+            
             <div style={{ display: "flex", gap: 6 }}>
               <button
                 className="btn"

@@ -4,6 +4,7 @@ import { useProjectStore } from "../../../stores/projectStore";
 import { useDraft } from "../../../hooks/useDraft";
 import { TypeMultiSelect } from "../../../components/TypeMultiSelect";
 import { nowMs } from "../../../lib/time";
+import { SectionLabel } from "../../../components/SectionLabel";
 
 interface Props {
   relationKind: RelationKind;
@@ -80,17 +81,7 @@ export function RelationKindEditor({ relationKind }: Props) {
 
       <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
         <label style={{ flex: 1, fontSize: 12 }}>
-          <div
-            style={{
-              color: "var(--fg-muted)",
-              marginBottom: 4,
-              fontSize: 11,
-              textTransform: "uppercase",
-              letterSpacing: 0.5,
-            }}
-          >
-            反向名（如：包含）
-          </div>
+          <SectionLabel variant="field">反向名</SectionLabel>
           <input
             className="input"
             value={draft.inverse_name ?? ""}
@@ -98,17 +89,7 @@ export function RelationKindEditor({ relationKind }: Props) {
           />
         </label>
         <label style={{ fontSize: 12 }}>
-          <div
-            style={{
-              color: "var(--fg-muted)",
-              marginBottom: 4,
-              fontSize: 11,
-              textTransform: "uppercase",
-              letterSpacing: 0.5,
-            }}
-          >
-            颜色
-          </div>
+          <SectionLabel variant="field">颜色</SectionLabel>
           <input
             type="color"
             value={draft.color ?? "#888888"}
