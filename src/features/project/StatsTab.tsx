@@ -3,6 +3,9 @@ import { ipc, type ProjectStats } from "../../core/ipc";
 import { toast } from "../../lib/toast";
 import { confirmDialog } from "../../lib/confirm";
 import { runWithError } from "../../lib/runWithError";
+import { save as saveDialog } from "@tauri-apps/plugin-dialog";
+import { getAppSettings } from "../../lib/appSettings";
+import { useProjectStore } from "../../stores/projectStore";
 
 export function StatsTab() {
   const [stats, setStats] = useState<ProjectStats | null>(null);
@@ -86,6 +89,14 @@ export function StatsTab() {
         </button>
         <button
           className="btn"
+          onClick={handleExportDiagnostics}
+          style={{ marginLeft: "auto" }}
+          title="导出当前状态供问题诊断"
+        >
+          导出诊断信息
+        </button>
+        <button
+          className="btn"
           onClick={handleRebuildIndex}
           disabled={rebuilding}
         >
@@ -153,3 +164,38 @@ function Row({ label, value }: { label: string; value: number }) {
     </div>
   );
 }
+
+  async function handleExportDiagnostics() {
+    const output = await saveDialog({
+      defaultPath: `anvil-diagnostics-${Date.now()}.json`,
+      filters: [{ name: "JSON", extensions: ["json"] }],
+      title: "导出诊断信息",
+    });
+    if (!output) return;
+
+    await runWithError(async () => {
+      const projectPath = useProjectStore.getState().projectPath;
+      const manifest = useProjectStore.getState().manifest;
+      const appSettings = getAppSettings();
+      const currentStats = await ipc.projectStats();
+
+      const payload = {
+        exported_at: new Date().toISOString(),
+        project: {
+          path: projectPath,
+          name: manifest?.name ?? null,
+          version: manifest?.version ?? null,
+          schema_version: manifest?.schema_version ?? null,
+        },
+        stats: currentStats,
+        app_settings: appSettings,
+        system: {
+          user_agent: navigator.userAgent,
+          platform: navigator.platform,
+        },
+      };
+
+      await ipc.saveTextFile(output, JSON.stringify(payload, null, 2));
+      toast.success(`诊断信息已导出到：${output}`);
+    }, "导出失败");
+  }

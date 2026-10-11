@@ -33,7 +33,6 @@ pub fn run() {
             import_image,
             delete_image,
             list_images,
-            read_image_data_url,
             inspect_pack_cmd,
             merge_pack,
             list_unused_images,
@@ -86,7 +85,7 @@ pub fn run() {
             import_audio,
             delete_audio,
             list_audios,
-            audio_abs_path,
+            asset_abs_path,
             list_audios_with_meta,
         ])
         .run(tauri::generate_context!())

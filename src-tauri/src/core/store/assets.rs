@@ -38,6 +38,10 @@ impl Project {
         let filename = format!("{}.{}", uuid::Uuid::new_v4(), ext);
         let dest = self.images_dir().join(&filename);
 
+        let src_name = src.file_name().and_then(|s| s.to_str()).unwrap_or("file");
+        let filename = unique_readable_name(&self.images_dir(), src_name, &ext);
+        let dest = self.images_dir().join(&filename);
+
         std::fs::copy(src, &dest)?;
 
         Ok(format!("assets/images/{filename}"))
@@ -206,7 +210,8 @@ impl Project {
             ));
         }
 
-        let filename = format!("{}.{}", uuid::Uuid::new_v4(), ext);
+        let src_name = src.file_name().and_then(|s| s.to_str()).unwrap_or("file");
+        let filename = unique_readable_name(&self.audio_dir(), src_name, &ext);
         let dest = self.audio_path(&filename);
 
         std::fs::copy(src, &dest)?;
@@ -247,8 +252,9 @@ impl Project {
         Ok(out)
     }
 
-    /// 返回音频文件的绝对路径（供前端 convertFileSrc 用）
-    pub fn audio_abs_path(&self, relative: &str) -> anyhow::Result<String> {
+    /// 返回 assets/ 下文件的绝对路径（供前端 convertFileSrc 用）。
+    /// 图片 / 音频通用。
+    pub fn asset_abs_path(&self, relative: &str) -> anyhow::Result<String> {
         if !relative.starts_with("assets/") {
             return Err(anyhow::anyhow!("只能访问 assets/ 下的文件"));
         }
@@ -306,4 +312,50 @@ pub struct AudioMeta {
     pub path: String,
     pub size: u64,
     pub ref_count: usize,
+}
+
+/// 生成一个不与现有文件冲突的可读文件名。
+///
+/// 默认用原始文件名（清理非法字符、截断 40 字符）。
+/// 撞名时追加 -2 / -3 / ... 直到不冲突。
+fn unique_readable_name(dir: &std::path::Path, original_name: &str, ext: &str) -> String {
+    let stem = std::path::Path::new(original_name)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("file");
+    let cleaned: String = stem
+        .chars()
+        .map(|c| {
+            if "<>:\"/\\|?*".contains(c) || c.is_control() {
+                '_'
+            } else {
+                c
+            }
+        })
+        .take(40)
+        .collect();
+    let cleaned = cleaned.trim().trim_matches('.').to_string();
+    let stem = if cleaned.is_empty() {
+        "file".to_string()
+    } else {
+        cleaned
+    };
+
+    let candidate = format!("{stem}.{ext}");
+    if !dir.join(&candidate).exists() {
+        return candidate;
+    }
+
+    for n in 2..1000 {
+        let candidate = format!("{stem}-{n}.{ext}");
+        if !dir.join(&candidate).exists() {
+            return candidate;
+        }
+    }
+
+    // 兜底：同名文件过多，加 uuid 后缀
+    format!(
+        "{stem}-{}.{ext}",
+        &uuid::Uuid::new_v4().simple().to_string()[..8]
+    )
 }

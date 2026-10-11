@@ -1,6 +1,6 @@
 import type { Card, CardType, Token } from "../../core/ipc";
 import { CardFrame } from "../../components/CardFrame";
-import { CardBack } from "../../components/CardFrame/CardBack";
+import { CardBack } from "../../components/CardFrame/primitives/CardBack";
 import { PileToken } from "./PileToken";
 
 const DEFAULT_TOKEN_W = 140;

@@ -263,6 +263,7 @@ export interface Manifest {
   default_card_back?: string | null;
   created_at: number;
   updated_at: number;
+  default_card_frame_style?: string | null;
 }
 
 export interface Theme {

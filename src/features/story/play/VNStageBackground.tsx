@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import { loadImage } from "../../../lib/imageCache";
+import { loadAsset } from "../../../lib/assetCache";
 
 export function VNStageBackground({ path }: { path: string }) {
   const [url, setUrl] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    loadImage(path)
+    loadAsset(path)
       .then((u) => {
         if (!cancelled) setUrl(u);
       })

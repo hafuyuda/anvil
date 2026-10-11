@@ -126,8 +126,6 @@ export const ipc = {
   importImage: (src: string) => invoke<string>("import_image", { src }),
   deleteImage: (relative: string) => invoke<void>("delete_image", { relative }),
   listImages: () => invoke<string[]>("list_images"),
-  readImageDataUrl: (relative: string) =>
-    invoke<string>("read_image_data_url", { relative }),
 
   updateEvent: (
     sessionId: string,
@@ -156,7 +154,7 @@ export const ipc = {
   importAudio: (src: string) => invoke<string>("import_audio", { src }),
   deleteAudio: (relative: string) => invoke<void>("delete_audio", { relative }),
   listAudios: () => invoke<string[]>("list_audios"),
-  audioAbsPath: (relative: string) =>
-    invoke<string>("audio_abs_path", { relative }),
+  assetAbsPath: (relative: string) =>
+    invoke<string>("asset_abs_path", { relative }),
   listAudiosWithMeta: () => invoke<AudioMeta[]>("list_audios_with_meta"),
 };

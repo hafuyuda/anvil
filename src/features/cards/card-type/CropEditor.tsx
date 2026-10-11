@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import type { CropRect } from "../../../core/ipc";
-import { useImageUrl } from "../../../hooks/useImageUrl";
+import { useAssetUrl } from "../../../hooks/useAssetUrl";
 
 interface Props {
   value: CropRect | null;
@@ -25,7 +25,7 @@ interface DragState {
 }
 
 export function CropEditor({ value, onChange, imagePath }: Props) {
-  const url = useImageUrl(imagePath);
+  const url = useAssetUrl(imagePath);
   const imgRef = useRef<HTMLImageElement>(null);
   const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
   const [containerW, setContainerW] = useState(0);

@@ -1,5 +1,10 @@
 import { useEffect, useRef } from "react";
-import { loadAudio } from "../../../lib/audioCache";
+import { loadAsset } from "../../../lib/assetCache";
+import {
+  getPlayerState,
+  pause as pausePlayer,
+  play as playPlayer,
+} from "../../../lib/audioPlayer";
 
 /**
  * 视觉小说运行时音频控制。
@@ -17,6 +22,15 @@ export function useSceneAudio(
 ) {
   const bgmRef = useRef<HTMLAudioElement | null>(null);
   const currentBgmRef = useRef<string | null>(null);
+
+  // VN 接管：进入时暂停全局播放器，退出时恢复
+  useEffect(() => {
+    const wasPlaying = getPlayerState().playing;
+    if (wasPlaying) pausePlayer();
+    return () => {
+      if (wasPlaying) playPlayer();
+    };
+  }, []);
 
   // 卸载时停止
   useEffect(() => {
@@ -46,7 +60,7 @@ export function useSceneAudio(
     if (!bgm) return;
 
     let cancelled = false;
-    void loadAudio(bgm).then((url) => {
+    void loadAsset(bgm).then((url) => {
       if (cancelled || !url) return;
       const audio = new Audio(url);
       audio.loop = true;
@@ -68,7 +82,7 @@ export function useSceneAudio(
     if (sfxList.length === 0) return;
     let cancelled = false;
     for (const path of sfxList) {
-      void loadAudio(path).then((url) => {
+      void loadAsset(path).then((url) => {
         if (cancelled || !url) return;
         const audio = new Audio(url);
         void audio.play().catch(() => {

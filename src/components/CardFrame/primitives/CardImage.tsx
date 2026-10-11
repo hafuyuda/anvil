@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
-import type { CropRect, ImageExtend } from "../../core/ipc";
-import { useImageUrl } from "../../hooks/useImageUrl";
+import type { CropRect, ImageExtend } from "../../../core/ipc";
+import { useAssetUrl } from "../../../hooks/useAssetUrl";
 
 interface Props {
   path: string | null | undefined;
@@ -32,7 +32,7 @@ export function CardImage({
   background,
   fallback,
 }: Props) {
-  const url = useImageUrl(path);
+  const url = useAssetUrl(path);
 
   const isExtending =
     !!extend &&

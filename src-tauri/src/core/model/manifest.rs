@@ -21,6 +21,8 @@ pub struct Manifest {
     #[serde(default)]
     pub default_card_back: Option<String>,
     #[serde(default)]
+    pub default_card_frame_style: Option<String>,
+    #[serde(default)]
     pub created_at: i64,
     #[serde(default)]
     pub updated_at: i64,
@@ -52,6 +54,7 @@ impl Manifest {
             default_card_back: None,
             created_at: now,
             updated_at: now,
+            default_card_frame_style: None,
         }
     }
 }

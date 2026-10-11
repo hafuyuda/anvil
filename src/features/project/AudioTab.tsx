@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { ipc, type AudioMeta } from "../../core/ipc";
-import { loadAudio, invalidateAudio } from "../../lib/audioCache";
+import { loadAsset, invalidateAsset } from "../../lib/assetCache";
 import { confirmDialog } from "../../lib/confirm";
 import { runWithError } from "../../lib/runWithError";
 import { EmptyState } from "../../components/EmptyState";
@@ -20,6 +20,13 @@ function formatSize(bytes: number): string {
 export function AudioTab() {
   const [items, setItems] = useState<AudioMeta[]>([]);
   const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState("");
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return items;
+    return items.filter((it) => basename(it.path).toLowerCase().includes(q));
+  }, [items, query]);
 
   async function refresh() {
     try {
@@ -45,7 +52,7 @@ export function AudioTab() {
     if (!src || Array.isArray(src)) return;
     await runWithError(async () => {
       const relative = await ipc.importAudio(src);
-      invalidateAudio(relative);
+      invalidateAsset(relative);
       await refresh();
     }, "导入失败");
   }
@@ -65,7 +72,7 @@ export function AudioTab() {
       return;
     await runWithError(async () => {
       await ipc.deleteAudio(item.path);
-      invalidateAudio(item.path);
+      invalidateAsset(item.path);
       await refresh();
     }, "删除失败");
   }
@@ -89,8 +96,17 @@ export function AudioTab() {
             marginRight: "auto",
           }}
         >
-          共 {items.length} 个音频 · {formatSize(totalSize)}
+          {query
+            ? `显示 ${filtered.length} / ${items.length} 个音频`
+            : `共 ${items.length} 个音频 · ${formatSize(totalSize)}`}
         </span>
+        <input
+          className="input"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="搜索文件名…"
+          style={{ width: 180, fontSize: 12 }}
+        />
         <button className="btn" onClick={handleImport}>
           导入音频
         </button>
@@ -115,15 +131,28 @@ export function AudioTab() {
             background: "var(--bg-surface)",
           }}
         >
-          {items.map((item, i) => (
+          {filtered.map((item, i) => (
             <AudioRow
               key={item.path}
               item={item}
-              isLast={i === items.length - 1}
+              isLast={i === filtered.length - 1}
               onDelete={() => handleDelete(item)}
             />
           ))}
         </ul>
+      )}
+
+      {!loading && items.length > 0 && filtered.length === 0 && (
+        <div
+          style={{
+            padding: 24,
+            textAlign: "center",
+            color: "var(--fg-muted)",
+            fontSize: 12,
+          }}
+        >
+          无匹配
+        </div>
       )}
     </div>
   );
@@ -223,7 +252,7 @@ function PlayButton({ path }: { path: string }) {
       setPlaying(false);
       return;
     }
-    const url = await loadAudio(path);
+    const url = await loadAsset(path);
     if (!url) return;
     const audio = new Audio(url);
     audio.volume = 0.7;
@@ -260,7 +289,7 @@ function DurationText({ path }: { path: string }) {
 
   useEffect(() => {
     let cancelled = false;
-    void loadAudio(path).then((u) => {
+    void loadAsset(path).then((u) => {
       if (!cancelled) setUrl(u);
     });
     return () => {

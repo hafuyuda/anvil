@@ -1,4 +1,4 @@
-import { CardBack } from "../../components/CardFrame/CardBack";
+import { CardBack } from "../../components/CardFrame/primitives/CardBack";
 import { SIZE_MAP, type CardFrameSize } from "../../components/CardFrame/types";
 
 interface Props {

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Board, GridConfig, Token } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
-import { useImageUrl } from "../../hooks/useImageUrl";
+import { useAssetUrl } from "../../hooks/useAssetUrl";
 import { BoardToken } from "./BoardToken";
 import { RelationLines } from "./RelationLines";
 
@@ -52,7 +52,7 @@ export function BoardCanvas({
 
   const grid = board.grid ?? DEFAULT_GRID;
   const boardTokens = board.tokens ?? [];
-  const bgUrl = useImageUrl(board.background ?? null);
+  const bgUrl = useAssetUrl(board.background ?? null);
 
   const zoomRef = useRef(zoom);
   zoomRef.current = zoom;

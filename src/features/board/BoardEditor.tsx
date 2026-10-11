@@ -3,7 +3,7 @@ import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { ipc, type Board } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
 import { DEFAULT_GRID } from "./constants";
-import { invalidateImage } from "../../lib/imageCache";
+import { invalidateAsset } from "../../lib/assetCache";
 import { BoardToolbar } from "./BoardToolbar";
 import { BoardCanvas } from "./BoardCanvas";
 import { BoardDialogs } from "./BoardDialogs";
@@ -98,7 +98,7 @@ export function BoardEditor({ board }: Props) {
           });
           if (src && !Array.isArray(src)) {
             const relative = await ipc.importImage(src);
-            invalidateImage(relative);
+            invalidateAsset(relative);
             await savePatch({ background: relative }, "设置棋盘背景");
           }
         }

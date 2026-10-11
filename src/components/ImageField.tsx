@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { ipc } from "../core/ipc";
+import { useAssetUrl } from "../hooks/useAssetUrl";
 import { confirmDialog } from "../lib/confirm";
 import { runWithError } from "../lib/runWithError";
 
@@ -10,29 +10,7 @@ interface Props {
 }
 
 export function ImageField({ value, onChange }: Props) {
-  const [dataUrl, setDataUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!value) {
-      setDataUrl(null);
-      return;
-    }
-    let cancelled = false;
-    ipc
-      .readImageDataUrl(value)
-      .then((u) => {
-        if (cancelled) return;
-
-        setDataUrl(u);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setDataUrl(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [value]);
+  const url = useAssetUrl(value);
 
   async function pick() {
     const src = await openDialog({
@@ -93,7 +71,7 @@ export function ImageField({ value, onChange }: Props) {
             maxWidth: 220,
           }}
         >
-          {!dataUrl && (
+          {!url && (
             <div
               style={{
                 fontSize: 11,
@@ -105,9 +83,9 @@ export function ImageField({ value, onChange }: Props) {
               加载中…
             </div>
           )}
-          {dataUrl && (
+          {url && (
             <img
-              src={dataUrl}
+              src={url}
               alt=""
               style={{
                 maxWidth: "100%",

@@ -10,6 +10,8 @@ import { nowMs } from "../../../lib/time";
 import { toast } from "../../../lib/toast";
 import { confirmDialog } from "../../../lib/confirm";
 import { runWithError } from "../../../lib/runWithError";
+import { isCardFrameStyle } from "../../../components/CardFrame";
+import { getAppSettings } from "../../../lib/appSettings";
 
 export function CardTypeList() {
   const [subTab, setSubTab] = useState<"card" | "relation">("card");
@@ -93,14 +95,26 @@ function CardTypeSection() {
 
   const deleteWithUndo = useDeleteUndo();
 
+  const manifest = useProjectStore((s) => s.manifest);
+  
   async function addType() {
     const now = nowMs();
+    const projectDefault = manifest?.default_card_frame_style;
+    const appDefault = getAppSettings().defaultCardFrameStyle;
+    const defaultStyle = isCardFrameStyle(projectDefault)
+      ? projectDefault
+      : appDefault;
+
     const newType: CardType = {
       id: newId(),
       name: "新类型",
       fields: [],
       allowed_relation_kinds: [],
       views: [],
+      card_frame:
+        defaultStyle === "yugioh"
+          ? null
+          : { style: defaultStyle, body: [], foil_values: [] },
       created_at: now,
       updated_at: now,
     };

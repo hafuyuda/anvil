@@ -22,8 +22,7 @@ export function Inspector() {
   const boards = useProjectStore((s) => s.boards) ?? [];
   const sessions = useProjectStore((s) => s.sessions) ?? [];
   const relations = useProjectStore((s) => s.relations) ?? [];
-  const scenarios = useProjectStore((s) => s.scenarios) ?? [];
-
+  
   const upsertBoard = useProjectStore((s) => s.upsertBoard);
   const upsertSession = useProjectStore((s) => s.upsertSession);
   const selectToken = useProjectStore((s) => s.selectToken);

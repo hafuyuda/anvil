@@ -10,6 +10,8 @@ export interface AppSettings {
   autoSaveDelayMs: number;
   recentProjectsMax: number;
   fontScale: number;
+  playerVolume: number;
+  playerLoop: boolean;
 }
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
@@ -20,6 +22,8 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   autoSaveDelayMs: 800,
   recentProjectsMax: 10,
   fontScale: 1.0,
+  playerVolume: 0.7,
+  playerLoop: false,
 };
 
 let cached: AppSettings | null = null;

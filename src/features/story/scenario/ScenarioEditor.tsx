@@ -22,7 +22,7 @@ export function ScenarioEditor({ scenario }: Props) {
   const setCurrentScenario = useProjectStore((s) => s.setCurrentScenario);
   const setCurrentScene = useProjectStore((s) => s.setCurrentScene);
 
-  const { draft, dirty, update, commit } = useDraft(
+  const { draft, dirty } = useDraft(
     scenario,
     async (d): Promise<void | boolean> => {
       if (!d.name.trim()) return false;

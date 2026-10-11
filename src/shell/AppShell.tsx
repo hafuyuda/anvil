@@ -17,6 +17,9 @@ import { ToastHost } from "../components/ToastHost";
 import { useAppSettings } from "../hooks/useAppSettings";
 import { applyFontScale } from "../lib/fontScale";
 import { ConfirmHost } from "../components/ConfirmHost";
+import { SettingsPage } from "../features/settings/SettingsPage";
+import { PlayerPage } from "../features/player/PlayerPage";
+import { MiniPlayer } from "../features/player/MiniPlayer";
 
 export function AppShell() {
   const projectPath = useProjectStore((s) => s.projectPath);
@@ -32,6 +35,10 @@ export function AppShell() {
   const mergePackOpen = useUIStore((s) => s.mergePackOpen);
   const closeMergePack = useUIStore((s) => s.closeMergePack);
 
+  const settingsOpen = useUIStore((s) => s.settingsOpen);
+  const playerOpen = useUIStore((s) => s.playerOpen);
+  const togglePlayer = useUIStore((s) => s.togglePlayer);
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const mod = e.ctrlKey || e.metaKey;
@@ -39,10 +46,15 @@ export function AppShell() {
         e.preventDefault();
         togglePalette();
       }
+
+      if (mod && e.key.toLowerCase() === "m") {
+        e.preventDefault();
+        togglePlayer();
+      }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [togglePalette]);
+  }, [togglePalette, togglePlayer]);
 
   useEffect(() => {
     let timer: number | null = null;
@@ -103,15 +115,21 @@ export function AppShell() {
       }}
     >
       <TopBar />
+
+      {settingsOpen && <SettingsPage />}
+      {playerOpen && <PlayerPage />}
+
       <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
         <LeftNav />
         <Workspace />
         <Inspector />
       </div>
       <StatusBar />
-      
+
+      <MiniPlayer />
+
       <ToastHost />
-      
+
       <ConfirmHost />
 
       {paletteOpen && (

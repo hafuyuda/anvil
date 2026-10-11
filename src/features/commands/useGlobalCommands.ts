@@ -156,13 +156,11 @@ export function useGlobalCommands() {
             // 忽略
           }
           const { resetTheme } = await import("../../lib/theme");
-          const { clearImageCache } = await import("../../lib/imageCache");
-          const { clearAudioCache } = await import("../../lib/audioCache");
+          const { clearAssetCache } = await import("../../lib/assetCache");
           const { setLastOpenPath } = await import("../../lib/recentProjects");
           useProjectStore.getState().closeProject();
           resetTheme();
-          clearImageCache();
-          clearAudioCache();
+          clearAssetCache();
           setLastOpenPath(null);
         },
       });
@@ -181,6 +179,15 @@ export function useGlobalCommands() {
         keywords: ["redo"],
         shortcut: "Ctrl+Shift+Z",
         run: () => useProjectStore.getState().redo(),
+      });
+
+      reg({
+        id: "player.open",
+        label: "音频播放器",
+        category: "播放",
+        keywords: ["audio", "music", "bgm", "播放", "音乐"],
+        shortcut: "Ctrl+M",
+        run: () => useUIStore.getState().togglePlayer(),
       });
 
       // 快速打开卡牌

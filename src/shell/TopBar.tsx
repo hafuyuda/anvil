@@ -1,17 +1,13 @@
-import { useCallback, useState } from "react";
 import { ipc } from "../core/ipc";
 import { useProjectStore } from "../stores/projectStore";
 import { useOpenProject } from "../hooks/useOpenProject";
 import { useCreateProject } from "../hooks/useCreateProject";
 import { useExportPack } from "../hooks/useExportPack";
 import { useImportPack } from "../hooks/useImportPack";
-import { ProjectSettingsDialog } from "../features/project/ProjectSettingsDialog";
 import { useUIStore } from "../stores/uiStore";
 import { resetTheme } from "../lib/theme";
 import { setLastOpenPath } from "../lib/recentProjects";
-import { clearImageCache } from "../lib/imageCache";
-import { clearAudioCache } from "../lib/audioCache";
-import { AppSettingsDialog } from "../features/app/AppSettingsDialog";
+import { clearAssetCache } from "../lib/assetCache";
 import { runWithError } from "../lib/runWithError";
 
 export function TopBar() {
@@ -28,13 +24,11 @@ export function TopBar() {
   const importPack = useImportPack();
 
   const openPalette = useUIStore((s) => s.openPalette);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [appSettingsOpen, setAppSettingsOpen] = useState(false);
 
   const openMergePack = useUIStore((s) => s.openMergePack);
 
-  const closeSettings = useCallback(() => setSettingsOpen(false), []);
-  const closeAppSettings = useCallback(() => setAppSettingsOpen(false), []);
+  const openSettings = useUIStore((s) => s.openSettings);
+  const openPlayer = useUIStore((s) => s.openPlayer);
 
   async function handleClose() {
     try {
@@ -44,8 +38,7 @@ export function TopBar() {
     }
     closeProject();
     resetTheme();
-    clearImageCache();
-    clearAudioCache();
+    clearAssetCache();
     setLastOpenPath(null);
   }
 
@@ -182,25 +175,20 @@ export function TopBar() {
           </span>
         </button>
 
-        <button className="btn" onClick={() => setAppSettingsOpen(true)}>
-          应用设置
+        <button className="btn" onClick={openPlayer} title="音频播放器 Ctrl+M">
+          🎵
         </button>
-        <button
-          className="btn"
-          onClick={() => setSettingsOpen(true)}
-          disabled={!projectPath}
-        >
+
+        <button className="btn" onClick={() => openSettings()}>
           设置
         </button>
+
         {projectPath && (
           <button className="btn btn-danger" onClick={handleClose}>
             关闭项目
           </button>
         )}
       </div>
-
-      {settingsOpen && <ProjectSettingsDialog onClose={closeSettings} />}
-      {appSettingsOpen && <AppSettingsDialog onClose={closeAppSettings} />}
     </>
   );
 }

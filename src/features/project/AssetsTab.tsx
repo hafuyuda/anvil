@@ -1,10 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { ipc } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
-import { loadImage, invalidateImage } from "../../lib/imageCache";
 import { useSyncExternalStore } from "react";
-import { subscribeImageCache, getCachedImage } from "../../lib/imageCache";
+import {
+  loadAsset,
+  invalidateAsset,
+  subscribeAssetCache,
+  getCachedAsset,
+} from "../../lib/assetCache";
 import { toast } from "../../lib/toast";
 import { confirmDialog } from "../../lib/confirm";
 import { runWithError } from "../../lib/runWithError";
@@ -22,6 +26,7 @@ export function AssetsTab() {
   const [loading, setLoading] = useState(true);
   const [unused, setUnused] = useState<string[] | null>(null);
   const [checking, setChecking] = useState(false);
+  const [query, setQuery] = useState("");
 
   async function refresh() {
     try {
@@ -41,6 +46,11 @@ export function AssetsTab() {
   // 统计每张图被多少张卡引用
   const usageMap = buildUsageMap(cards, cardTypes);
 
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return images;
+    return images.filter((p) => basename(p).toLowerCase().includes(q));
+  }, [images, query]);
   async function handleImport() {
     const src = await openDialog({
       multiple: false,
@@ -55,7 +65,7 @@ export function AssetsTab() {
     if (!src || Array.isArray(src)) return;
     await runWithError(async () => {
       const relative = await ipc.importImage(src);
-      invalidateImage(relative);
+      invalidateAsset(relative);
       await refresh();
     }, "导入失败");
   }
@@ -83,7 +93,7 @@ export function AssetsTab() {
     }
     await runWithError(async () => {
       await ipc.deleteImage(relative);
-      invalidateImage(relative);
+      invalidateAsset(relative);
       await refresh();
     }, "删除失败");
   }
@@ -115,7 +125,7 @@ export function AssetsTab() {
       return;
     await runWithError(async () => {
       const deleted = await ipc.cleanupUnusedImages();
-      for (const p of deleted) invalidateImage(p);
+      for (const p of deleted) invalidateAsset(p);
       setUnused(null);
       await refresh();
       toast.success(`已删除 ${deleted.length} 张图片。`);
@@ -139,8 +149,18 @@ export function AssetsTab() {
             marginRight: "auto",
           }}
         >
-          共 {images.length} 张图片
+          {query
+            ? `显示 ${filtered.length} / ${images.length} 张图片`
+            : `共 ${images.length} 张图片`}
         </span>
+
+        <input
+          className="input"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="搜索文件名…"
+          style={{ width: 180, fontSize: 12 }}
+        />
         <button className="btn" onClick={handleImport}>
           导入图片
         </button>
@@ -180,7 +200,7 @@ export function AssetsTab() {
           gap: 10,
         }}
       >
-        {images.map((p) => (
+        {filtered.map((p) => (
           <AssetCell
             key={p}
             path={p}
@@ -190,6 +210,19 @@ export function AssetsTab() {
           />
         ))}
       </div>
+
+      {!loading && images.length > 0 && filtered.length === 0 && (
+        <div
+          style={{
+            padding: 24,
+            textAlign: "center",
+            color: "var(--fg-muted)",
+            fontSize: 12,
+          }}
+        >
+          无匹配
+        </div>
+      )}
     </div>
   );
 }
@@ -206,14 +239,14 @@ function AssetCell({
   onDelete: () => void;
 }) {
   const url = useSyncExternalStore(
-    subscribeImageCache,
-    () => getCachedImage(path),
+    subscribeAssetCache,
+    () => getCachedAsset(path),
     () => null,
   );
 
   useEffect(() => {
     if (!url) {
-      void loadImage(path).catch(() => {});
+      void loadAsset(path).catch(() => {});
     }
   }, [path, url]);
 

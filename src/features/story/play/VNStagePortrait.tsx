@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { Card } from "../../../core/ipc";
-import { loadImage } from "../../../lib/imageCache";
+import { loadAsset } from "../../../lib/assetCache";
 import type { ScriptLine } from "../script/types";
 
 export function VNStagePortrait({
@@ -34,7 +34,7 @@ function PortraitImage({ path }: { path: string }) {
 
   useEffect(() => {
     let cancelled = false;
-    loadImage(path)
+    loadAsset(path)
       .then((u) => {
         if (!cancelled) setUrl(u);
       })

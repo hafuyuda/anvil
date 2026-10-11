@@ -221,13 +221,6 @@ pub fn list_images(state: State<AppState>) -> Result<Vec<String>, String> {
     p.list_images().map_err(|e| e.to_string())
 }
 
-#[tauri::command]
-pub fn read_image_data_url(state: State<AppState>, relative: String) -> Result<String, String> {
-    let guard = state.project.lock().unwrap();
-    let p = guard.as_ref().ok_or("no project open")?;
-    p.read_image_data_url(&relative).map_err(|e| e.to_string())
-}
-
 use crate::core::store::pack::{inspect_pack, MergeOptions, MergeResult, PackInspection};
 
 #[tauri::command]
@@ -376,10 +369,10 @@ pub fn list_audios(state: State<AppState>) -> Result<Vec<String>, String> {
 }
 
 #[tauri::command]
-pub fn audio_abs_path(state: State<AppState>, relative: String) -> Result<String, String> {
+pub fn asset_abs_path(state: State<AppState>, relative: String) -> Result<String, String> {
     let guard = state.project.lock().unwrap();
     let p = guard.as_ref().ok_or("no project open")?;
-    p.audio_abs_path(&relative).map_err(|e| e.to_string())
+    p.asset_abs_path(&relative).map_err(|e| e.to_string())
 }
 
 use crate::core::store::assets::AudioMeta;

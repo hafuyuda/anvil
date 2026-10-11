@@ -1,6 +1,6 @@
-import { SIZE_MAP, type CardFrameSize } from "./types";
-import { useImageUrl } from "../../hooks/useImageUrl";
-import { useProjectStore } from "../../stores/projectStore";
+import { SIZE_MAP, type CardFrameSize } from "../types";
+import { useAssetUrl } from "../../../hooks/useAssetUrl";
+import { useProjectStore } from "../../../stores/projectStore";
 
 interface Props {
   /** 卡背图片路径。为空时用项目默认 */
@@ -20,7 +20,7 @@ export function CardBack({ path, size = "small" }: Props) {
     (s) => s.manifest?.default_card_back ?? null,
   );
   const resolved = path ?? defaultBack;
-  const url = useImageUrl(resolved);
+  const url = useAssetUrl(resolved);
 
   if (url) {
     return (

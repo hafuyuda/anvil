@@ -1,10 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { ipc } from "../core/ipc";
 import { Modal } from "./Modal";
-import { invalidateAudio } from "../lib/audioCache";
+import { invalidateAsset, loadAsset } from "../lib/assetCache";
 import { useRef } from "react";
-import { loadAudio } from "../lib/audioCache";
 import { runWithError } from "../lib/runWithError";
 
 interface Props {
@@ -116,7 +115,7 @@ function AudioPreviewButton({ path }: { path: string }) {
       return;
     }
 
-    const url = await loadAudio(path);
+    const url = await loadAsset(path);
     if (!url) return;
     const audio = new Audio(url);
     audio.volume = 0.7;
@@ -160,6 +159,16 @@ function AudioPickerDialog({
 }) {
   const [items, setItems] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState("");
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return items;
+    return items.filter((p) => {
+      const name = p.replace("assets/audio/", "").toLowerCase();
+      return name.includes(q);
+    });
+  }, [items, query]);
 
   async function refresh() {
     try {
@@ -185,7 +194,7 @@ function AudioPickerDialog({
     if (!src || Array.isArray(src)) return;
     const r = await runWithError(async () => {
       const relative = await ipc.importAudio(src);
-      invalidateAudio(relative);
+      invalidateAsset(relative);
       await refresh();
       onPick(relative);
     }, "导入失败");
@@ -224,6 +233,14 @@ function AudioPickerDialog({
         </button>
       </div>
 
+      <input
+        className="input"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="搜索文件名…"
+        style={{ marginBottom: 8, fontSize: 12 }}
+      />
+
       {loading && (
         <div style={{ fontSize: 12, color: "var(--fg-muted)" }}>加载中…</div>
       )}
@@ -243,7 +260,20 @@ function AudioPickerDialog({
         </div>
       )}
 
-      {!loading && items.length > 0 && (
+      {!loading && items.length > 0 && filtered.length === 0 && (
+        <div
+          style={{
+            padding: 24,
+            textAlign: "center",
+            color: "var(--fg-muted)",
+            fontSize: 12,
+          }}
+        >
+          无匹配
+        </div>
+      )}
+
+      {!loading && filtered.length > 0 && (
         <ul
           style={{
             listStyle: "none",
@@ -256,7 +286,7 @@ function AudioPickerDialog({
             overflowY: "auto",
           }}
         >
-          {items.map((p, i) => {
+          {filtered.map((p, i) => {
             const name = p.replace("assets/audio/", "");
             return (
               <li
@@ -266,7 +296,7 @@ function AudioPickerDialog({
                   padding: "8px 12px",
                   cursor: "pointer",
                   borderBottom:
-                    i < items.length - 1
+                    i < filtered.length - 1
                       ? "1px solid var(--border-subtle)"
                       : "none",
                   fontSize: 12,
