@@ -124,9 +124,21 @@ src-tauri/src/
 ├── core/
 │   ├── model/          # 数据模型
 │   ├── store/          # 文本文件读写 + 索引 + 资源包
-│   │   ├── seed.rs     # 从内置 pack 解压示例世界
+│   │   ├── assets.rs       # 图片 + 音频
+│   │   ├── atomic.rs       # 原子写
+│   │   ├── boards.rs
+│   │   ├── cards.rs
+│   │   ├── card_groups.rs
 │   │   ├── export_html.rs
-│   │   └── assets.rs   # 图片 + 音频
+│   │   ├── manifest.rs
+│   │   ├── pack.rs
+│   │   ├── project.rs
+│   │   ├── relations.rs
+│   │   ├── scenarios.rs
+│   │   ├── scripts.rs
+│   │   ├── seed.rs         # 从内置 pack 解压示例世界
+│   │   ├── sessions.rs
+│   │   └── theme.rs
 │   ├── index/          # SQLite 索引 + FTS
 │   ├── eval/           # 条件求值
 │   └── ipc/            # Tauri 命令
@@ -134,45 +146,46 @@ src-tauri/src/
 
 src/
 ├── core/               # IPC 类型 + 项目级动作
-│   ├── ipc/            # 前端 IPC 类型 + invoke 封装
-│   └── use*.ts         # 打开/创建/导入/导出等
+│   ├── ipc/            # api.ts · types.ts · index.ts
+│   ├── applyProjectTheme.ts
+│   └── openProjectAt.ts
 ├── lib/                # 通用工具
-│   ├── id.ts · time.ts · theme.ts
-│   ├── imageCache.ts · audioCache.ts
-│   ├── toast.ts · confirm.ts · runWithError.ts
+│   ├── id.ts · time.ts · theme.ts · fontScale.ts · lookup.ts
+│   ├── assetCache.ts · audioPlayer.ts · moduleOrder.ts
+│   ├── toast.ts · confirm.ts · runWithError.ts · saveRegistry.ts
 │   ├── dice.ts · appSettings.ts · commands.ts
-│   └── recentProjects.ts · saveRegistry.ts
+│   └── recentProjects.ts
 ├── hooks/              # 通用 hook
+│   ├── useAppSettings.ts · useAssetUrl.ts · useCommands.ts
+│   ├── useCreateProject.ts · useDeleteUndo.ts · useDraft.ts
+│   ├── useExportPack.ts · useImportPack.ts · useKeyboard.ts
+│   └── useOpenProject.ts
 ├── components/
 │   ├── CardFrame/      # 卡牌渲染
-│   │   ├── index.tsx
-│   │   ├── types.ts
-│   │   ├── mapping.ts           # mapContent + resolveFeatures
-│   │   ├── primitives/          # 基础构件
-│   │   │   ├── CardShell.tsx
-│   │   │   ├── CardInner.tsx
-│   │   │   ├── CardImage.tsx
-│   │   │   ├── CardBack.tsx
-│   │   │   └── FoilOverlay.tsx
-│   │   └── styles/              # 风格实现
-│   │       ├── YuGiOh.tsx
-│   │       ├── Generic.tsx
-│   │       ├── Minimal.tsx
-│   │       ├── MTG.tsx
-│   │       └── Pokemon.tsx
+│   │   ├── index.tsx · types.ts · mapping.ts
+│   │   ├── primitives/
+│   │   │   ├── CardShell.tsx · CardInner.tsx
+│   │   │   ├── CardImage.tsx · CardBack.tsx · FoilOverlay.tsx
+│   │   └── styles/
+│   │       ├── YuGiOh.tsx · Generic.tsx · Minimal.tsx
+│   │       └── MTG.tsx · Pokemon.tsx
+│   ├── CardGrid/       # 卡片网格（共享）
 │   ├── Modal.tsx · Toolbar.tsx · PickerDialog.tsx
-│   ├── ToastHost.tsx · ConfirmHost.tsx
-│   ├── HoverPreview.tsx · AudioSelect.tsx · ImageField.tsx
-│   ├── SectionLabel.tsx · EmptyState.tsx
-│   ├── Toggle.tsx · LabeledBlock.tsx
+│   ├── ToastHost.tsx · ConfirmHost.tsx · CommandPalette.tsx
+│   ├── HoverPreview.tsx · AudioSelect.tsx · ImageField.tsx · RefField.tsx
+│   ├── SectionLabel.tsx · EmptyState.tsx · LabeledBlock.tsx
+│   ├── Toggle.tsx · SaveInput.tsx · TypeMultiSelect.tsx
+│   ├── EntityListLayout.tsx · ScaledCardFrame.tsx · FieldInput.tsx
 │   └── ...
 ├── shell/              # 五段布局
+│   ├── AppShell.tsx · TopBar.tsx · LeftNav.tsx
+│   ├── Workspace.tsx · Inspector.tsx · StatusBar.tsx
+│   └── ErrorBoundary.tsx
 ├── themes/             # 内置主题
 ├── features/
 │   ├── cards/          # ★ 共享核心
 │   │   ├── card/ · card-type/ · card-wall/ · relation/
 │   ├── card-groups/
-│   ├── world/          # 世界观（仅入口）
 │   ├── story/
 │   │   ├── scenario/   # 剧情设计 + 导出
 │   │   │   └── inspector/   # 检查器内容
@@ -180,12 +193,14 @@ src/
 │   │   ├── script/     # 剧本解析 / 编辑 / 序列化
 │   │   └── effects.ts
 │   ├── board/
-│   ├── session/chat/
-│   ├── project/        # 项目设置内容（主题 / 资源 / 统计）
-│   ├── settings/       # 设置面板（全屏页面 + 分类）
-│   └── commands/       # 命令注册
+│   ├── session/
+│   │   └── chat/
+│   ├── player/         # 音乐模块
+│   ├── project/        # 项目设置内容 + 资源包合并 + 主题子目录
+│   ├── settings/       # 设置浮层 + 分类面板
+│   └── commands/       # useGlobalCommands.ts
 └── stores/
-    ├── projectStore.ts
+    ├── projectStore.ts · uiStore.ts
     └── slices/
 ```
 
@@ -217,6 +232,7 @@ src/
 - 命名清晰，注释写「为什么」
 - 错误用 `anyhow::Result`，命令层转 `String`
 - 存储层每个领域一个文件（`cards.rs` / `relations.rs` / ...）
+- HTML / CSS / JS 嵌在 raw string 里时用 `r##"..."##`（双 #）
 
 ### TypeScript / React
 
@@ -239,102 +255,150 @@ src/
 
 这几条是整个架构的命脉，请务必遵守。
 
-### 1. 卡牌是唯一内容实体
+### 数据层
 
-世界观 NPC、剧情节点、棋盘角色都是同一张卡。Board、Scenario、Session 是容器。CardGroup 是辅助索引，CardPile 是 Token 的变体。
+1. **卡牌是唯一内容实体。** 世界观 NPC、剧情节点、棋盘角色都是同一张卡。Board / Scenario / Session 是容器。CardGroup 是辅助索引，CardPile 是 Token 的变体。
 
-### 2. 关系是一等公民
+2. **关系是一等公民。** 卡与卡之间的边独立存储，与卡片字段分离。世界观边（无 `scenario_id`）与剧情边（有 `scenario_id`）严格分离，不混用。
 
-卡与卡之间的边独立存储，与卡片字段分离。
+3. **文本真相源。** 项目是一个文件夹，文本文件（JSON / JSONL / Markdown）是唯一真相源。SQLite（`.anvil/index.db`）是可删除、可重建的索引。
 
-- 世界观边：无 `scenario_id`
-- 剧情边：有 `scenario_id`
+4. **字段只增不减。** `FieldDef` 删除时用 `deprecated = true`，不真删。新增 Rust 结构体字段用 `#[serde(default)]`，保证旧项目文件能读。
 
-两者严格分离，**不要混用**。
+### 前端架构
 
-### 3. 文本真相源
+5. **`features/cards/` 是共享核心。** 任何功能不得绕过它私建卡模型。
 
-项目是一个文件夹，文本文件是唯一真相源。SQLite 只是可删除、可重建的索引。
+6. **`features/` 之间不互相引用内部文件。** 需要共享，提升到 `components/` 或 `lib/`。已知例外：`session/SessionEditor` 引 `board/BoardCanvas`。
 
-### 4. 字段只增不减
+7. **状态分两类**：
+   - **Zustand（slice 模式）**：`projectStore` 聚合 9 个 slice（project / cards / relations / scenarios / boards / sessions / cardGroups / undo / ui）；`uiStore` 只放纯 UI 状态（palette / merge / settings）。
+   - **模块级单例 + `useSyncExternalStore`**：`appSettings` / `audioPlayer` / `assetCache` / `moduleOrder`。
 
-`FieldDef` 删除时用 `deprecated = true`，不要真删。旧数据保留。
+8. **跨 feature 通用组件放 `components/`**，只被一个 feature 用的组件放该 feature 目录内。
 
-### 5. 高频操作不过 IPC
+### 存储与 IPC
 
-棋盘拖拽在前端内存跑，操作结束再写回。
+9. **高频操作不过 IPC。** 棋盘拖拽在前端内存跑，操作结束再写回。
 
-### 6. 输入密集处不用 HTML5 DnD
+10. **图片 + 音频统一走 asset protocol。** 前端 `lib/assetCache.ts` 缓存 `relative → asset URL`；Rust `asset_abs_path` 返回绝对路径；前端 `convertFileSrc(abs)` 转 URL。**前端不用 base64。** `read_image_data_url` 只给 HTML 导出内嵌用。
 
-Windows 上 Tauri 的 WebView2 会拦截 HTML5 拖放，破坏 IME。用 `@dnd-kit`。
+11. **asset scope 动态管理。** `open_project` → `allow_directory` 项目根；`close_project` → `forbid_directory`。前端关闭项目时 `clearAssetCache()`。
 
-### 7. 颜色走 CSS 变量
+12. **前端不裸调 `invoke`。** 统一走 `core/ipc/api.ts`。Rust snake_case → 前端 camelCase，Tauri 2 自动转换。
 
-不要硬编码颜色值。所有颜色在 `src/index.css` 定义。
+### 交互
 
-### 8. `serde(default)` 保护旧数据
+13. **输入密集处不用 HTML5 DnD。** 用 `@dnd-kit`。拖拽排序 `PointerSensor` + `activationConstraint.distance: 4`（卡组内整卡可拖，用 `distance: 8`）。Windows WebView2 会拦截 HTML5 拖放并破坏 IME。
 
-新增 Rust 结构体字段时用 `#[serde(default)]`，保证旧项目文件能读。
+14. **动画走合成属性。** `transform` / `opacity`。不用 `background-position` / `mixBlendMode` / `filter` 做循环动画。闪卡流光用 `transform: translate3d`。
 
-### 9. 弹窗里的 onClose 用 ref 稳定
+15. **`prefers-reduced-motion: reduce` 时禁用动画**（闪卡已做）。
 
-Modal、对话框等组件的 `onClose` prop 经常是父组件内联箭头函数。effect 里用 ref 模式读，避免 effect 重跑。
+16. **对话框 `onClose` 用 ref 稳定。** Modal / 对话框的 `onClose` 常是父组件内联箭头函数，effect 里用 ref 模式读，避免 effect 重跑。
 
-### 10. 结构化编辑器是主视图
+### 错误处理
 
-视觉小说剧本、卡框配置等结构化内容，默认显示表单化的行卡片视图。
+17. **统一入口**：
+    - 成功 / 失败提示：`toast.info` / `toast.success` / `toast.error`
+    - 用户确认：`await confirmDialog({ ... })`
+    - try-catch 包装：`await runWithError(() => ipc.xxx(), "xxx失败")`
+    - **不用 `alert()` 和 `window.confirm()`**（`lib/confirm.ts` 里的 fallback 除外）
 
-### 11. 错误处理走统一入口
+### 卡框渲染
 
-- 成功 / 失败提示：`toast.info` / `toast.success` / `toast.error`
-- 用户确认：`await confirmDialog({ ... })`
-- try-catch 包装：`await runWithError(() => ipc.xxx(), "xxx失败")`
-- **不要用 `alert()` 和 `window.confirm()`**（`lib/confirm.ts` 里的 fallback 除外）
+18. **分层**：
+    - `mapContent(card, cardType)` → `CardContent`（纯数据）
+    - `resolveFeatures(card, cardType)` → `CardFeatures`（裁剪 / 出框 / 闪卡 / 闪卡变体）
+    - 风格组件**只接收 `content`**
+    - `CardFrame/index.tsx` 组装：算 content + features → 分派风格 → 需要时包 `FoilOverlay`
 
-### 12. 音频走 asset protocol
+19. **加新风格**改 4 处：`styles/` 新建组件、`types.ts` 联合类型、`CARD_FRAME_STYLE_LABELS`、`index.tsx` switch。
 
-不要用 base64 传输音频。用 `convertFileSrc(audioAbsPath(path))`。项目打开时动态添加 asset protocol scope，关闭时移除。
+20. **加新闪卡效果**改 4 处：`FoilOverlay` 的 `VARIANTS` 表、`index.css` 变量、`FoilTriggerRow` 下拉、`resolveFeatures` 规范化。**不改任何风格组件。**
 
-### 13. 卡框渲染分层
+### 设置
 
-- `mapContent(card, cardType)` → `CardContent`（纯数据：title / subtitle / body / image / stats）
-- `resolveFeatures(card, cardType)` → `CardFeatures`（视觉处理：crop / extend / foil / foilVariant）
-- 风格组件**只接收 `content`**，不关心 `features` 怎么触发
-- `CardFrame/index.tsx` 组装：算 content + features → 分派风格 → 需要时包 `FoilOverlay`
+21. **设置形态是居中浮层**（`1000×680` + 遮罩 + 模糊），**不是全屏页面**。左 NAV 200px，右内容 max 760px。顶部两行：标题 + 搜索框。`Esc` 关闭、遮罩点击关闭、`↑` `↓` 切分类。
 
-**加新风格**：在 `styles/` 新建组件，接收 `{ cardType, size, content, features, selected, onClick }`。在 `types.ts` 的 `CardFrameStyle` 联合类型加值，在 `CARD_FRAME_STYLE_LABELS` 加映射，在 `index.tsx` 的 switch 加分支。
+22. **分类按存储位置划分**（存项目文件夹 → 项目分类；存 `localStorage` → 应用分类），但**不按「项目 / 应用」分组呈现**。实际 5 类：
 
-**加新闪卡效果**：`FoilOverlay` 的 `VARIANTS` 表加一项，`index.css` 加变量，`FoilTriggerRow` 加下拉选项，`resolveFeatures` 加规范化逻辑。**不改任何风格组件。**
+    | key          | 标签   | requiresProject | 内容                                                   |
+    | ------------ | ------ | --------------- | ------------------------------------------------------ |
+    | `general`    | 常规   | ✓               | 项目名 / 版本 / 作者 / 描述 / 默认卡背 / 默认卡框风格  |
+    | `appearance` | 外观   | ✗               | 项目主题 + 界面缩放                                    |
+    | `resources`  | 资源   | ✓               | 图片资源（AssetsTab）                                  |
+    | `editor`     | 编辑器 | ✗               | 自动保存延迟 / 最近项目上限 + 打字机速度 / 启用 / 旁白 |
+    | `advanced`   | 高级   | ✗               | 项目统计 + 清除缓存 / 恢复默认设置                     |
 
-### 14. 动画走合成属性
+23. **设置层级：项目默认 → 应用默认 → 内置默认。** 项目设了就覆盖应用，项目没设就继承应用。
 
-`transform` / `opacity` 由 GPU 合成线程执行。**不要用 `background-position` / `mixBlendMode` / `filter` 等触发主线程重绘的属性做循环动画。**
+24. **加设置分类改 4 处**：`uiStore.ts` 的 `SettingsCategory` 联合类型、`categories.ts` 的 `CategoryMeta`、`SettingsPage.tsx` 的 `CategoryContent` switch、新建对应 Panel。
 
-闪卡的流光用 `transform: translate3d`。如果加新动画，同样遵循此约束。
+25. **`SettingsCategory` 联合类型与 `categories.ts` 必须同步。** `categories.ts` 里每个分类要写 `keywords`（给搜索用）和 `requiresProject`（决定未打开项目时是否隐藏）。
 
-### 15. 设置按存储位置分类
+26. **应用设置存 `localStorage`**（`anvil.appSettings`）。当前 9 项：`defaultCardFrameStyle` / `typewriterSpeed` / `typewriterEnabled` / `typewriterNarration` / `autoSaveDelayMs` / `recentProjectsMax` / `fontScale` / `playerVolume` / `playerLoop`。后两项**不出现在设置面板**，只由播放器 UI 调。
 
-判断一个新设置该进「项目」还是「应用」，看**它存在哪**：
+### 主题
 
-- 存项目文件夹（`manifest.json` / `themes/` / 文件系统）→ **项目设置**
-- 存 `localStorage` → **应用设置**
+27. **颜色走 CSS 变量。** 不硬编码。所有颜色在 `src/index.css` 的 `:root` 定义。
 
-**不要按「影响范围」判断**。`defaultCardFrameStyle` 影响项目内行为，但它是应用级偏好（换设备应该跟人走），存 `localStorage`。项目可以覆盖它，存在 `manifest.default_card_frame_style`。
+28. **主题应用优先级**：`applyProjectTheme()` 读 `manifest.theme_id` → 若是内置 ID 用内置 → 否则从 `ipc.listThemes()` 找 → 都没有则 `resetTheme()`。
 
-层级：**项目默认 → 应用默认 → 内置默认**。
+29. **`resetTheme()` 清除所有 `--` 变量**，`applyTheme(vars)` 设置。
 
-### 16. 设置面板是全屏页面
+### 新形态
 
-不用浮窗（除极度轻量的确认）。全屏独立页面，左侧分类列表（240px），右侧内容区（max-width 1000px 居中）。
+30. **无边框标题栏。** `tauri.conf.json` `decorations: false` + `tauri-plugin-frame`。TopBar `paddingRight: calc(12px + var(--tauri-frame-controls-width, 138px))` 给窗口按钮留位。`index.css` 末尾 `[data-tauri-frame-tb] { pointer-events: none }` 让覆盖层穿透，只保留 `> button` 可点。
 
-新加设置分类：
+31. **LeftNav 模块顺序持久化到 `localStorage`**（`anvil.leftNavOrder`）。`lib/moduleOrder.ts` 读写时过滤已删模块、追加新模块。默认 7 模块：`world / story / board / cardGroups / session / player / types`。非卡片墙模块自动收窄 48px，悬停展开 180px。
 
-1. 在 `features/settings/categories.ts` 加 `CategoryMeta`
-2. 在 `uiStore.ts` 的 `SettingsCategory` 联合类型加值
-3. 在 `SettingsPage.tsx` 的 `CategoryContent` switch 加分支
-4. 新建对应的 Panel 组件，放在 `features/settings/` 下
+32. **全局音频播放器是模块级单例**（`lib/audioPlayer.ts`）。一个 `HTMLAudioElement`，跨模块、跨设置持续播放。音量 / 循环持久化到 `appSettings`。UI 三处：`MiniPlayer`（右下常驻）、`PlayerInspector`（检查器内）、`PlayerView`（音乐模块主区）。
 
-分类名用中文单字或双字（常规 / 主题 / 资源 / 数据 / 界面 / 编辑器 / 视觉小说 / 高级），保持简短。
+### 自动保存
+
+33. **自动保存走 `useDraft`**：draft 变化 → debounce（`appSettings.autoSaveDelayMs`，默认 800ms）→ 落盘 → 推撤销栈。`registerFlusher` 让 `Ctrl+S` 时 `flushAll()` 立刻保存所有脏 draft。
+
+34. **切换 source id 时重置 draft**：`useDraft` 里 `if (draft.id !== source.id)` 判断。
+
+### 快捷键
+
+35. **全局快捷键**：
+    - `Ctrl+K` 命令面板
+    - `Ctrl+M` 切到音乐模块
+    - `Ctrl+Z` / `Ctrl+Shift+Z` / `Ctrl+Y` 撤销 / 重做
+    - `Ctrl+S` flushAll
+    - `Ctrl+1..5` 切模块（world / story / board / session / types，**跳过 cardGroups 和 player**）
+    - `Esc` 关闭设置 / 播放预览
+
+### 模块
+
+36. `ModuleKey` 7 个：`world / story / board / cardGroups / session / player / types`。**数字快捷键只覆盖 5 个**；`cardGroups` 和 `player` 无数字键，`player` 用 `Ctrl+M`。
+
+### 棋盘
+
+37. **棋盘边界自动扩充**：添加 token 后按 100px 取整扩充，+180/+240 留白。**抽牌不扩充**（与「从卡组导入」的区别）。
+
+### 资源包合并
+
+38. **合并只处理图片，不处理音频。** `pack.rs::merge_pack_from` 的 assets 段只遍历 `assets/images/`。这是当前实现的实际边界。
+
+39. **合并时「同名跳过」**（图片）：目标项目已有同名文件时不覆盖。
+
+40. **合并 ID 冲突一律跳过**：卡片、关系、剧情、棋盘、会话、卡组，ID 已存在就跳过，不做替换。
+
+### Rust 侧
+
+41. **每个领域一个文件。** `src-tauri/src/core/store/` 下 16 个文件。
+
+42. **Rust HTML / CSS / JS 嵌在 raw string 里时用 `r##"..."##`**（双 #），因为代码里会出现 `"#xxx`。
+
+43. **`include_bytes!` 是编译期嵌入。** `example_world.anvilpack` 改了必须重新编译。
+
+44. **`Project::open` 创建 9 个目录**：`cards / types / relations/from / boards / scenarios / sessions / scripts / card_groups / .anvil`。`themes/` 和 `assets/images|audio/` 按需创建。
+
+45. **索引重建判断只看 `cards / types / relations` 的 mtime**，`PRAGMA user_version == 0` 也触发重建。
+
 ---
 
 ## 技术债 · 顺手改
@@ -372,6 +436,12 @@ color: "var(--fg-muted)", fontSize: 12
 
 - 如果 effect 里只注册监听器，用 ref 模式读 `onClose` 等
 - 如果 effect 里读了 state，依赖要准确
+
+### 历史遗留
+
+- `features/story/scenario/ScenarioSettingsTab.tsx` 与 `features/story/scenario/inspector/ScenarioGlobalSettings.tsx` 功能重叠。前者未被 `ScenarioInspector` 使用，改到时清理。
+- `src/index.css` 末尾的 `.graph-handle` 样式是节点图遗留，可清理。
+- `lib/saveRegistry.ts` 的 `flushAll` 只在 `useKeyboard` 里调（`Ctrl+S`），其他位置没有调用。改到时核实需求。
 
 ### 单元测试
 
@@ -427,19 +497,20 @@ pnpm prettier --write src/
 4. 关系 → 面板显示方向、反向名、悬浮预览
 5. 剧情 → 场景 tab、剧本（结构 + 源码双视图）、检查器（场景 / 剧情两 tab）、分支添加、运行全屏、条件、效果、骰子
 6. 剧情 → 导出 Markdown / HTML
-7. 棋盘 → 拖拽、缩放、旋转、背景、网格形状、卡盒抽牌、翻牌、占位、关系线、边界扩充
-8. 卡组 → 新建、加卡、导入棋盘、加卡盒
+7. 棋盘 → 拖拽、缩放、旋转、背景、网格形状、卡盒抽牌、翻牌、占位、关系线、边界扩充、批量加卡
+8. 卡组 → 新建、加卡、卡片/列表视图切换、拖拽排序、导入棋盘、加卡盒
 9. 跑团 → 对话、掷骰、消息编辑、事件日志、会话内卡盒
-10. 设置 → 项目 · 常规 → 改字段 → 保存 → 重开生效
-11. 设置 → 项目 · 主题 → 切换主题 → 主界面立即跟随
-12. 设置 → 项目 · 资源 → 图片导入 / 删除 / 扫描未引用 / 清理；音频导入 / 试听 / 删除
-13. 设置 → 项目 · 数据 → 统计刷新 / 重建索引 / 导出诊断信息
-14. 设置 → 应用 · 界面 → 缩放滑块实时生效
-15. 设置 → 应用 · 编辑器 → 自动保存延迟 / 最近项目上限
-16. 设置 → 应用 · 视觉小说 → 打字机速度 / 开关 / 旁白
-17. 设置 → 应用 · 高级 → 清除缓存 / 恢复默认设置
-18. 设置页 Esc 关闭、← 返回关闭、未打开项目时只显示「应用」分组
-19. 导出 → 导入 → 合并
+10. 音乐 → 导入、播放、暂停、进度、音量、循环、引用计数、删除警告
+11. MiniPlayer → 右下常驻、跨模块持续、切设置仍播放
+12. LeftNav → 拖拽排序、刷新持久化、非卡片墙收窄、悬停展开
+13. 无边框标题栏 → 窗口按钮、Snap Layout、TopBar 不遮挡
+14. 设置 → 常规 → 改字段 → 保存 → 重开生效
+15. 设置 → 外观 → 切换主题 → 主界面立即跟随；缩放滑块实时生效
+16. 设置 → 资源 → 图片导入 / 删除 / 搜索 / 扫描未引用 / 清理
+17. 设置 → 编辑器 → 自动保存延迟 / 最近项目上限 / 打字机（速度 / 开关 / 旁白）
+18. 设置 → 高级 → 统计刷新 / 重建索引 / 导出诊断信息 / 清除缓存 / 恢复默认设置（含模块排序）
+19. 设置 → Esc 关闭、遮罩点击关闭、↑↓ 切分类、搜索跳转
+20. 导出 → 导入 → 合并
 
 如果你加了新功能，请在 PR 描述里说明验证步骤。
 
@@ -453,13 +524,19 @@ pnpm prettier --write src/
 
 ### 图片不显示
 
-图片用 base64 加载，大图会慢。检查 `assets/images/` 里文件是否存在。
+图片走 asset protocol。检查：
+
+- `assets/images/` 里文件是否存在
+- `tauri.conf.json` 里 `assetProtocol.enable` 是否为 `true`
+- `csp` 里 `img-src` 是否包含 `asset:` 和 `http://asset.localhost`
+- 项目打开时会动态添加 scope，关闭时移除
 
 ### 音频不播放
 
 - 检查 `tauri.conf.json` 里 `assetProtocol.enable` 是否为 `true`
 - 检查 `csp` 里 `media-src` 是否包含 `asset:` 和 `http://asset.localhost`
 - 项目打开时会动态添加 scope，关闭时移除
+- 全局播放器需要用户交互才能开始播放（浏览器策略）
 
 ### 窗口空白
 
@@ -468,6 +545,10 @@ DevTools（Tauri 窗口右键 → Inspect）看 Console 报错。
 ### Windows 上拖拽不工作
 
 检查 `tauri.conf.json` 里没有 `dragDropEnabled: false`。
+
+### TopBar 按钮点不动
+
+`tauri-plugin-frame` 注入的标题栏覆盖层默认整层接收点击。`index.css` 末尾 `[data-tauri-frame-tb] { pointer-events: none }` 让覆盖层穿透，只保留 `> button` 可点。如果新增按钮仍点不动，检查是否被覆盖层遮挡。
 
 ### 中文搜索无效
 
@@ -505,6 +586,10 @@ React 里连续两次 `setState` 会基于同一个旧 state 计算。合并更�
 
 CSS 动画如果用 `background-position` / `mixBlendMode`，会落到主线程重绘。用 `transform: translate3d` 和 `will-change: transform`。参见 `FoilOverlay.tsx`。
 
+### 模块顺序乱掉
+
+`lib/moduleOrder.ts` 读写时会过滤已不存在的模块、把新增模块追加到末尾。如果 `localStorage` 里的 `anvil.leftNavOrder` 完全乱掉，可以通过「设置 → 高级 → 恢复默认设置」重置（会一并重置 `appSettings`），或在命令面板执行「重置模块排序」。
+
 ---
 
 ## 获取帮助
@@ -518,3 +603,5 @@ CSS 动画如果用 `background-position` / `mixBlendMode`，会落到主线程�
 ## 协议
 
 贡献的代码默认采用项目的 [MIT 协议](LICENSE)。
+
+

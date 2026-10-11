@@ -16,14 +16,16 @@ Anvil 把世界观搭建、分支故事、棋盘推演、跑团记录统一在�
 - **视觉小说** — 结构化剧本编辑器（行卡片 + 拖拽排序 + 源码模式）、打字机对白、立绘表情、背景切换、结局标记、背景音乐和音效播放。导出 Markdown 剧本和单文件 HTML 阅读器。
 - **棋盘推演** — HTML 层渲染，支持拖拽、缩放、旋转、背景图、网格形状切换（方格 / 点阵 / 横线 / 竖线）、卡盒抽牌、翻牌、占位 Token、世界观关系线叠加。Token 用同一套卡框渲染。
 - **跑团对话** — 舞台 + 对话流 + 角色面板。消息写入 JSONL，可回放、可编辑、可删除。会话内支持卡盒抽牌。
-- **卡组管理** — 有序的卡 ID 集合。一键铺开到棋盘（自动扩充边界），或作为卡盒抽牌。
+- **音乐播放** — 全局音频播放器，右下角迷你播放器常驻，跨模块、跨设置持续播放。独立「音乐」模块管理项目音频。
+- **卡组管理** — 有序的卡 ID 集合。卡片视图 / 列表视图切换，支持拖拽排序。一键铺开到棋盘（自动扩充边界），或作为卡盒抽牌。
 - **TCG 卡牌渲染** — 五种卡框风格（游戏王 / 通用 / 极简 / 万智牌 / 宝可梦），ATK / DEF / HP / 等级标签可自定义。支持图像裁剪、出框、闪卡（金箔 / 银箔）、卡背、翻牌。
 - **本地优先** — 项目是一个文件夹，文本真相源，可用 git 管理。SQLite 只是可删除、可重建的索引。
 - **资源包** — 导出 / 导入 / 合并 `.anvilpack`，类型映射、只导类型、选择性导入。
 - **项目级主题** — 所有颜色走 CSS 变量，可切换、可自定义、可导出。
-- **统一设置面板** — 全屏独立页面，按存储位置分「项目 / 应用」两级。项目级管名称、主题、资源、默认卡框风格；应用级管界面缩放、打字机、自动保存等设备偏好。
-- **命令面板** — `Ctrl+K` 打开，所有操作可搜可执行。
-- **撤销 / 重做 / 自动保存** — 覆盖单卡编辑、删除、批量操作、卡盒抽牌。
+- **统一设置面板** — 居中浮层，5 个分类（常规 / 外观 / 资源 / 编辑器 / 高级），带搜索框和键盘切换。
+- **命令面板** — `Ctrl+K` 打开，所有操作可搜可执行。`Ctrl+M` 快速切到音乐模块。
+- **无边框标题栏** — 窗口按钮与 Anvil 配色统一，支持 Windows 11 Snap Layout。
+- **撤销 / 重做 / 自动保存** — 覆盖单卡编辑、删除、批量操作、卡盒抽牌。撤销 / 重做状态显示在底栏。
 - **内置示例世界** — 开箱即用的「铁砧堡」演示项目，覆盖全部功能。
 
 ---
@@ -40,6 +42,8 @@ docs/
 └── screenshot-session.png
 ```
 
+
+
 ---
 
 ## 技术栈
@@ -52,6 +56,8 @@ docs/
 | 全文检索   | SQLite FTS5（trigram）                                    |
 | 表达式求值 | evalexpr                                                  |
 | 资源包     | zip + walkdir                                             |
+| 无边框窗口 | tauri-plugin-frame                                        |
+| 文件对话框 | tauri-plugin-dialog                                       |
 | 前端       | React + TypeScript + Vite                                 |
 | 状态       | Zustand                                                   |
 | 拖拽排序   | @dnd-kit                                                  |
@@ -115,21 +121,24 @@ anvil/
 ├── src/
 │   ├── core/               # IPC 类型与封装 + 项目级动作
 │   │   ├── ipc/            # 前端 IPC 类型与 invoke 封装
-│   │   └── use*.ts         # 打开/创建/导入/导出
-│   ├── lib/                # 通用工具
-│   │   ├── id.ts · time.ts · theme.ts
-│   │   ├── imageCache.ts · audioCache.ts
-│   │   ├── toast.ts · confirm.ts · runWithError.ts
+│   │   ├── applyProjectTheme.ts
+│   │   └── openProjectAt.ts
+│   ├── lib/                # 通用工具（模块级单例 + 纯函数）
+│   │   ├── id.ts · time.ts · theme.ts · fontScale.ts · lookup.ts
+│   │   ├── assetCache.ts · audioPlayer.ts · moduleOrder.ts
+│   │   ├── toast.ts · confirm.ts · runWithError.ts · saveRegistry.ts
 │   │   ├── dice.ts · appSettings.ts · commands.ts
-│   │   └── recentProjects.ts · saveRegistry.ts
+│   │   └── recentProjects.ts
 │   ├── hooks/              # 通用 hook（useDraft / useKeyboard / useAppSettings / ...）
 │   ├── components/
 │   │   ├── CardFrame/      # 卡牌渲染（分层：primitives + styles）
+│   │   ├── CardGrid/       # 卡片网格（共享布局）
 │   │   ├── Modal.tsx · Toolbar.tsx · PickerDialog.tsx
-│   │   ├── ToastHost.tsx · ConfirmHost.tsx
-│   │   ├── HoverPreview.tsx · AudioSelect.tsx · ImageField.tsx
-│   │   ├── SectionLabel.tsx · EmptyState.tsx
-│   │   ├── Toggle.tsx · LabeledBlock.tsx
+│   │   ├── ToastHost.tsx · ConfirmHost.tsx · CommandPalette.tsx
+│   │   ├── HoverPreview.tsx · AudioSelect.tsx · ImageField.tsx · RefField.tsx
+│   │   ├── SectionLabel.tsx · EmptyState.tsx · LabeledBlock.tsx
+│   │   ├── Toggle.tsx · SaveInput.tsx · TypeMultiSelect.tsx
+│   │   ├── EntityListLayout.tsx · ScaledCardFrame.tsx · FieldInput.tsx
 │   │   └── ...
 │   ├── shell/              # 五段布局
 │   ├── themes/             # 内置主题定义
@@ -140,9 +149,9 @@ anvil/
 │   │   │   ├── card-type/  # 卡牌类型、字段、卡框配置
 │   │   │   └── relation/   # 关系类型与关系表单
 │   │   ├── card-groups/    # 卡组
-│   │   ├── world/          # 世界观（当前仅入口）
 │   │   ├── story/
 │   │   │   ├── scenario/   # 剧情设计（场景 tab、导出）
+│   │   │   │   └── inspector/  # 检查器内容
 │   │   │   ├── play/       # 视觉小说运行 + 音频
 │   │   │   ├── script/     # 剧本解析、编辑、序列化
 │   │   │   └── effects.ts  # 共享条件与效果
@@ -150,8 +159,9 @@ anvil/
 │   │   ├── session/
 │   │   │   ├── chat/       # 对话流、掷骰、消息编辑
 │   │   │   └── ...         # 会话容器、角色面板、事件日志
-│   │   ├── project/        # 项目设置内容（主题 / 资源 / 统计）
-│   │   ├── settings/       # 设置面板（全屏 + 分类）
+│   │   ├── player/         # 音乐模块（PlayerView + PlayerInspector + MiniPlayer）
+│   │   ├── project/        # 项目设置内容（主题 / 资源 / 统计）+ 资源包合并
+│   │   ├── settings/       # 设置浮层（分类面板）
 │   │   └── commands/       # 全局命令注册
 │   └── stores/             # Zustand（slice 模式）
 └── package.json
@@ -201,12 +211,18 @@ MyWorld.anvil/
 │   └── events.jsonl
 ├── scripts/<uuid>.md           # 场景剧本（Markdown）
 ├── assets/
-│   ├── images/<uuid>.<ext>
-│   └── audio/<uuid>.<ext>
+│   ├── images/<文件名>.<ext>
+│   └── audio/<文件名>.<ext>
 └── .anvil/index.db             # 索引，不提交 git
 ```
 
 `.gitignore` 只需忽略 `.anvil/`。
+
+**目录创建时机**：
+
+- 打开 / 创建项目时：`cards / types / relations/from / boards / scenarios / sessions / scripts / card_groups / .anvil`
+- 首次保存主题时：`themes/`
+- 首次导入资源时：`assets/images/` 或 `assets/audio/`
 
 ---
 
@@ -233,7 +249,7 @@ MyWorld.anvil/
 - **不做账号系统。** 本地文件，无云同步。
 - **不做 Web 服务端。** 桌面应用，无后端。
 - **不做 TCG 卡组（对战用）。** 卡组是引用集合，不是牌组策略。
-- **不做视觉小说的完整演出引擎。** HTML 导出支持文本 / 立绘 / 背景 / 点击推进 / 选择 / 条件，不含动画、转场、音频导出、存档、打包 EXE。想要完整演出，请把剧本导入 Ren'Py 或 Godot。
+- **不做视觉小说的完整演出引擎。** HTML 导出支持文本 / 背景 / 点击推进 / 选择 / 条件，不含立绘渲染、动画、转场、音频播放、存档、打包 EXE。想要完整演出，请把剧本导入 Ren'Py 或 Godot。
 
 ---
 
@@ -275,4 +291,5 @@ MyWorld.anvil/
 
 **早期开发中。** 核心功能已可用，但 API 和数据格式仍可能变化。欢迎试用和反馈。
 
-当前版本 `0.2.0`（2026-10-09）。下一版本 `0.3.0` 正在开发，主要变化：设置面板重构、剧情模块改造、银箔闪卡、卡框渲染分层。
+当前版本 `0.2.0`（2026-10-09）。下一版本 `0.3.0` 正在开发，主要变化：音频播放器 + 音乐模块、无边框标题栏、LeftNav 可拖拽排序、TopBar 极简化、设置面板重构、剧情模块改造、银箔闪卡、卡框渲染分层、资源管理搜索、卡组卡片视图。
+
