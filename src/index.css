@@ -48,7 +48,7 @@
   --font-mono: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
 
   /* 尺寸 */
-  --topbar-h: 44px;
+  --topbar-h: 36px;
   --statusbar-h: 26px;
   --leftnav-w: 200px;
 
@@ -358,4 +358,15 @@ h4 {
   .card-foil-shine {
     animation: none !important;
   }
+}
+
+/* tauri-plugin-frame 注入的标题栏覆盖层：
+   默认整层接收点击，会吞掉 TopBar 里的按钮事件。
+   让覆盖层穿透，只保留窗口按钮可点。 */
+[data-tauri-frame-tb] {
+  pointer-events: none !important;
+}
+
+[data-tauri-frame-tb] > button {
+  pointer-events: auto !important;
 }

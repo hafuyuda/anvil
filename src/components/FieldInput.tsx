@@ -1,5 +1,6 @@
 import type { FieldDef, FieldType } from "../core/ipc";
 import { ImageField } from "./ImageField";
+import { RefField } from "./RefField";
 
 interface Props {
   field?: FieldDef;
@@ -206,24 +207,11 @@ export function FieldInput({
     }
 
     case "ref": {
-      const arr = Array.isArray(value)
-        ? (value as string[])
-        : value
-          ? [value as string]
-          : [];
       return wrapped(
-        <input
-          className="input"
-          value={arr.join(", ")}
-          onChange={(e) =>
-            onChange(
-              e.target.value
-                .split(",")
-                .map((s) => s.trim())
-                .filter(Boolean),
-            )
-          }
-          placeholder="卡牌 ID，逗号分隔"
+        <RefField
+          value={value}
+          onChange={onChange}
+          targetTypes={resolvedTy.target_types}
         />,
       );
     }

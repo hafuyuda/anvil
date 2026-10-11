@@ -12,6 +12,7 @@ import { SessionList } from "../features/session/SessionList";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { CardGroupList } from "../features/card-groups/CardGroupList";
 import { toast } from "../lib/toast";
+import { PlayerView } from "../features/player/PlayerView";
 
 export function Workspace() {
   const projectPath = useProjectStore((s) => s.projectPath);
@@ -240,6 +241,11 @@ export function Workspace() {
       {activeModule === "session" && (
         <ErrorBoundary>
           <SessionList />
+        </ErrorBoundary>
+      )}
+      {activeModule === "player" && (
+        <ErrorBoundary>
+          <PlayerView />
         </ErrorBoundary>
       )}
     </div>

@@ -10,12 +10,14 @@
     "frontendDist": "../dist"
   },
   "app": {
+    "withGlobalTauri": true,
     "windows": [
       {
         "label": "main",
         "title": "anvil",
         "width": 900,
-        "height": 700
+        "height": 700,
+        "decorations": false
       }
     ],
     "security": {

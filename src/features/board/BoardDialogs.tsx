@@ -2,6 +2,7 @@ import type { Card, CardGroup, CardType, Token } from "../../core/ipc";
 import { PickerDialog } from "../../components/PickerDialog";
 import { AddFromGroupDialog } from "./AddFromGroupDialog";
 import { PileDrawDialog } from "./PileDrawDialog";
+import { CardPickerGridDialog } from "../../components/CardPickerGridDialog";
 
 interface Props {
   // 背景选择
@@ -34,7 +35,7 @@ interface Props {
   cards: Card[];
   cardTypes: CardType[];
   onCloseCardPicker: () => void;
-  onPickCard: (cardId: string) => void;
+  onPickCards: (cardIds: string[]) => void;
 }
 
 export function BoardDialogs({
@@ -59,7 +60,7 @@ export function BoardDialogs({
   cards,
   cardTypes,
   onCloseCardPicker,
-  onPickCard,
+  onPickCards,
 }: Props) {
   return (
     <>
@@ -107,13 +108,10 @@ export function BoardDialogs({
         })()}
 
       {cardPickerOpen && (
-        <PickerDialog
-          title="添加卡片到棋盘"
-          options={cards.map((c) => ({
-            value: c.id,
-            label: `${c.name} · ${cardTypes.find((t) => t.id === c.type_id)?.name ?? "?"}`,
-          }))}
-          onPick={onPickCard}
+        <CardPickerGridDialog
+          cards={cards}
+          cardTypes={cardTypes}
+          onConfirm={onPickCards}
           onClose={onCloseCardPicker}
         />
       )}

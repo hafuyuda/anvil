@@ -36,7 +36,7 @@ export function BoardEditor({ board }: Props) {
 
   const {
     savePatch,
-    addCardToBoard,
+    addCardsToBoard,
     addPlaceholder,
     importFromGroup,
     addPile,
@@ -230,7 +230,10 @@ export function BoardEditor({ board }: Props) {
         cards={cards}
         cardTypes={cardTypes}
         onCloseCardPicker={() => setCardPickerOpen(false)}
-        onPickCard={(id) => void addCardToBoard(id)}
+        onPickCards={(ids) => {
+          void addCardsToBoard(ids);
+          setCardPickerOpen(false);
+        }}
       />
 
       {relationFilterOpen && (

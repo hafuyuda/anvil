@@ -84,34 +84,52 @@ export function useBoardActions({ board, upsertBoard, pushUndo }: Args) {
     }, "保存失败");
   }
 
-  async function addCardToBoard(cardId: string) {
-    const tokens = board.tokens ?? [];
-    const count = tokens.length;
-    const pos = gridPosition(count);
+  async function addCardsToBoard(cardIds: string[]) {
+    if (cardIds.length === 0) return;
+    const existing = board.tokens ?? [];
+    const startIdx = existing.length;
 
-    const newToken: Token = {
-      id: newId(),
-      card_id: cardId,
-      name_override: null,
-      value_overrides: {},
-      x: pos.x,
-      y: pos.y,
-      w: 140,
-      h: 205,
-      rotation: 0,
-      layer: count,
-      visible: true,
-      face_down: false,
-      pile: null,
-    };
+    const newTokens: Token[] = cardIds.map((cardId, i) => {
+      const pos = gridPosition(startIdx + i);
+      return {
+        id: newId(),
+        card_id: cardId,
+        name_override: null,
+        value_overrides: {},
+        x: pos.x,
+        y: pos.y,
+        w: 140,
+        h: 205,
+        rotation: 0,
+        layer: startIdx + i,
+        visible: true,
+        face_down: false,
+        pile: null,
+      };
+    });
+
+    const allTokens = [...existing, ...newTokens];
+    const expansion = computeBoardExpansion(
+      allTokens,
+      board.width,
+      board.height,
+    );
 
     const next: Board = {
       ...board,
-      tokens: [...tokens, newToken],
+      tokens: allTokens,
+      ...(expansion ?? {}),
       updated_at: nowMs(),
     };
-    await ipc.upsertBoard(next);
-    upsertBoard(next);
+
+    await runWithError(async () => {
+      await ipc.upsertBoard(next);
+      upsertBoard(next);
+    }, "添加失败");
+  }
+
+  async function addCardToBoard(cardId: string) {
+    await addCardsToBoard([cardId]);
   }
 
   async function addPlaceholder() {
@@ -283,6 +301,7 @@ export function useBoardActions({ board, upsertBoard, pushUndo }: Args) {
   return {
     savePatch,
     addCardToBoard,
+    addCardsToBoard,
     addPlaceholder,
     importFromGroup,
     addPile,

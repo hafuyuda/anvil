@@ -1,12 +1,12 @@
+import { useMemo } from "react";
 import type { Card, CardType } from "../../../core/ipc";
-import { CardFrame } from "../../../components/CardFrame";
+import { CardGrid, GridCard } from "../../../components/CardGrid";
 
 interface Props {
   cards: Card[];
   cardTypes: CardType[];
   selectedCardIds: string[];
   onCardClick: (card: Card, e: React.MouseEvent) => void;
-  onAddToBoard: (c: Card) => void;
 }
 
 export function CardGridView({
@@ -14,80 +14,26 @@ export function CardGridView({
   cardTypes,
   selectedCardIds,
   onCardClick,
-  onAddToBoard,
 }: Props) {
-  return (
-    <div
-      style={{
-        display: "flex",
-        flexWrap: "wrap",
-        gap: 16,
-        paddingTop: 4,
-      }}
-    >
-      {cards.map((c) => {
-        const ct = cardTypes.find((t) => t.id === c.type_id);
-        if (!ct) {
-          return (
-            <div
-              key={c.id}
-              onClick={(e) => onCardClick(c, e)}
-              style={{
-                width: 190,
-                height: 280,
-                border: "1px dashed var(--danger)",
-                borderRadius: "var(--radius-md)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 11,
-                color: "var(--danger)",
-                cursor: "pointer",
-                background: "var(--bg-panel)",
-              }}
-            >
-              找不到类型
-            </div>
-          );
-        }
+  const typeMap = useMemo(() => {
+    const m = new Map<string, CardType>();
+    for (const t of cardTypes) m.set(t.id, t);
+    return m;
+  }, [cardTypes]);
 
-        const selected = selectedCardIds.includes(c.id);
-        return (
-          <div
-            key={c.id}
-            style={{ position: "relative" }}
-            onClick={(e) => onCardClick(c, e)}
-          >
-            <CardFrame
-              card={c}
-              cardType={ct}
-              size="medium"
-              selected={selected}
-              foil={true}
-            />
-            <button
-              className="btn btn-icon"
-              onClick={(e) => {
-                e.stopPropagation();
-                onAddToBoard(c);
-              }}
-              title="添加到棋盘"
-              style={{
-                position: "absolute",
-                right: 4,
-                top: 4,
-                fontSize: 11,
-                padding: "2px 6px",
-                background: "rgba(0,0,0,0.55)",
-                border: "1px solid rgba(255,255,255,0.3)",
-                color: "#fff",
-              }}
-            >
-              → 棋盘
-            </button>
-          </div>
-        );
-      })}
-    </div>
+  return (
+    <CardGrid gap={16} paddingTop={4}>
+      {cards.map((c) => (
+        <GridCard
+          key={c.id}
+          card={c}
+          cardType={typeMap.get(c.type_id) ?? null}
+          size="medium"
+          foil
+          selected={selectedCardIds.includes(c.id)}
+          onClick={(e) => onCardClick(c, e)}
+        />
+      ))}
+    </CardGrid>
   );
 }

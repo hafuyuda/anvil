@@ -6,11 +6,17 @@ use core::ipc::{
     session_cmd::*, AppState,
 };
 use std::sync::Mutex;
+use tauri_plugin_frame::FramePluginBuilder;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+         .plugin(
+            FramePluginBuilder::new()
+                .auto_titlebar(true)
+                .build(),
+        )
         .manage(AppState {
             project: Mutex::new(None),
         })
@@ -90,4 +96,6 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+
+
 }

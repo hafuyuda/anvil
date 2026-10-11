@@ -107,6 +107,8 @@ function CropImage({ url, crop }: { url: string; crop?: CropRect | null }) {
         src={url}
         alt=""
         draggable={false}
+        loading="lazy"
+        decoding="async"
         style={{
           width: "100%",
           height: "100%",
@@ -125,6 +127,8 @@ function CropImage({ url, crop }: { url: string; crop?: CropRect | null }) {
       src={url}
       alt=""
       draggable={false}
+      loading="lazy"
+      decoding="async"
       style={{
         position: "absolute",
         width: `${100 / c.w}%`,

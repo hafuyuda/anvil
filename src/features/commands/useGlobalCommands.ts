@@ -10,6 +10,7 @@ import { useUIStore } from "../../stores/uiStore";
 import { getRecentProjects } from "../../lib/recentProjects";
 import { openProjectAt } from "../../core/openProjectAt";
 import { runWithError } from "../../lib/runWithError";
+import { resetModuleOrder } from "../../lib/moduleOrder";
 
 export function useGlobalCommands() {
   const openProjectHook = useOpenProject();
@@ -85,6 +86,15 @@ export function useGlobalCommands() {
       keywords: ["type", "类型"],
       shortcut: "Ctrl+5",
       run: () => store().setActiveModule("types"),
+    });
+
+    // ── 界面 ──
+    reg({
+      id: "ui.resetModuleOrder",
+      label: "重置模块排序",
+      category: "界面",
+      keywords: ["reset", "order", "排序", "重置", "leftnav"],
+      run: () => resetModuleOrder(),
     });
 
     // ── 项目操作（不依赖 projectPath）──
@@ -187,7 +197,7 @@ export function useGlobalCommands() {
         category: "播放",
         keywords: ["audio", "music", "bgm", "播放", "音乐"],
         shortcut: "Ctrl+M",
-        run: () => useUIStore.getState().togglePlayer(),
+        run: () => useProjectStore.getState().setActiveModule("player"),
       });
 
       // 快速打开卡牌

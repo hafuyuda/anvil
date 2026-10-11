@@ -6,6 +6,7 @@ import { TokenInspector } from "../features/board/TokenInspector";
 import { CardTypePreview } from "../features/cards/card-type/CardTypePreview";
 import { nowMs } from "../lib/time";
 import { ScenarioInspector } from "../features/story/scenario/inspector/ScenarioInspector";
+import { PlayerInspector } from "../features/player/PlayerInspector";
 
 export function Inspector() {
   const activeModule = useProjectStore((s) => s.activeModule);
@@ -22,7 +23,7 @@ export function Inspector() {
   const boards = useProjectStore((s) => s.boards) ?? [];
   const sessions = useProjectStore((s) => s.sessions) ?? [];
   const relations = useProjectStore((s) => s.relations) ?? [];
-  
+
   const upsertBoard = useProjectStore((s) => s.upsertBoard);
   const upsertSession = useProjectStore((s) => s.upsertSession);
   const selectToken = useProjectStore((s) => s.selectToken);
@@ -137,8 +138,6 @@ export function Inspector() {
     ? (relations.find((r) => r.id === selectedEdgeId) ?? null)
     : null;
 
-
-
   const card = cards.find((c) => c.id === selectedCardId) ?? null;
   const cardType = card
     ? (cardTypes.find((t) => t.id === card.type_id) ?? null)
@@ -187,15 +186,17 @@ export function Inspector() {
   const header =
     activeModule === "types"
       ? "卡框预览"
-      : activeModule === "story"
-        ? selectedEdgeId
-          ? "分支"
-          : "剧情"
-        : token
-          ? "Token"
-          : edge
-            ? "关系"
-            : "检查器";
+      : activeModule === "player"
+        ? "播放"
+        : activeModule === "story"
+          ? selectedEdgeId
+            ? "分支"
+            : "剧情"
+          : token
+            ? "Token"
+            : edge
+              ? "关系"
+              : "检查器";
 
   return (
     <>
@@ -268,10 +269,12 @@ export function Inspector() {
           </>
         )}
 
+        {activeModule === "player" && <PlayerInspector />}
+
         {activeModule === "story" && <ScenarioInspector />}
-        
+
         {/* 其他模块：token / edge / card */}
-        {activeModule !== "types" && (
+        {activeModule !== "types" && activeModule !== "player" && (
           <>
             {token && (
               <TokenInspector

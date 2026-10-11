@@ -3,7 +3,7 @@ import { ipc, type Card, type CardGroup, type CardType } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
 import { useDraft } from "../../hooks/useDraft";
 import { nowMs } from "../../lib/time";
-import { CardGroupCardList } from "./CardGroupCardList";
+import { CardGroupCards } from "./CardGroupCards";
 import { CardGroupPicker } from "./CardGroupPicker";
 
 interface Props {
@@ -14,6 +14,8 @@ export function CardGroupEditor({ group }: Props) {
   const cards = useProjectStore((s) => s.cards) ?? [];
   const cardTypes = useProjectStore((s) => s.cardTypes) ?? [];
   const upsertCardGroup = useProjectStore((s) => s.upsertCardGroup);
+  const view = useProjectStore((s) => s.cardGroupView);
+  const setView = useProjectStore((s) => s.setCardGroupView);
 
   const { draft, dirty, update, commit } = useDraft(
     group,
@@ -50,13 +52,7 @@ export function CardGroupEditor({ group }: Props) {
     update({ card_ids: draft.card_ids.filter((x) => x !== id) });
   }
 
-  function moveCard(id: string, direction: -1 | 1) {
-    const idx = draft.card_ids.indexOf(id);
-    if (idx < 0) return;
-    const next = [...draft.card_ids];
-    const target = idx + direction;
-    if (target < 0 || target >= next.length) return;
-    [next[idx], next[target]] = [next[target], next[idx]];
+  function reorderCards(next: string[]) {
     update({ card_ids: next });
   }
 
@@ -147,28 +143,68 @@ export function CardGroupEditor({ group }: Props) {
             alignItems: "center",
             justifyContent: "space-between",
             marginBottom: 6,
+            gap: 8,
           }}
         >
           <Label style={{ marginBottom: 0 }}>
             卡牌（{draft.card_ids.length}）
           </Label>
-          {!picking && (
-            <button
-              className="btn"
-              onClick={() => setPicking(true)}
-              style={{ fontSize: 11 }}
-            >
-              + 添加卡牌
-            </button>
-          )}
+
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <div style={{ display: "flex", gap: 2 }}>
+              <button
+                className="btn btn-icon"
+                onClick={() => setView("grid")}
+                title="卡片视图"
+                style={{
+                  fontSize: 12,
+                  background:
+                    view === "grid" ? "var(--bg-raised)" : "transparent",
+                  borderColor:
+                    view === "grid"
+                      ? "var(--accent-gold)"
+                      : "var(--border-default)",
+                }}
+              >
+                ▦
+              </button>
+              <button
+                className="btn btn-icon"
+                onClick={() => setView("list")}
+                title="列表视图"
+                style={{
+                  fontSize: 12,
+                  background:
+                    view === "list" ? "var(--bg-raised)" : "transparent",
+                  borderColor:
+                    view === "list"
+                      ? "var(--accent-gold)"
+                      : "var(--border-default)",
+                }}
+              >
+                ☰
+              </button>
+            </div>
+
+            {!picking && (
+              <button
+                className="btn"
+                onClick={() => setPicking(true)}
+                style={{ fontSize: 11 }}
+              >
+                + 添加卡牌
+              </button>
+            )}
+          </div>
         </div>
 
         {!picking && (
-          <CardGroupCardList
+          <CardGroupCards
             cardIds={draft.card_ids}
             cardById={cardById}
             typeById={typeById}
-            onMove={moveCard}
+            view={view}
+            onReorder={reorderCards}
             onRemove={removeCard}
           />
         )}

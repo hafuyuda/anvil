@@ -3,20 +3,95 @@ import type { SettingsCategory } from "../../stores/uiStore";
 export interface CategoryMeta {
   key: SettingsCategory;
   label: string;
-  group: "project" | "app";
+  glyph: string;
+  keywords: string[];
+  requiresProject: boolean;
 }
 
 export const CATEGORIES: CategoryMeta[] = [
-  { key: "project:general", label: "常规", group: "project" },
-  { key: "project:theme", label: "主题", group: "project" },
-  { key: "project:resources", label: "资源", group: "project" },
-  { key: "project:data", label: "数据", group: "project" },
-
-  { key: "app:interface", label: "界面", group: "app" },
-  { key: "app:editor", label: "编辑器", group: "app" },
-  { key: "app:vn", label: "视觉小说", group: "app" },
-  { key: "app:advanced", label: "高级", group: "app" },
+  {
+    key: "general",
+    label: "常规",
+    glyph: "◆",
+    keywords: [
+      "项目",
+      "名称",
+      "版本",
+      "作者",
+      "描述",
+      "卡背",
+      "卡框",
+      "project",
+      "name",
+      "author",
+      "version",
+      "description",
+    ],
+    requiresProject: true,
+  },
+  {
+    key: "appearance",
+    label: "外观",
+    glyph: "◈",
+    keywords: [
+      "主题",
+      "配色",
+      "颜色",
+      "缩放",
+      "字体",
+      "界面",
+      "theme",
+      "color",
+      "font",
+      "zoom",
+      "scale",
+    ],
+    requiresProject: false,
+  },
+  {
+    key: "resources",
+    label: "资源",
+    glyph: "▣",
+    keywords: ["图片", "资源", "导入", "image", "asset", "import"],
+    requiresProject: true,
+  },
+  {
+    key: "editor",
+    label: "编辑器",
+    glyph: "✎",
+    keywords: [
+      "自动保存",
+      "保存",
+      "延迟",
+      "最近项目",
+      "打字机",
+      "速度",
+      "旁白",
+      "autosave",
+      "recent",
+      "typewriter",
+      "speed",
+      "narration",
+    ],
+    requiresProject: false,
+  },
+  {
+    key: "advanced",
+    label: "高级",
+    glyph: "⚙",
+    keywords: [
+      "统计",
+      "索引",
+      "重建",
+      "诊断",
+      "缓存",
+      "重置",
+      "stats",
+      "index",
+      "diagnostic",
+      "cache",
+      "reset",
+    ],
+    requiresProject: false,
+  },
 ];
-
-export const DEFAULT_PROJECT_CATEGORY: SettingsCategory = "project:general";
-export const DEFAULT_APP_CATEGORY: SettingsCategory = "app:interface";

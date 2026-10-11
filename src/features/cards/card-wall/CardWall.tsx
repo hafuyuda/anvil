@@ -1,8 +1,7 @@
-import { useState } from "react";
-import { ipc, type Board, type Card, type Token } from "../../../core/ipc";
+import { useMemo, useState } from "react";
+import { ipc, type Card, type CardType } from "../../../core/ipc";
 import { useOpenProject } from "../../../hooks/useOpenProject";
 import { useProjectStore } from "../../../stores/projectStore";
-import { PickerDialog } from "../../../components/PickerDialog";
 import { useDeleteUndo } from "../../../hooks/useDeleteUndo";
 import { newId } from "../../../lib/id";
 import { nowMs } from "../../../lib/time";
@@ -15,13 +14,14 @@ import { AddToGroupDialog } from "../../card-groups/AddToGroupDialog";
 import { toast } from "../../../lib/toast";
 import { confirmDialog } from "../../../lib/confirm";
 import { runWithError } from "../../../lib/runWithError";
+import { PickerDialog } from "../../../components/PickerDialog";
 
 export function CardWall() {
   const {
     projectPath,
     cards,
     cardTypes,
-    boards,
+
     setProject,
     addCard,
     selectCard,
@@ -31,7 +31,7 @@ export function CardWall() {
     toggleCardSelection,
     selectCardsRange,
     clearCardSelection,
-    upsertBoard,
+
     cardWallView,
     setCardWallView,
   } = useProjectStore();
@@ -40,8 +40,12 @@ export function CardWall() {
 
   const filters = useCardWallFilters(cards, cardTypes);
 
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [pendingCards, setPendingCards] = useState<Card[]>([]);
+  const typeMap = useMemo(() => {
+    const m = new Map<string, CardType>();
+    for (const t of cardTypes) m.set(t.id, t);
+    return m;
+  }, [cardTypes]);
+
   const [typePickerOpen, setTypePickerOpen] = useState(false);
 
   const [addToGroupOpen, setAddToGroupOpen] = useState(false);
@@ -121,58 +125,6 @@ export function CardWall() {
         newCardGroups,
       );
     }, "载入示例失败");
-  }
-
-  // ── 添加到棋盘 ──
-
-  async function createTokensInBoard(board: Board, cardList: Card[]) {
-    const tokens = [...(board.tokens ?? [])];
-    const startIdx = tokens.length;
-
-    for (let i = 0; i < cardList.length; i++) {
-      const card = cardList[i];
-      const n = startIdx + i;
-      const gx = 100 + (n % 8) * 180;
-      const gy = 100 + Math.floor(n / 8) * 240;
-
-      const newToken: Token = {
-        id: newId(),
-        card_id: card.id,
-        name_override: null,
-        value_overrides: {},
-        x: gx,
-        y: gy,
-        w: 140,
-        h: 205,
-        rotation: 0,
-        layer: n,
-        visible: true,
-      };
-      tokens.push(newToken);
-    }
-
-    const next: Board = {
-      ...board,
-      tokens,
-      updated_at: nowMs(),
-    };
-    await runWithError(async () => {
-      await ipc.upsertBoard(next);
-      upsertBoard(next);
-    }, "添加失败");
-  }
-
-  function handleAddToBoard(cardList: Card[]) {
-    if (boards.length === 0) {
-      toast.info("请先在「棋盘」里创建一个棋盘");
-      return;
-    }
-    if (boards.length === 1) {
-      createTokensInBoard(boards[0], cardList);
-      return;
-    }
-    setPendingCards(cardList);
-    setPickerOpen(true);
   }
 
   // ── 批量删除 ──
@@ -320,12 +272,6 @@ export function CardWall() {
         }
         onClearSelection={clearCardSelection}
         onAddToGroup={() => setAddToGroupOpen(true)}
-        onAddToBoard={() => {
-          const cardsToAdd = (cards ?? []).filter((c) =>
-            selectedCardIds.includes(c.id),
-          );
-          handleAddToBoard(cardsToAdd);
-        }}
         onDelete={handleBulkDelete}
       />
 
@@ -368,35 +314,16 @@ export function CardWall() {
             cardTypes={cardTypes}
             selectedCardIds={selectedCardIds}
             onCardClick={handleCardClick}
-            onAddToBoard={(c) => handleAddToBoard([c])}
           />
         ) : (
           <CardListView
             cards={filters.visible}
-            typeName={(id) =>
-              cardTypes.find((t) => t.id === id)?.name ?? id.slice(0, 8)
-            }
+            typeName={(id) => typeMap.get(id)?.name ?? id.slice(0, 8)}
             selectedCardIds={selectedCardIds}
             onCardClick={handleCardClick}
-            onAddToBoard={(c) => handleAddToBoard([c])}
           />
         )}
       </div>
-
-      {pickerOpen && pendingCards.length > 0 && (
-        <PickerDialog
-          title={`添加 ${pendingCards.length} 张卡到棋盘`}
-          options={boards.map((b) => ({ value: b.id, label: b.name }))}
-          onPick={(id) => {
-            const b = boards.find((x) => x.id === id);
-            if (b) createTokensInBoard(b, pendingCards);
-          }}
-          onClose={() => {
-            setPickerOpen(false);
-            setPendingCards([]);
-          }}
-        />
-      )}
 
       {typePickerOpen && (
         <PickerDialog

@@ -3,6 +3,7 @@ import { clearAssetCache } from "../../lib/assetCache";
 import { confirmDialog } from "../../lib/confirm";
 import { toast } from "../../lib/toast";
 import { SectionLabel } from "../../components/SectionLabel";
+import { resetModuleOrder } from "../../lib/moduleOrder";
 
 export function AppAdvancedPanel() {
   async function handleClearCaches() {
@@ -27,6 +28,7 @@ export function AppAdvancedPanel() {
     )
       return;
     resetAppSettings();
+    resetModuleOrder();
     toast.success("已恢复默认设置");
   }
 

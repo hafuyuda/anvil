@@ -5,7 +5,6 @@ interface Props {
   typeName: (id: string) => string;
   selectedCardIds: string[];
   onCardClick: (card: Card, e: React.MouseEvent) => void;
-  onAddToBoard: (c: Card) => void;
 }
 
 export function CardListView({
@@ -13,7 +12,6 @@ export function CardListView({
   typeName,
   selectedCardIds,
   onCardClick,
-  onAddToBoard,
 }: Props) {
   return (
     <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
@@ -52,17 +50,6 @@ export function CardListView({
                 {c.id.slice(0, 8)}
               </span>
             </span>
-            <button
-              className="btn btn-icon"
-              onClick={(e) => {
-                e.stopPropagation();
-                onAddToBoard(c);
-              }}
-              style={{ fontSize: 11 }}
-              title="添加到棋盘"
-            >
-              → 棋盘
-            </button>
           </li>
         );
       })}

@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { ipc } from "../core/ipc";
 import { useProjectStore } from "../stores/projectStore";
 import { useOpenProject } from "../hooks/useOpenProject";
@@ -13,37 +14,43 @@ import { runWithError } from "../lib/runWithError";
 export function TopBar() {
   const projectPath = useProjectStore((s) => s.projectPath);
   const closeProject = useProjectStore((s) => s.closeProject);
-  const pendingSaves = useProjectStore((s) => s.pendingSaves);
-  const undoStack = useProjectStore((s) => s.undoStack) ?? [];
-  const redoStack = useProjectStore((s) => s.redoStack) ?? [];
-  const undo = useProjectStore((s) => s.undo);
-  const redo = useProjectStore((s) => s.redo);
+  const refreshProject = useProjectStore((s) => s.refreshProject);
+  const setManifest = useProjectStore((s) => s.setManifest);
+
   const openProject = useOpenProject();
   const createProject = useCreateProject();
   const exportPack = useExportPack();
   const importPack = useImportPack();
 
   const openPalette = useUIStore((s) => s.openPalette);
-
   const openMergePack = useUIStore((s) => s.openMergePack);
-
   const openSettings = useUIStore((s) => s.openSettings);
-  const openPlayer = useUIStore((s) => s.openPlayer);
+
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    function onClick(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+    window.addEventListener("mousedown", onClick);
+    return () => window.removeEventListener("mousedown", onClick);
+  }, [menuOpen]);
 
   async function handleClose() {
     try {
       await ipc.closeProject();
     } catch {
-      //ignore
+      // ignore
     }
     closeProject();
     resetTheme();
     clearAssetCache();
     setLastOpenPath(null);
   }
-
-  const refreshProject = useProjectStore((s) => s.refreshProject);
-  const setManifest = useProjectStore((s) => s.setManifest);
 
   async function handleRefresh() {
     if (!projectPath) return;
@@ -64,131 +71,236 @@ export function TopBar() {
     }, "刷新失败");
   }
 
-  const statusText = !projectPath
-    ? ""
-    : pendingSaves > 0
-      ? "保存中…"
-      : "已保存";
+
+  const projectName = projectPath
+    ? projectPath.split(/[\\/]/).pop()
+    : "未打开项目";
 
   return (
-    <>
-      <div
-        style={{
-          height: "var(--topbar-h)",
-          display: "flex",
-          alignItems: "center",
-          padding: "0 12px",
-          borderBottom: "1px solid var(--border-subtle)",
-          background: "var(--bg-panel)",
-          gap: 8,
-          fontSize: 13,
-          flexShrink: 0,
-        }}
-      >
-        <strong
-          style={{
-            color: "var(--accent-gold)",
-            fontFamily: "var(--font-title)",
-            fontSize: 15,
-            letterSpacing: 1,
-          }}
-        >
-          Anvil
-        </strong>
-        <span style={{ color: "var(--border-default)" }}>·</span>
-        <span style={{ color: "var(--fg-secondary)" }}>
-          {projectPath ? projectPath.split(/[\\/]/).pop() : "未打开项目"}
-        </span>
-
-        <button className="btn" onClick={openProject}>
-          {projectPath ? "切换" : "打开"}
-        </button>
-        {!projectPath && (
-          <>
-            <button className="btn btn-primary" onClick={createProject}>
-              新建项目
-            </button>
-            <button className="btn" onClick={importPack}>
-              导入包
-            </button>
-          </>
-        )}
-
-        {projectPath && (
-          <>
-            <button className="btn" onClick={handleRefresh}>
-              刷新
-            </button>
-            <button className="btn" onClick={exportPack}>
-              导出包
-            </button>
-            <button className="btn" onClick={openMergePack}>
-              合并包
-            </button>
-            <button
-              className="btn btn-icon"
-              onClick={() => void undo()}
-              disabled={undoStack.length === 0}
-              title="撤销 Ctrl+Z"
-            >
-              ↶
-            </button>
-            <button
-              className="btn btn-icon"
-              onClick={() => void redo()}
-              disabled={redoStack.length === 0}
-              title="重做 Ctrl+Shift+Z"
-            >
-              ↷
-            </button>
-            <span
-              style={{
-                fontSize: 11,
-                color:
-                  pendingSaves > 0 ? "var(--accent-flame)" : "var(--fg-muted)",
-              }}
-            >
-              {statusText}
-            </span>
-          </>
-        )}
-
-        <div style={{ flex: 1 }} />
+    <div
+      style={{
+        height: "var(--topbar-h)",
+        display: "flex",
+        alignItems: "center",
+        padding: "0 12px",
+        borderBottom: "1px solid var(--border-subtle)",
+        background: "var(--bg-panel)",
+        gap: 8,
+        fontSize: 13,
+        flexShrink: 0,
+        paddingRight: "calc(12px + var(--tauri-frame-controls-width, 138px))",
+      }}
+    >
+      {/* 项目菜单 */}
+      <div ref={menuRef} style={{ position: "relative" }}>
         <button
-          className="input"
-          onClick={openPalette}
+          onClick={() => setMenuOpen((v) => !v)}
           style={{
-            width: 240,
-            fontSize: 12,
-            textAlign: "left",
-            cursor: "pointer",
-            color: "var(--fg-muted)",
             display: "flex",
-            justifyContent: "space-between",
             alignItems: "center",
-            background: "var(--bg-surface)",
+            gap: 8,
+            padding: "4px 10px",
+            border: "1px solid transparent",
+            borderRadius: "var(--radius-sm)",
+            background: menuOpen ? "var(--bg-raised)" : "transparent",
+            color: "var(--fg-primary)",
+            cursor: "pointer",
+            fontFamily: "inherit",
+            fontSize: 13,
+          }}
+          onMouseEnter={(e) => {
+            if (!menuOpen) {
+              (e.currentTarget as HTMLElement).style.background =
+                "var(--bg-surface)";
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!menuOpen) {
+              (e.currentTarget as HTMLElement).style.background = "transparent";
+            }
           }}
         >
-          <span>搜索或执行命令…</span>
-          <span style={{ fontFamily: "var(--font-mono)", fontSize: 10 }}>
-            Ctrl+K
+          <strong
+            style={{
+              color: "var(--accent-gold)",
+              fontFamily: "var(--font-title)",
+              fontSize: 15,
+              letterSpacing: 1,
+            }}
+          >
+            Anvil
+          </strong>
+          <span style={{ color: "var(--border-default)" }}>·</span>
+          <span
+            style={{
+              color: "var(--fg-secondary)",
+              maxWidth: 220,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {projectName}
           </span>
+          <span style={{ color: "var(--fg-muted)", fontSize: 10 }}>▾</span>
         </button>
 
-        <button className="btn" onClick={openPlayer} title="音频播放器 Ctrl+M">
-          🎵
-        </button>
+        {menuOpen && (
+          <div
+            style={{
+              position: "absolute",
+              top: "calc(100% + 4px)",
+              left: 0,
+              width: 220,
+              background: "var(--bg-panel)",
+              border: "1px solid var(--border-default)",
+              borderRadius: "var(--radius-md)",
+              boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
+              padding: 4,
+              zIndex: 1000,
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <MenuItem
+              label={projectPath ? "切换项目…" : "打开项目…"}
+              onClick={() => {
+                setMenuOpen(false);
+                openProject();
+              }}
+            />
+            <MenuItem
+              label="新建项目…"
+              onClick={() => {
+                setMenuOpen(false);
+                createProject();
+              }}
+            />
+            <MenuItem
+              label="导入资源包…"
+              onClick={() => {
+                setMenuOpen(false);
+                importPack();
+              }}
+            />
 
-        <button className="btn" onClick={() => openSettings()}>
-          设置
-        </button>
-
-        {projectPath && (
-          <button className="btn btn-danger" onClick={handleClose}>
-            关闭项目
-          </button>
+            {projectPath && (
+              <>
+                <Divider />
+                <MenuItem
+                  label="导出资源包…"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    exportPack();
+                  }}
+                />
+                <MenuItem
+                  label="合并资源包…"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    openMergePack();
+                  }}
+                />
+                <MenuItem
+                  label="刷新项目"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    void handleRefresh();
+                  }}
+                />
+                <Divider />
+                <MenuItem
+                  label="关闭项目"
+                  danger
+                  onClick={() => {
+                    setMenuOpen(false);
+                    void handleClose();
+                  }}
+                />
+              </>
+            )}
+          </div>
         )}
       </div>
-    </>
+
+      <div data-tauri-drag-region style={{ flex: 1, alignSelf: "stretch" }} />
+
+      {/* 搜索框 */}
+      <button
+        className="input"
+        onClick={openPalette}
+        style={{
+          width: 240,
+          fontSize: 12,
+          textAlign: "left",
+          cursor: "pointer",
+          color: "var(--fg-muted)",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          background: "var(--bg-surface)",
+        }}
+      >
+        <span>搜索或执行命令…</span>
+        <span style={{ fontFamily: "var(--font-mono)", fontSize: 10 }}>
+          Ctrl+K
+        </span>
+      </button>
+
+      {/* 设置 */}
+      <button className="btn" onClick={() => openSettings()}>
+        设置
+      </button>
+    </div>
+  );
+}
+
+function MenuItem({
+  label,
+  onClick,
+  danger,
+}: {
+  label: string;
+  onClick: () => void;
+  danger?: boolean;
+}) {
+  const [hover, setHover] = useState(false);
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        display: "block",
+        width: "100%",
+        textAlign: "left",
+        padding: "6px 10px",
+        border: "none",
+        borderRadius: "var(--radius-sm)",
+        background: hover
+          ? danger
+            ? "color-mix(in srgb, var(--danger) 20%, transparent)"
+            : "var(--bg-raised)"
+          : "transparent",
+        color: danger ? "var(--danger)" : "var(--fg-primary)",
+        cursor: "pointer",
+        fontFamily: "inherit",
+        fontSize: 13,
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
+function Divider() {
+  return (
+    <div
+      style={{
+        height: 1,
+        background: "var(--border-subtle)",
+        margin: "4px 6px",
+      }}
+    />
   );
 }

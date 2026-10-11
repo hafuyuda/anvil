@@ -278,6 +278,8 @@ function AssetCell({
           <img
             src={url}
             alt=""
+            loading="lazy"
+            decoding="async"
             style={{
               maxWidth: "100%",
               maxHeight: "100%",

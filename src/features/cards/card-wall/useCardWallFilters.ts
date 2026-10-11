@@ -28,8 +28,14 @@ export function useCardWallFilters(cards: Card[], cardTypes: CardType[]) {
     return () => clearTimeout(handle);
   }, [query]);
 
+  const typeMap = useMemo(() => {
+    const m = new Map<string, CardType>();
+    for (const t of cardTypes) m.set(t.id, t);
+    return m;
+  }, [cardTypes]);
+
   const typeName = (typeId: string) =>
-    cardTypes.find((t) => t.id === typeId)?.name ?? typeId.slice(0, 8);
+    typeMap.get(typeId)?.name ?? typeId.slice(0, 8);
 
   const visible = useMemo(() => {
     let list = cards;
@@ -59,8 +65,9 @@ export function useCardWallFilters(cards: Card[], cardTypes: CardType[]) {
       return sortAsc ? cmp : -cmp;
     });
     return sorted;
-  }, [cards, query, ftsIds, typeFilter, sortKey, sortAsc, cardTypes]);
+  }, [cards, query, ftsIds, typeFilter, sortKey, sortAsc, typeMap]);
 
+  
   function toggleSort(k: SortKey) {
     if (sortKey === k) setSortAsc((v) => !v);
     else {

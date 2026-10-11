@@ -18,7 +18,6 @@ import { useAppSettings } from "../hooks/useAppSettings";
 import { applyFontScale } from "../lib/fontScale";
 import { ConfirmHost } from "../components/ConfirmHost";
 import { SettingsPage } from "../features/settings/SettingsPage";
-import { PlayerPage } from "../features/player/PlayerPage";
 import { MiniPlayer } from "../features/player/MiniPlayer";
 
 export function AppShell() {
@@ -36,8 +35,6 @@ export function AppShell() {
   const closeMergePack = useUIStore((s) => s.closeMergePack);
 
   const settingsOpen = useUIStore((s) => s.settingsOpen);
-  const playerOpen = useUIStore((s) => s.playerOpen);
-  const togglePlayer = useUIStore((s) => s.togglePlayer);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -49,12 +46,14 @@ export function AppShell() {
 
       if (mod && e.key.toLowerCase() === "m") {
         e.preventDefault();
-        togglePlayer();
+        if (useProjectStore.getState().projectPath) {
+          useProjectStore.getState().setActiveModule("player");
+        }
       }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [togglePalette, togglePlayer]);
+  }, [togglePalette]);
 
   useEffect(() => {
     let timer: number | null = null;
@@ -117,7 +116,6 @@ export function AppShell() {
       <TopBar />
 
       {settingsOpen && <SettingsPage />}
-      {playerOpen && <PlayerPage />}
 
       <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
         <LeftNav />

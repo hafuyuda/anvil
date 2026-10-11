@@ -11,9 +11,10 @@ import type {
 } from "../../core/ipc";
 
 export type ModuleKey =
-  "world" | "story" | "board" | "cardGroups" | "session" | "types";
+  "world" | "story" | "board" | "cardGroups" | "session" | "player" | "types";
 
 export type CardWallView = "card" | "list";
+export type CardGroupView = "grid" | "list";
 
 export interface UndoEntry {
   id: string;
@@ -108,6 +109,7 @@ export interface ProjectState {
   currentSessionId: string | null;
   activeModule: ModuleKey;
   cardWallView: CardWallView;
+  cardGroupView: CardGroupView;
   inspectorWidth: number;
   inspectorCollapsed: boolean;
   selectedCardIds: string[];
@@ -125,6 +127,7 @@ export interface ProjectState {
   setCurrentSession: (id: string | null) => void;
   setActiveModule: (m: ModuleKey) => void;
   setCardWallView: (v: CardWallView) => void;
+  setCardGroupView: (v: CardGroupView) => void;
   setInspectorWidth: (w: number) => void;
   toggleInspector: () => void;
   toggleCardSelection: (id: string) => void;

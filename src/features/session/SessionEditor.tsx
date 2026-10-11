@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Board,
   ipc,
+  type Board,
   type ChatEventKind,
   type ChatPayload,
   type GameEvent,
@@ -10,21 +10,19 @@ import {
   type Token,
 } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
-import { BoardCanvas } from "../board/BoardCanvas";
 import { DEFAULT_GRID } from "../board/constants";
-import { nowMs } from "../../lib/time";
-import { newId } from "../../lib/id";
-import { SaveInput } from "../../components/SaveInput";
-import { ChatLog } from "./chat/ChatLog";
-import { ChatInput } from "./chat/ChatInput";
-import { PartyPanel } from "./PartyPanel";
-import { EventEditorDialog } from "./EventEditorDialog";
 import { usePileActions } from "../board/usePileActions";
 import { PileDrawDialog } from "../board/PileDrawDialog";
-import { makeUndoId } from "../../lib/id";
+import { nowMs } from "../../lib/time";
+import { newId, makeUndoId } from "../../lib/id";
 import { toast } from "../../lib/toast";
 import { confirmDialog } from "../../lib/confirm";
 import { runWithError } from "../../lib/runWithError";
+import { SessionTopBar } from "./SessionTopBar";
+import { SessionStage } from "./SessionStage";
+import { ChatPanel } from "./ChatPanel";
+import { EventEditorDialog } from "./EventEditorDialog";
+import { useSessionEvents } from "./useSessionEvents";
 
 interface Props {
   session: Session;
@@ -42,13 +40,18 @@ export function SessionEditor({ session }: Props) {
   const selectToken = useProjectStore((s) => s.selectToken);
 
   const [zoom, setZoom] = useState(1);
-  const [events, setEvents] = useState<GameEvent[]>([]);
   const [chatHeight, setChatHeight] = useState(340);
   const [resizingChat, setResizingChat] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<GameEvent | null>(null);
+  const [pileDrawTokenId, setPileDrawTokenId] = useState<string | null>(null);
 
   const sessionRef = useRef(session);
   sessionRef.current = session;
   const sessionContainerRef = useRef<HTMLDivElement | null>(null);
+
+  const { events, logEvent, updateEvent, deleteEvent } = useSessionEvents(
+    session.id,
+  );
 
   const board = session.board_id
     ? (boards.find((b) => b.id === session.board_id) ?? null)
@@ -70,21 +73,10 @@ export function SessionEditor({ session }: Props) {
     updated_at: session.updated_at,
   };
 
-  const [editingEvent, setEditingEvent] = useState<GameEvent | null>(null);
-  const [pileDrawTokenId, setPileDrawTokenId] = useState<string | null>(null);
-
   // 切换会话时重置缩放和聊天区高度
   useEffect(() => {
     setZoom(1);
     setChatHeight(340);
-  }, [session.id]);
-
-  // 加载事件
-  useEffect(() => {
-    ipc
-      .listEvents(session.id)
-      .then(setEvents)
-      .catch(() => setEvents([]));
   }, [session.id]);
 
   // 登记当前会话（供检查器使用）
@@ -170,18 +162,6 @@ export function SessionEditor({ session }: Props) {
     }
   }
 
-  async function logEvent(
-    kind: string,
-    payload: unknown,
-    note?: string,
-  ): Promise<void> {
-    await runWithError(async () => {
-      await ipc.appendEvent(session.id, kind, payload, note);
-      const updated = await ipc.listEvents(session.id);
-      setEvents(updated);
-    }, "记录事件失败");
-  }
-
   async function handleSelectBoard(boardId: string) {
     if (!boardId) {
       await savePatch({ board_id: null, tokens: [] });
@@ -213,19 +193,13 @@ export function SessionEditor({ session }: Props) {
     await logEvent(kind, payload);
   }
 
-  async function handleEditEvent(event: GameEvent) {
-    setEditingEvent(event);
-  }
-
   async function handleSaveEvent(
     payload: unknown,
     note?: string,
   ): Promise<void> {
     if (!editingEvent) return;
     try {
-      await ipc.updateEvent(session.id, editingEvent.seq, payload, note);
-      const updated = await ipc.listEvents(session.id);
-      setEvents(updated);
+      await updateEvent(editingEvent.seq, payload, note);
     } catch (e) {
       toast.error("保存失败: " + e);
       throw e;
@@ -241,11 +215,7 @@ export function SessionEditor({ session }: Props) {
       }))
     )
       return;
-    await runWithError(async () => {
-      await ipc.deleteEvent(session.id, event.seq);
-      const updated = await ipc.listEvents(session.id);
-      setEvents(updated);
-    }, "删除失败");
+    await deleteEvent(event.seq);
   }
 
   return (
@@ -259,160 +229,40 @@ export function SessionEditor({ session }: Props) {
         background: "var(--bg-app)",
       }}
     >
-      {/* 顶栏 */}
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          alignItems: "center",
-          padding: "8px 12px",
-          borderBottom: "1px solid var(--border-subtle)",
-          background: "var(--bg-panel)",
-          flexShrink: 0,
-        }}
-      >
-        <SaveInput
-          value={session.name}
-          onCommit={(name) => savePatch({ name })}
-          style={{
-            flex: 1,
-            fontSize: 14,
-            fontWeight: 600,
-            fontFamily: "var(--font-title)",
-          }}
-        />
-        <label
-          style={{
-            fontSize: 12,
-            display: "flex",
-            gap: 6,
-            alignItems: "center",
-            color: "var(--fg-secondary)",
-          }}
-        >
-          战场棋盘
-          <select
-            className="select"
-            value={session.board_id ?? ""}
-            onChange={(e) => handleSelectBoard(e.target.value)}
-            style={{ minWidth: 140, width: "auto" }}
-          >
-            <option value="">— 无 —</option>
-            {boards.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.name}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      {/* 中部：舞台 + 角色列表 */}
-      <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
-        <div style={{ flex: 1, minWidth: 0, minHeight: 0 }}>
-          {board ? (
-            <BoardCanvas
-              board={effectiveBoard}
-              zoom={zoom}
-              onZoomChange={setZoom}
-              onPileClick={(id) => setPileDrawTokenId(id)}
-              onChange={(patch) => {
-                if (patch.tokens) {
-                  handleTokensChange(patch.tokens);
-                }
-              }}
-            />
-          ) : (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                height: "100%",
-                color: "var(--fg-muted)",
-                fontSize: 12,
-              }}
-            >
-              请在顶栏选一个棋盘作为战场
-            </div>
-          )}
-        </div>
-        <PartyPanel
-          session={session}
-          cards={cards}
-          cardTypes={cardTypes}
-          selectedTokenId={selectedTokenId}
-          onSelectToken={selectToken}
-        />
-      </div>
-
-      {/* 拖拽条 */}
-      <div
-        onMouseDown={() => setResizingChat(true)}
-        style={{
-          height: 4,
-          cursor: "row-resize",
-          background: resizingChat ? "var(--accent-gold)" : "transparent",
-          flexShrink: 0,
-          transition: "background 0.12s",
-        }}
-        onMouseEnter={(e) => {
-          if (!resizingChat) {
-            (e.currentTarget as HTMLElement).style.background =
-              "var(--border-strong)";
-          }
-        }}
-        onMouseLeave={(e) => {
-          if (!resizingChat) {
-            (e.currentTarget as HTMLElement).style.background = "transparent";
-          }
-        }}
+      <SessionTopBar
+        session={session}
+        boards={boards}
+        onRename={(name) => savePatch({ name })}
+        onSelectBoard={handleSelectBoard}
       />
 
-      {/* 底部：对话流 + 输入 */}
-      <div
-        style={{
-          height: chatHeight,
-          borderTop: "1px solid var(--border-subtle)",
-          display: "flex",
-          flexDirection: "column",
-          flexShrink: 0,
-          background: "var(--bg-panel)",
-        }}
-      >
-        <div
-          style={{
-            padding: "6px 12px",
-            borderBottom: "1px solid var(--border-subtle)",
-            fontSize: 11,
-            color: "var(--fg-muted)",
-            display: "flex",
-            justifyContent: "space-between",
-            textTransform: "uppercase",
-            letterSpacing: 1,
-            flexShrink: 0,
-          }}
-        >
-          <span>对话记录</span>
-          <span style={{ fontFamily: "var(--font-mono)" }}>
-            {events.length} 条
-          </span>
-        </div>
+      <SessionStage
+        session={session}
+        board={board}
+        effectiveBoard={effectiveBoard}
+        cards={cards}
+        cardTypes={cardTypes}
+        zoom={zoom}
+        onZoomChange={setZoom}
+        onPileClick={(id) => setPileDrawTokenId(id)}
+        onTokensChange={handleTokensChange}
+        selectedTokenId={selectedTokenId}
+        onSelectToken={selectToken}
+      />
 
-        <ChatLog
-          events={events}
-          cards={cards}
-          cardTypes={cardTypes}
-          onEdit={handleEditEvent}
-          onDelete={handleDeleteEvent}
-        />
+      <ChatPanel
+        height={chatHeight}
+        resizing={resizingChat}
+        onResizeStart={() => setResizingChat(true)}
+        events={events}
+        cards={cards}
+        cardTypes={cardTypes}
+        authors={authors}
+        onEditEvent={(event) => setEditingEvent(event)}
+        onDeleteEvent={handleDeleteEvent}
+        onSend={handleSend}
+      />
 
-        <ChatInput
-          authors={authors}
-          defaultAuthorId={null}
-          onSend={handleSend}
-        />
-      </div>
       {editingEvent && (
         <EventEditorDialog
           event={editingEvent}
@@ -420,6 +270,7 @@ export function SessionEditor({ session }: Props) {
           onClose={() => setEditingEvent(null)}
         />
       )}
+
       {pileDrawTokenId &&
         (() => {
           const t = session.tokens.find((x) => x.id === pileDrawTokenId);

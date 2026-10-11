@@ -1,18 +1,20 @@
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useUIStore, type SettingsCategory } from "../../stores/uiStore";
 import { useProjectStore } from "../../stores/projectStore";
-import { CATEGORIES } from "./categories";
+import { CATEGORIES, type CategoryMeta } from "./categories";
 import { ProjectGeneralPanel } from "./ProjectGeneralPanel";
 import { ProjectResourcesPanel } from "./ProjectResourcesPanel";
-import { AppInterfacePanel } from "./AppInterfacePanel";
-import { AppEditorPanel } from "./AppEditorPanel";
-import { AppVnPanel } from "./AppVnPanel";
-import { AppAdvancedPanel } from "./AppAdvancedPanel";
-import { ThemePanel } from "../project/ThemePanel";
-import { StatsTab } from "../project/StatsTab";
+import { AppearancePanel } from "./AppearancePanel";
+import { EditorPanel } from "./EditorPanel";
+import { AdvancedPanel } from "./AdvancedPanel";
+import { SettingsSearch } from "./SettingsSearch";
 import { ipc } from "../../core/ipc";
 import { nowMs } from "../../lib/time";
 import { runWithError } from "../../lib/runWithError";
+
+const PANEL_WIDTH = 1000;
+const PANEL_HEIGHT = 680;
+const NAV_WIDTH = 200;
 
 export function SettingsPage() {
   const projectPath = useProjectStore((s) => s.projectPath);
@@ -23,22 +25,48 @@ export function SettingsPage() {
   const setCategory = useUIStore((s) => s.setSettingsCategory);
   const close = useUIStore((s) => s.closeSettings);
 
-  // 默认分类
-  useEffect(() => {
-    if (category) return;
-    setCategory(projectPath ? "project:general" : "app:interface");
-  }, [category, projectPath, setCategory]);
+  const visibleCategories = useMemo(
+    () => CATEGORIES.filter((c) => !c.requiresProject || projectPath),
+    [projectPath],
+  );
 
-  // Esc 关闭
+  // 默认 / 失效分类 → 第一个可见
+  useEffect(() => {
+    if (category && visibleCategories.some((c) => c.key === category)) return;
+    setCategory(visibleCategories[0]?.key ?? "appearance");
+  }, [category, visibleCategories, setCategory]);
+
+  // 键盘：Esc 关闭；↑↓ 切分类
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") close();
+      if (e.key === "Escape") {
+        e.preventDefault();
+        close();
+        return;
+      }
+
+      const t = e.target as HTMLElement;
+      const isInField =
+        t?.tagName === "INPUT" ||
+        t?.tagName === "TEXTAREA" ||
+        t?.tagName === "SELECT";
+      if (isInField) return;
+
+      if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+        e.preventDefault();
+        const idx = visibleCategories.findIndex((c) => c.key === category);
+        if (idx < 0) return;
+        const next =
+          e.key === "ArrowDown"
+            ? (idx + 1) % visibleCategories.length
+            : (idx - 1 + visibleCategories.length) % visibleCategories.length;
+        setCategory(visibleCategories[next].key);
+      }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [close]);
+  }, [category, visibleCategories, setCategory, close]);
 
-  // 主题切换时保存 Manifest
   async function saveThemeId(id: string | null) {
     if (!manifest) return;
     const next = { ...manifest, theme_id: id, updated_at: nowMs() };
@@ -48,127 +76,222 @@ export function SettingsPage() {
     }, "保存失败");
   }
 
-  const visibleCategories = CATEGORIES.filter(
-    (c) => c.group === "app" || projectPath,
-  );
-
-  const projectCategories = visibleCategories.filter(
-    (c) => c.group === "project",
-  );
-  const appCategories = visibleCategories.filter((c) => c.group === "app");
+  function handleMaskClick(e: React.MouseEvent) {
+    if (e.target === e.currentTarget) close();
+  }
 
   return (
     <div
+      onClick={handleMaskClick}
       style={{
         position: "fixed",
         inset: 0,
         zIndex: 500,
-        background: "var(--bg-app)",
+        background: "rgba(0,0,0,0.55)",
+        backdropFilter: "blur(2px)",
         display: "flex",
-        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
       }}
     >
-      {/* 顶栏 */}
       <div
         style={{
-          height: "var(--topbar-h)",
+          width: PANEL_WIDTH,
+          maxWidth: "calc(100vw - 48px)",
+          height: PANEL_HEIGHT,
+          maxHeight: "calc(100vh - 48px)",
+          background: "var(--bg-app)",
+          border: "1px solid var(--border-default)",
+          borderRadius: "var(--radius-lg)",
+          boxShadow: [
+            "0 24px 64px rgba(0,0,0,0.7)",
+            "inset 0 1px 0 color-mix(in srgb, var(--accent-gold) 10%, transparent)",
+            "inset 0 0 0 1px color-mix(in srgb, var(--accent-gold) 5%, transparent)",
+          ].join(", "),
           display: "flex",
-          alignItems: "center",
-          padding: "0 16px",
-          borderBottom: "1px solid var(--border-subtle)",
-          background: "var(--bg-panel)",
-          gap: 12,
-          flexShrink: 0,
+          flexDirection: "column",
+          overflow: "hidden",
         }}
       >
-        <button
-          className="btn btn-ghost"
-          onClick={close}
-          style={{ fontSize: 13 }}
-        >
-          ← 返回
-        </button>
-        <span
-          style={{
-            fontSize: 14,
-            fontWeight: 600,
-            fontFamily: "var(--font-title)",
-            color: "var(--fg-primary)",
-            letterSpacing: 0.5,
-          }}
-        >
-          设置
-        </span>
-        <span
-          style={{
-            fontSize: 10,
-            color: "var(--fg-muted)",
-            marginLeft: 4,
-          }}
-        >
-          Esc 关闭
-        </span>
-      </div>
 
-      {/* 主体 */}
-      <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
-        {/* 左侧分类 */}
+        {/* 顶栏（两行） */}
         <div
           style={{
-            width: 240,
-            borderRight: "1px solid var(--border-subtle)",
-            background: "var(--bg-panel)",
-            padding: "12px 8px",
-            overflowY: "auto",
             flexShrink: 0,
+            background: `linear-gradient(135deg,
+              var(--bg-panel) 0%,
+              color-mix(in srgb, var(--accent-copper) 5%, var(--bg-panel)) 100%)`,
+            borderBottom: "1px solid var(--border-subtle)",
+            position: "relative",
           }}
         >
-          {projectCategories.length > 0 && (
-            <>
-              <GroupLabel>项目</GroupLabel>
-              {projectCategories.map((c) => (
-                <CategoryButton
-                  key={c.key}
-                  active={category === c.key}
-                  onClick={() => setCategory(c.key)}
-                >
-                  {c.label}
-                </CategoryButton>
-              ))}
-            </>
-          )}
-
-          <GroupLabel style={{ marginTop: projectPath ? 16 : 0 }}>
-            应用
-          </GroupLabel>
-          {appCategories.map((c) => (
-            <CategoryButton
-              key={c.key}
-              active={category === c.key}
-              onClick={() => setCategory(c.key)}
+          {/* 第一行：标题  关闭 */}
+          <div
+            style={{
+              height: 44,
+              display: "flex",
+              alignItems: "center",
+              padding: "0 12px",
+              gap: 8,
+            }}
+          >
+            <span
+              style={{
+                color: "var(--accent-gold)",
+                fontSize: 15,
+                lineHeight: 1,
+              }}
             >
-              {c.label}
-            </CategoryButton>
-          ))}
+              ⚒
+            </span>
+            <span
+              style={{
+                fontSize: 14,
+                fontWeight: 600,
+                fontFamily: "var(--font-title)",
+                color: "var(--fg-primary)",
+                letterSpacing: 0.5,
+              }}
+            >
+              设置
+            </span>
+
+            <div style={{ flex: 1 }} />
+
+            <button
+              className="btn btn-ghost"
+              onClick={close}
+              title="关闭 (Esc)"
+              style={{
+                padding: "2px 10px",
+                fontSize: 16,
+                color: "var(--fg-secondary)",
+              }}
+            >
+              ×
+            </button>
+          </div>
+
+          {/* 第二行：搜索框 */}
+          <div style={{ padding: "0 12px 10px" }}>
+            <SettingsSearch onNavigate={setCategory} />
+          </div>
+
+          {/* 底部金线渐隐 */}
+          <div
+            style={{
+              position: "absolute",
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: 1,
+              background:
+                "linear-gradient(90deg, transparent, var(--accent-gold), transparent)",
+              opacity: 0.5,
+              pointerEvents: "none",
+            }}
+          />
         </div>
 
-        {/* 右侧内容 */}
-        <div
-          style={{
-            flex: 1,
-            minWidth: 0,
-            overflowY: "auto",
-            padding: "24px 32px",
-          }}
-        >
-          <div style={{ maxWidth: 1000, margin: "0 auto" }}>
-            {category && (
-              <CategoryContent category={category} onSaveTheme={saveThemeId} />
-            )}
+        {/* 主体 */}
+        <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
+          {/* 左：分类 */}
+          <div
+            style={{
+              width: NAV_WIDTH,
+              borderRight: "1px solid var(--border-subtle)",
+              background: "var(--bg-panel)",
+              padding: "12px 8px",
+              overflowY: "auto",
+              flexShrink: 0,
+            }}
+          >
+            {visibleCategories.map((c) => (
+              <CategoryItem
+                key={c.key}
+                category={c}
+                active={category === c.key}
+                onClick={() => setCategory(c.key)}
+              />
+            ))}
+          </div>
+
+          {/* 右：内容 */}
+          <div
+            style={{
+              flex: 1,
+              minWidth: 0,
+              overflowY: "auto",
+              padding: "24px 28px",
+            }}
+          >
+            <div style={{ maxWidth: 760, margin: "0 auto" }}>
+              {category && (
+                <CategoryContent
+                  category={category}
+                  onSaveTheme={saveThemeId}
+                />
+              )}
+            </div>
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+function CategoryItem({
+  category,
+  active,
+  onClick,
+}: {
+  category: CategoryMeta;
+  active: boolean;
+  onClick: () => void;
+}) {
+  const [hover, setHover] = useState(false);
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        width: "100%",
+        textAlign: "left",
+        padding: "8px 12px",
+        marginBottom: 2,
+        border: "none",
+        borderRadius: "var(--radius-sm)",
+        background: active
+          ? "linear-gradient(90deg, color-mix(in srgb, var(--accent-copper) 22%, transparent), transparent 80%)"
+          : hover
+            ? "color-mix(in srgb, var(--accent-gold) 6%, transparent)"
+            : "transparent",
+        boxShadow: active ? "inset 3px 0 0 var(--accent-gold)" : "none",
+        color: active ? "var(--accent-gold)" : "var(--fg-secondary)",
+        fontWeight: active ? 600 : 400,
+        fontSize: 13,
+        fontFamily: "inherit",
+        cursor: "pointer",
+        transition: "background 120ms, color 120ms",
+      }}
+    >
+      <span
+        style={{
+          color: active ? "var(--accent-gold)" : "var(--fg-muted)",
+          fontSize: 12,
+          flexShrink: 0,
+          width: 14,
+          textAlign: "center",
+        }}
+      >
+        {category.glyph}
+      </span>
+      {category.label}
+    </button>
   );
 }
 
@@ -180,95 +303,17 @@ function CategoryContent({
   onSaveTheme: (id: string | null) => Promise<void>;
 }) {
   switch (category) {
-    case "project:general":
+    case "general":
       return <ProjectGeneralPanel />;
-    case "project:theme":
-      return <ThemeCategory onSaveTheme={onSaveTheme} />;
-    case "project:resources":
+    case "appearance":
+      return <AppearancePanel onSaveTheme={onSaveTheme} />;
+    case "resources":
       return <ProjectResourcesPanel />;
-    case "project:data":
-      return <StatsTab />;
-    case "app:interface":
-      return <AppInterfacePanel />;
-    case "app:editor":
-      return <AppEditorPanel />;
-    case "app:vn":
-      return <AppVnPanel />;
-    case "app:advanced":
-      return <AppAdvancedPanel />;
+    case "editor":
+      return <EditorPanel />;
+    case "advanced":
+      return <AdvancedPanel />;
     default:
       return null;
   }
-}
-
-function ThemeCategory({
-  onSaveTheme,
-}: {
-  onSaveTheme: (id: string | null) => Promise<void>;
-}) {
-  const manifest = useProjectStore((s) => s.manifest);
-  return (
-    <ThemePanel
-      manifestThemeId={manifest?.theme_id ?? null}
-      onChangeThemeId={(id) => void onSaveTheme(id)}
-    />
-  );
-}
-
-function GroupLabel({
-  children,
-  style,
-}: {
-  children: React.ReactNode;
-  style?: React.CSSProperties;
-}) {
-  return (
-    <div
-      style={{
-        fontSize: 10,
-        color: "var(--fg-muted)",
-        textTransform: "uppercase",
-        letterSpacing: 1,
-        padding: "4px 10px",
-        ...style,
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
-function CategoryButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        display: "block",
-        width: "100%",
-        textAlign: "left",
-        padding: "8px 12px",
-        border: "none",
-        borderLeft: active
-          ? "3px solid var(--accent-gold)"
-          : "3px solid transparent",
-        background: active ? "var(--bg-raised)" : "transparent",
-        color: active ? "var(--fg-primary)" : "var(--fg-secondary)",
-        fontWeight: active ? 600 : 400,
-        fontSize: 13,
-        cursor: "pointer",
-        fontFamily: "inherit",
-        borderRadius: "var(--radius-sm)",
-      }}
-    >
-      {children}
-    </button>
-  );
 }

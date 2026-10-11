@@ -35,9 +35,6 @@ impl Project {
             ));
         }
 
-        let filename = format!("{}.{}", uuid::Uuid::new_v4(), ext);
-        let dest = self.images_dir().join(&filename);
-
         let src_name = src.file_name().and_then(|s| s.to_str()).unwrap_or("file");
         let filename = unique_readable_name(&self.images_dir(), src_name, &ext);
         let dest = self.images_dir().join(&filename);

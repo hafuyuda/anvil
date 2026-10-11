@@ -3,6 +3,87 @@
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 格式，
 版本号遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## [Unreleased]
+
+### 新增
+
+**音频播放器**
+
+- 全局音频播放器（`lib/audioPlayer.ts`），支持播放 / 暂停 / 进度 / 音量 / 循环
+- 迷你播放器（MiniPlayer）：右下角常驻，跨模块、跨设置持续播放
+- 新增「音乐」模块，走标准三栏布局
+- 播放器内导入音频，列表显示大小 / 时长 / 引用数
+- 视觉小说运行时进入自动暂停全局播放器，退出恢复
+
+**资源管理**
+
+- 图片 / 音频资源列表加搜索框
+- 音频选择器加搜索
+- 导入的资源使用可读文件名（如 `铁匠铺.png`），撞名自动追加 `-2` / `-3`
+
+**界面**
+
+- TopBar 极简化：项目菜单收纳打开 / 新建 / 导入 / 导出 / 合并 / 刷新 / 关闭
+- 撤销 / 重做 / 保存状态移入 StatusBar
+- LeftNav 非卡片墙模块自动收窄（48px），悬停展开（180px）
+- LeftNav 模块可拖拽排序，顺序持久化到 `localStorage`
+- 跑团顶栏调整：会话名固定宽度，战场选择与 BGM 按钮靠右
+
+**窗口**
+
+- 无边框标题栏（`tauri-plugin-frame`），窗口按钮与 Anvil 配色统一
+- 支持 Windows 11 Snap Layout
+
+**设置面板**
+
+- 设置面板加搜索框（顶栏左侧），按分类关键词跳转
+- `↑` `↓` 键盘切换分类
+- 分类项视觉重做：选中态金色竖条 + 渐变背景
+- 浮层视觉贴合铁砧主题：金属渐变顶栏、底部金线渐隐
+
+**卡组**
+
+- 卡组编辑器支持卡片视图（网格）+ 列表视图切换
+- 卡组内卡牌拖拽排序（`@dnd-kit`）
+- 卡片视图下整卡可拖拽，列表视图下用 `⋮⋮` 手柄拖拽
+- 卡片视图下悬停显示移除按钮
+
+**棋盘**
+
+- 「添加卡片」选择器升级为可视化网格：卡片预览 + 搜索 + 类型过滤 + 多选
+- 支持一次添加多张卡到棋盘，自动扩充边界
+
+### 变更
+
+- 图像从 base64 data URL 改为 Tauri asset protocol，与音频统一
+- `imageCache` 和 `audioCache` 合并为 `assetCache`
+- 设置面板移除「音频资源」tab，统一由播放器管理
+- `Ctrl+M` 快捷键从打开浮层改为切换到音乐模块
+- 设置分类从 8 个精简为 5 个：常规 / 外观 / 资源 / 编辑器 / 高级
+- 设置面板从全屏改为居中浮层（1000×680），带遮罩 + 模糊
+- 取消设置分类的「项目 / 应用」分组呈现，按用户视角合并分类（存储位置不变）
+- 项目 · 数据 + 应用 · 高级 → 「高级」
+- 项目 · 主题 + 应用 · 界面 → 「外观」
+- 应用 · 编辑器 + 应用 · 视觉小说 → 「编辑器」
+- 卡片墙移除「导入棋盘」入口（网格 / 列表 / 批量操作三处），改由棋盘侧承担
+- 卡片墙职责收窄：只管卡的组织（加入卡组），不管卡的摆放
+
+### 内部
+
+- 新增 `lib/audioPlayer.ts` · `lib/moduleOrder.ts` · `lib/assetCache.ts`
+- 删除 `lib/imageCache.ts` · `lib/audioCache.ts` · `features/project/AudioTab.tsx`
+- `hooks/useImageUrl` 和 `hooks/useAudioUrl` 合并为 `hooks/useAssetUrl`
+- `features/player/` 从全屏浮层（`PlayerPage`）改为模块（`PlayerView` + `PlayerInspector`）
+- `assets.rs` 图片 / 音频文件名生成统一走 `unique_readable_name`
+- IPC 命令：`audio_abs_path` 改名 `asset_abs_path`，删除 `read_image_data_url`
+- 新增 `features/settings/SettingsSearch.tsx` · `AppearancePanel.tsx` · `EditorPanel.tsx` · `AdvancedPanel.tsx`
+- 新增 `features/board/CardPickerGridDialog.tsx`（替换原 `PickerDialog` 的文本列表）
+- 新增 `features/card-groups/CardGroupCards.tsx`（网格 + 列表 + 拖拽）
+- 删除 `features/card-groups/CardGroupCardList.tsx`
+- `useBoardActions` 新增 `addCardsToBoard`（批量），`addCardToBoard` 改为其包装
+- `stores/slices/types.ts` 加 `CardGroupView` 类型；`uiSlice` 加 `cardGroupView` + `setCardGroupView`
+- `SettingsCategory` 联合类型从 8 个值精简为 5 个
+
 ## [0.2.0] - 2026-10-09
 
 第二个公开版本。核心功能全部打通，开箱即用的示例世界覆盖全部特性。
