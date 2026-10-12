@@ -1,5 +1,5 @@
-use crate::core::model::scenario::{Scenario, VariableDef};
 use crate::core::model::card_type::FieldType;
+use crate::core::model::scenario::{Scenario, VariableDef};
 use evalexpr::{eval_boolean_with_context, ContextWithMutableVariables, HashMapContext, Value};
 use std::collections::BTreeMap;
 
@@ -58,10 +58,7 @@ fn json_to_eval_value(j: &serde_json::Value) -> Value {
 }
 
 /// 校验表达式能否解析。空字符串视为合法。
-pub fn validate_condition(
-    scenario: &Scenario,
-    expr: &str,
-) -> anyhow::Result<()> {
+pub fn validate_condition(scenario: &Scenario, expr: &str) -> anyhow::Result<()> {
     if expr.trim().is_empty() {
         return Ok(());
     }
@@ -81,7 +78,6 @@ pub fn eval_condition(
         return Ok(true); // 无条件视为通过
     }
     let ctx = build_context(scenario, overrides)?;
-    let v = eval_boolean_with_context(expr, &ctx)
-        .map_err(|e| anyhow::anyhow!("{}", e))?;
+    let v = eval_boolean_with_context(expr, &ctx).map_err(|e| anyhow::anyhow!("{}", e))?;
     Ok(v)
 }

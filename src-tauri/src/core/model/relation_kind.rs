@@ -1,5 +1,5 @@
-use crate::core::model::card_type::FieldDef;
 use crate::core::model::card::TypeId;
+use crate::core::model::card_type::FieldDef;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

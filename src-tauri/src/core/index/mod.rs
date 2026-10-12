@@ -65,9 +65,8 @@ pub fn rebuild(
             "INSERT INTO cards (id, type_id, name, values_json, updated_at)
              VALUES (?1, ?2, ?3, ?4, ?5)",
         )?;
-        let mut ins_fts = tx.prepare(
-            "INSERT INTO cards_fts (id, name, values_text) VALUES (?1, ?2, ?3)",
-        )?;
+        let mut ins_fts =
+            tx.prepare("INSERT INTO cards_fts (id, name, values_text) VALUES (?1, ?2, ?3)")?;
         for c in cards {
             let values_json = serde_json::to_string(&c.values)?;
             let values_text = collect_text(&c.values);
@@ -83,7 +82,13 @@ pub fn rebuild(
         for r in relations {
             let meta = serde_json::to_string(&r.meta)?;
             ins_rel.execute(params![
-                r.id, r.from, r.to, r.kind, r.label, meta, r.created_at
+                r.id,
+                r.from,
+                r.to,
+                r.kind,
+                r.label,
+                meta,
+                r.created_at
             ])?;
         }
     }
@@ -105,7 +110,13 @@ pub fn upsert_card(conn: &Connection, card: &Card) -> anyhow::Result<()> {
              name = excluded.name,
              values_json = excluded.values_json,
              updated_at = excluded.updated_at",
-        params![card.id, card.type_id, card.name, values_json, card.updated_at],
+        params![
+            card.id,
+            card.type_id,
+            card.name,
+            values_json,
+            card.updated_at
+        ],
     )?;
 
     conn.execute("DELETE FROM cards_fts WHERE id = ?1", params![card.id])?;
@@ -119,7 +130,10 @@ pub fn upsert_card(conn: &Connection, card: &Card) -> anyhow::Result<()> {
 pub fn delete_card(conn: &Connection, id: &str) -> anyhow::Result<()> {
     conn.execute("DELETE FROM cards WHERE id = ?1", params![id])?;
     conn.execute("DELETE FROM cards_fts WHERE id = ?1", params![id])?;
-    conn.execute("DELETE FROM relations WHERE from_id = ?1 OR to_id = ?1", params![id])?;
+    conn.execute(
+        "DELETE FROM relations WHERE from_id = ?1 OR to_id = ?1",
+        params![id],
+    )?;
     Ok(())
 }
 
@@ -158,9 +172,8 @@ pub fn search(conn: &Connection, query: &str, limit: usize) -> anyhow::Result<Ve
     if q.is_empty() {
         return Ok(Vec::new());
     }
-    let mut stmt = conn.prepare(
-        "SELECT id FROM cards_fts WHERE cards_fts MATCH ?1 ORDER BY rank LIMIT ?2",
-    )?;
+    let mut stmt =
+        conn.prepare("SELECT id FROM cards_fts WHERE cards_fts MATCH ?1 ORDER BY rank LIMIT ?2")?;
     let rows = stmt.query_map(params![q, limit as i64], |row| row.get::<_, String>(0))?;
     let mut ids = Vec::new();
     for r in rows {
