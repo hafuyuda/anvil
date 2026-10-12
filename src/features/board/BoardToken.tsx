@@ -2,6 +2,7 @@ import type { Card, CardType, Token } from "../../core/ipc";
 import { CardFrame } from "../../components/CardFrame";
 import { CardBack } from "../../components/CardFrame/primitives/CardBack";
 import { PileToken } from "./PileToken";
+import { useProjectStore } from "../../stores/projectStore";
 
 const DEFAULT_TOKEN_W = 140;
 const DEFAULT_TOKEN_H = 205;
@@ -32,6 +33,12 @@ export function BoardToken({
   const w = t.w ?? DEFAULT_TOKEN_W;
   const h = t.h ?? DEFAULT_TOKEN_H;
   const scale = w / DEFAULT_TOKEN_W;
+
+  // 卡背优先级：类型级 card_back → 项目级 default_card_back → 默认风格 anvil
+  const defaultBack = useProjectStore(
+    (s) => s.manifest?.default_card_back ?? null,
+  );
+  const backStyleId = cardType?.card_back ?? defaultBack ?? undefined;
 
   return (
     <div
@@ -74,7 +81,7 @@ export function BoardToken({
             size="small"
           />
         ) : t.face_down === true ? (
-          <CardBack path={cardType?.card_back ?? null} size="small" />
+          <CardBack styleId={backStyleId} size="small" />
         ) : card && cardType ? (
           <CardFrame card={card} cardType={cardType} size="small" />
         ) : (

@@ -1,28 +1,34 @@
 import { SIZE_MAP, type CardFrameSize } from "../types";
 import { useAssetUrl } from "../../../hooks/useAssetUrl";
-import { useProjectStore } from "../../../stores/projectStore";
+import { getCardBackStyle, hasCardBackStyle } from "./back-styles/registry";
 
 interface Props {
-  /** 卡背图片路径。为空时用项目默认 */
-  path?: string | null;
+  /**
+   * 已解析的卡背 id。可以是：
+   *   - 已注册的风格 id（如 "anvil"、"rune"）
+   *   - 图片路径（旧数据兼容，如 "assets/back.png"）
+   *   - null / undefined（回退默认风格 anvil）
+   */
+  styleId?: string | null;
   size?: CardFrameSize;
+  /** 可选：类型级强调色，传给卡背风格组件 */
+  accent?: string;
 }
 
 /**
- * 卡背渲染。解析优先级：
- *   1. 显式传入的 path（类型级 card_back）
- *   2. store 里 manifest.default_card_back（项目级）
- *   3. 内置「棱形框 + Anvil」图案
+ * 卡背渲染。优先级解析在调用方完成，本组件只负责查表。
+ *
+ * 兼容旧数据：如果 styleId 是图片路径（未注册的风格 id），
+ * 仍按图片渲染；否则走注册表风格。
  */
-export function CardBack({ path, size = "small" }: Props) {
+export function CardBack({ styleId, size = "small", accent }: Props) {
   const spec = SIZE_MAP[size];
-  const defaultBack = useProjectStore(
-    (s) => s.manifest?.default_card_back ?? null,
-  );
-  const resolved = path ?? defaultBack;
-  const url = useAssetUrl(resolved);
 
-  if (url) {
+  // 旧数据兼容：styleId 不是已注册风格 id 时，尝试按图片路径渲染
+  const isImagePath = styleId != null && !hasCardBackStyle(styleId);
+  const url = useAssetUrl(isImagePath ? styleId : null);
+
+  if (isImagePath && url) {
     return (
       <div
         style={{
@@ -51,64 +57,7 @@ export function CardBack({ path, size = "small" }: Props) {
     );
   }
 
-  return <DefaultCardBack size={size} />;
-}
-
-function DefaultCardBack({ size }: { size: CardFrameSize }) {
-  const spec = SIZE_MAP[size];
-  const glyphSize = size === "small" ? 14 : size === "medium" ? 18 : 24;
-
-  return (
-    <div
-      style={{
-        width: spec.w,
-        height: spec.h,
-        borderRadius: spec.borderRadius,
-        flexShrink: 0,
-        background:
-          "linear-gradient(160deg, var(--card-back-bg-1) 0%, var(--card-back-bg-2) 100%)",
-        border: "1px solid var(--card-back-border)",
-        boxShadow: "var(--card-back-shadow)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        position: "relative",
-        overflow: "hidden",
-        userSelect: "none",
-      }}
-    >
-      <svg
-        viewBox="0 0 100 140"
-        preserveAspectRatio="xMidYMid meet"
-        style={{ width: "72%", height: "72%", display: "block" }}
-      >
-        <polygon
-          points="50,8 90,70 50,132 10,70"
-          fill="none"
-          stroke="var(--card-back-border)"
-          strokeWidth="1.5"
-        />
-        <polygon
-          points="50,18 80,70 50,122 20,70"
-          fill="none"
-          stroke="var(--card-back-border)"
-          strokeWidth="0.6"
-          opacity="0.6"
-        />
-        <text
-          x="50"
-          y="70"
-          textAnchor="middle"
-          dominantBaseline="middle"
-          fill="var(--card-back-glyph)"
-          fontFamily="Georgia, 'Songti SC', serif"
-          fontSize={glyphSize}
-          fontWeight="600"
-          letterSpacing="1.5"
-        >
-          Anvil
-        </text>
-      </svg>
-    </div>
-  );
+  const def = getCardBackStyle(styleId);
+  const StyleComponent = def.Component;
+  return <StyleComponent size={size} accent={accent} />;
 }

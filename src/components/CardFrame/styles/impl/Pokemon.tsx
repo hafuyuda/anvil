@@ -1,27 +1,16 @@
-import type { CardType } from "../../../core/ipc";
-import { SIZE_MAP, type CardFrameSize } from "../types";
-import type { CardContent, CardFeatures } from "../mapping";
-import { CardImage } from "../primitives/CardImage";
-import { CardShell } from "../primitives/CardShell";
-import { CardInner } from "../primitives/CardInner";
-
-interface Props {
-  cardType: CardType;
-  size?: CardFrameSize;
-  content: CardContent;
-  features: CardFeatures;
-  selected?: boolean;
-  onClick?: () => void;
-}
+import { SIZE_MAP } from "../../types";
+import type { CardStyleDef, CardStyleProps } from "../types";
+import { CardImage } from "../../primitives/CardImage";
+import { CardShell } from "../../primitives/CardShell";
+import { CardInner } from "../../primitives/CardInner";
 
 export function CardFramePokemon({
   cardType,
   size = "medium",
   content,
-  features,
   selected = false,
   onClick,
-}: Props) {
+}: CardStyleProps) {
   const spec = SIZE_MAP[size];
   const accent = cardType.color ?? "var(--card-frame-default-accent)";
 
@@ -141,8 +130,8 @@ export function CardFramePokemon({
 
         <CardImage
           path={content.image}
-          crop={features.crop}
-          extend={features.extend}
+          crop={content.crop}
+          extend={content.extend}
           height={spec.imageHeight}
           borderRadius={3}
           border={`2px solid ${accentSoft}`}
@@ -232,3 +221,9 @@ export function CardFramePokemon({
     </CardShell>
   );
 }
+
+export default {
+  id: "pokemon",
+  label: "宝可梦",
+  Component: CardFramePokemon,
+} satisfies CardStyleDef;

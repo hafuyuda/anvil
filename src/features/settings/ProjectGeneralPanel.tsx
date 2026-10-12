@@ -2,15 +2,14 @@ import { useEffect, useState } from "react";
 import { ipc, type Manifest } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
 import { nowMs } from "../../lib/time";
-import { ImageField } from "../../components/ImageField";
 import { SectionLabel } from "../../components/SectionLabel";
 import { toast } from "../../lib/toast";
 import { runWithError } from "../../lib/runWithError";
+import { isCardStyleId, listCardStyles } from "../../components/CardFrame";
 import {
-  CARD_FRAME_STYLE_LABELS,
-  isCardFrameStyle,
-  type CardFrameStyle,
-} from "../../components/CardFrame";
+  hasCardBackStyle,
+  listCardBackStyles,
+} from "../../components/CardFrame/primitives/back-styles/registry";
 
 export function ProjectGeneralPanel() {
   const manifest = useProjectStore((s) => s.manifest);
@@ -52,6 +51,11 @@ export function ProjectGeneralPanel() {
       <div style={{ color: "var(--fg-muted)", fontSize: 12 }}>读取中…</div>
     );
   }
+
+  // 默认卡背：已注册风格 id 走下拉；图片路径（旧数据）显示原始值
+  const backIsImage =
+    draft.default_card_back != null &&
+    !hasCardBackStyle(draft.default_card_back);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -96,17 +100,49 @@ export function ProjectGeneralPanel() {
       </Field>
 
       <Field label="默认卡背（未单独指定卡背的类型会用它）">
-        <ImageField
-          value={draft.default_card_back ?? null}
-          onChange={(v) => update({ default_card_back: v })}
-        />
+        {backIsImage && (
+          <div
+            style={{
+              fontSize: 11,
+              color: "var(--accent-gold)",
+              marginBottom: 4,
+              padding: "4px 6px",
+              background: "var(--bg-surface)",
+              border: "1px solid var(--border-subtle)",
+              borderRadius: "var(--radius-sm)",
+            }}
+          >
+            旧数据图片：{draft.default_card_back}
+            <button
+              className="btn"
+              style={{ fontSize: 10, marginLeft: 6 }}
+              onClick={() => update({ default_card_back: null })}
+            >
+              清除
+            </button>
+          </div>
+        )}
+        <select
+          className="select"
+          value={backIsImage ? "" : (draft.default_card_back ?? "")}
+          onChange={(e) =>
+            update({ default_card_back: e.target.value || null })
+          }
+        >
+          <option value="">— 内置铁砧 —</option>
+          {listCardBackStyles().map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.label}
+            </option>
+          ))}
+        </select>
       </Field>
 
       <Field label="默认卡框风格（新建类型时使用，留空继承应用设置）">
         <select
           className="select"
           value={
-            isCardFrameStyle(draft.default_card_frame_style)
+            isCardStyleId(draft.default_card_frame_style)
               ? draft.default_card_frame_style
               : ""
           }
@@ -115,13 +151,11 @@ export function ProjectGeneralPanel() {
           }
         >
           <option value="">— 继承应用设置 —</option>
-          {(Object.keys(CARD_FRAME_STYLE_LABELS) as CardFrameStyle[]).map(
-            (s) => (
-              <option key={s} value={s}>
-                {CARD_FRAME_STYLE_LABELS[s]}
-              </option>
-            ),
-          )}
+          {listCardStyles().map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.label}
+            </option>
+          ))}
         </select>
       </Field>
 

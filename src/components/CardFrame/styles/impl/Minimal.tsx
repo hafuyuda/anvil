@@ -1,25 +1,14 @@
-import type { CardType } from "../../../core/ipc";
-import { SIZE_MAP, type CardFrameSize } from "../types";
-import type { CardContent, CardFeatures } from "../mapping";
-import { CardShell } from "../primitives/CardShell";
-
-interface Props {
-  cardType: CardType;
-  size?: CardFrameSize;
-  content: CardContent;
-  features: CardFeatures;
-  selected?: boolean;
-  onClick?: () => void;
-}
+import { SIZE_MAP } from "../../types";
+import type { CardStyleDef, CardStyleProps } from "../types";
+import { CardShell } from "../../primitives/CardShell";
 
 export function CardFrameMinimal({
   cardType,
   size = "medium",
   content,
-  features,
   selected = false,
   onClick,
-}: Props) {
+}: CardStyleProps) {
   const spec = SIZE_MAP[size];
   const accent = cardType.color ?? "var(--card-frame-default-accent)";
 
@@ -33,9 +22,6 @@ export function CardFrameMinimal({
     content.atk !== undefined ||
     content.def !== undefined ||
     content.hp !== undefined;
-
-  // minimal 无图像区，features 未使用，但保留在 props 里统一接口
-  void features;
 
   return (
     <CardShell
@@ -194,3 +180,9 @@ export function CardFrameMinimal({
     </CardShell>
   );
 }
+
+export default {
+  id: "minimal",
+  label: "极简",
+  Component: CardFrameMinimal,
+} satisfies CardStyleDef;

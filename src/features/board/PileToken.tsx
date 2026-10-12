@@ -1,5 +1,6 @@
 import { CardBack } from "../../components/CardFrame/primitives/CardBack";
 import { SIZE_MAP, type CardFrameSize } from "../../components/CardFrame/types";
+import { useProjectStore } from "../../stores/projectStore";
 
 interface Props {
   remaining: number;
@@ -14,6 +15,9 @@ interface Props {
 export function PileToken({ remaining, total, size = "small" }: Props) {
   const spec = SIZE_MAP[size];
   const isEmpty = remaining === 0;
+  const defaultBack = useProjectStore(
+    (s) => s.manifest?.default_card_back ?? null,
+  );
 
   return (
     <div
@@ -60,7 +64,7 @@ export function PileToken({ remaining, total, size = "small" }: Props) {
 
       {/* 主卡背 */}
       <div style={{ position: "absolute", left: 0, top: 0 }}>
-        <CardBack size={size} />
+        <CardBack styleId={defaultBack} size={size} />
       </div>
 
       {/* 数量徽章 */}

@@ -1,9 +1,8 @@
-import type { CardFrameStyle } from "../components/CardFrame/types";
-
 const KEY = "anvil.appSettings";
 
 export interface AppSettings {
-  defaultCardFrameStyle: CardFrameStyle;
+  /** CardFrame 风格 id；未知 id 会在渲染时回退 yugioh */
+  defaultCardFrameStyle: string;
   typewriterSpeed: number;
   typewriterEnabled: boolean;
   typewriterNarration: boolean;

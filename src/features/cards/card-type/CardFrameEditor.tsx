@@ -1,11 +1,13 @@
 import type { CardType } from "../../../core/ipc";
 import {
-  CARD_FRAME_STYLE_LABELS,
-  DEFAULT_CARD_FRAME_STYLE,
-  isCardFrameStyle,
-  type CardFrameStyle,
+  getCardStyle,
+  isCardStyleId,
+  listCardStyles,
 } from "../../../components/CardFrame";
-import { ImageField } from "../../../components/ImageField";
+import {
+  hasCardBackStyle,
+  listCardBackStyles,
+} from "../../../components/CardFrame/primitives/back-styles/registry";
 import { useProjectStore } from "../../../stores/projectStore";
 import { AccentColorRow } from "./AccentColorRow";
 import { CropEditor } from "./CropEditor";
@@ -24,9 +26,15 @@ interface Props {
   onChangeCardBack: (path: string | null) => void;
 }
 
-const STYLE_OPTIONS: { value: CardFrameStyle; label: string }[] = (
-  Object.keys(CARD_FRAME_STYLE_LABELS) as CardFrameStyle[]
-).map((v) => ({ value: v, label: CARD_FRAME_STYLE_LABELS[v] }));
+const STYLE_OPTIONS = listCardStyles().map((s) => ({
+  value: s.id,
+  label: s.label,
+}));
+
+const BACK_STYLE_OPTIONS = listCardBackStyles().map((s) => ({
+  value: s.id,
+  label: s.label,
+}));
 
 export function CardFrameEditor({
   cardType,
@@ -56,9 +64,14 @@ export function CardFrameEditor({
     return null;
   })();
 
-  const styleValue: CardFrameStyle | null = isCardFrameStyle(cfg.style)
-    ? cfg.style
-    : null;
+  const styleValue: string | null = isCardStyleId(cfg.style) ? cfg.style : null;
+
+  // 卡背：已注册风格 id 走下拉；图片路径（旧数据）显示原始值
+  const backIsImage =
+    cardType.card_back != null && !hasCardBackStyle(cardType.card_back);
+  const backStyleValue: string | null = backIsImage
+    ? null
+    : (cardType.card_back ?? null);
 
   function set<K extends keyof NonNullable<CardType["card_frame"]>>(
     key: K,
@@ -91,13 +104,13 @@ export function CardFrameEditor({
         value={styleValue}
         onChange={(v) => set("style", v)}
         options={STYLE_OPTIONS}
-        placeholder={`默认（${CARD_FRAME_STYLE_LABELS[DEFAULT_CARD_FRAME_STYLE]}）`}
+        placeholder={`默认（${getCardStyle(null).label}）`}
       />
 
       {/* 强调色 */}
       <AccentColorRow value={cardType.color ?? null} onChange={onChangeColor} />
 
-      {/* 卡背图片 */}
+      {/* 卡背风格 */}
       <div>
         <div
           style={{
@@ -106,11 +119,36 @@ export function CardFrameEditor({
             marginBottom: 4,
           }}
         >
-          卡背图片（留空用项目默认 / 内置图案）
+          卡背风格（留空用项目默认 / 内置铁砧）
         </div>
-        <ImageField
-          value={cardType.card_back ?? null}
+        {backIsImage && (
+          <div
+            style={{
+              fontSize: 11,
+              color: "var(--accent-gold)",
+              marginBottom: 4,
+              padding: "4px 6px",
+              background: "var(--bg-surface)",
+              border: "1px solid var(--border-subtle)",
+              borderRadius: "var(--radius-sm)",
+            }}
+          >
+            旧数据图片：{cardType.card_back}
+            <button
+              className="btn"
+              style={{ fontSize: 10, marginLeft: 6 }}
+              onClick={() => onChangeCardBack(null)}
+            >
+              清除
+            </button>
+          </div>
+        )}
+        <LabeledSelect
+          label=""
+          value={backStyleValue}
           onChange={onChangeCardBack}
+          options={BACK_STYLE_OPTIONS}
+          placeholder="默认（项目设置 / 铁砧）"
         />
       </div>
 

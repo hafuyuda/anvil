@@ -1,22 +1,5 @@
 export type CardFrameSize = "small" | "medium" | "large";
 
-export type CardFrameStyle =
-  "yugioh" | "generic" | "minimal" | "mtg" | "pokemon";
-
-export const DEFAULT_CARD_FRAME_STYLE: CardFrameStyle = "yugioh";
-
-export const CARD_FRAME_STYLE_LABELS: Record<CardFrameStyle, string> = {
-  yugioh: "游戏王",
-  generic: "通用",
-  minimal: "极简",
-  mtg: "万智牌",
-  pokemon: "宝可梦",
-};
-
-export function isCardFrameStyle(v: unknown): v is CardFrameStyle {
-  return typeof v === "string" && v in CARD_FRAME_STYLE_LABELS;
-}
-
 export interface SizeSpec {
   w: number;
   h: number;

@@ -115,6 +115,21 @@
   --card-pokemon-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
   --card-pokemon-shadow-selected: 0 4px 14px rgba(0, 0, 0, 0.55);
 
+  /* 卡牌：彩虹（rainbow） */
+  --card-rainbow-1: #ff5f6d;
+  --card-rainbow-2: #ff9f43;
+  --card-rainbow-3: #ffd93d;
+  --card-rainbow-4: #6bcb77;
+  --card-rainbow-5: #4d96ff;
+  --card-rainbow-6: #5b4b8a;
+  --card-rainbow-7: #9b5de5;
+  --card-rainbow-bg: #fffdf6;
+  --card-rainbow-panel: #f6f1ff;
+  --card-rainbow-text: #33303d;
+  --card-rainbow-text-dim: #7a7388;
+  --card-rainbow-shadow: 0 2px 8px rgba(80, 40, 120, 0.45);
+  --card-rainbow-shadow-selected: 0 4px 16px rgba(80, 40, 120, 0.6);
+
   /* 卡牌：闪卡（foil） */
   --card-foil-base: #c9a961;
   --card-foil-shine: #fff8d0;
@@ -132,6 +147,12 @@
   --card-back-border: #c9a961;
   --card-back-glyph: #c9a961;
   --card-back-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+
+  /* 卡背：符文（rune） */
+  --card-back-rune-bg: #1a1226;
+  --card-back-rune-border: #5a3a8a;
+  --card-back-rune-text: #f0e6ff;
+  --card-back-rune-shadow: 0 2px 8px rgba(40, 16, 80, 0.5);
 
   /* 卡牌图像出框单位：相对图像区高度的比例 */
   --card-image-extend-unit: 40%;

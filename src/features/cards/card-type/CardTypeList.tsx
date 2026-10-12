@@ -10,7 +10,7 @@ import { nowMs } from "../../../lib/time";
 import { toast } from "../../../lib/toast";
 import { confirmDialog } from "../../../lib/confirm";
 import { runWithError } from "../../../lib/runWithError";
-import { isCardFrameStyle } from "../../../components/CardFrame";
+import { isCardStyleId } from "../../../components/CardFrame";
 import { getAppSettings } from "../../../lib/appSettings";
 
 export function CardTypeList() {
@@ -101,7 +101,7 @@ function CardTypeSection() {
     const now = nowMs();
     const projectDefault = manifest?.default_card_frame_style;
     const appDefault = getAppSettings().defaultCardFrameStyle;
-    const defaultStyle = isCardFrameStyle(projectDefault)
+    const defaultStyle = isCardStyleId(projectDefault)
       ? projectDefault
       : appDefault;
 
