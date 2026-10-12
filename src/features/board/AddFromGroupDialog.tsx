@@ -163,7 +163,7 @@ export function AddFromGroupDialog({ onClose, onImport }: Props) {
             <SectionLabel variant="field" style={{ marginBottom: 6 }}>
               铺开顺序
             </SectionLabel>
-            
+
             <div style={{ display: "flex", gap: 6 }}>
               <button
                 className="btn"

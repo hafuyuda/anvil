@@ -96,7 +96,7 @@ function CardTypeSection() {
   const deleteWithUndo = useDeleteUndo();
 
   const manifest = useProjectStore((s) => s.manifest);
-  
+
   async function addType() {
     const now = nowMs();
     const projectDefault = manifest?.default_card_frame_style;

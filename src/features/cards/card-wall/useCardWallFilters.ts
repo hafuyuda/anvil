@@ -67,7 +67,6 @@ export function useCardWallFilters(cards: Card[], cardTypes: CardType[]) {
     return sorted;
   }, [cards, query, ftsIds, typeFilter, sortKey, sortAsc, typeMap]);
 
-  
   function toggleSort(k: SortKey) {
     if (sortKey === k) setSortAsc((v) => !v);
     else {

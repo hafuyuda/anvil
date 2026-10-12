@@ -71,7 +71,6 @@ export function TopBar() {
     }, "刷新失败");
   }
 
-
   const projectName = projectPath
     ? projectPath.split(/[\\/]/).pop()
     : "未打开项目";

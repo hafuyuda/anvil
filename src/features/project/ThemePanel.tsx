@@ -111,7 +111,7 @@ export function ThemePanel({ manifestThemeId, onChangeThemeId }: Props) {
       }
     }, "删除失败");
   }
-  
+
   function applyAsProjectTheme(id: string | null) {
     onChangeThemeId(id);
     if (id) {

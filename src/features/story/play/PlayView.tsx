@@ -38,7 +38,7 @@ export function PlayView({ scenario }: Props) {
     isEnding,
     endingName,
   } = usePlayState(scenario, cards, relations);
-  
+
   useSceneAudio(currentId, lineIndex, currentBgm, currentSfx);
 
   const [showVariables, setShowVariables] = useState(false);

@@ -29,10 +29,8 @@ export function ChatInput({ authors, defaultAuthorId, onSend }: Props) {
   const [text, setText] = useState("");
   const [rollOpen, setRollOpen] = useState(false);
 
-  const currentAuthor =
-    authors.find((a) => a.card_id === authorId) ??
-    authors[0] ??
-    { card_id: null, name: "KP" };
+  const currentAuthor = authors.find((a) => a.card_id === authorId) ??
+    authors[0] ?? { card_id: null, name: "KP" };
 
   function send() {
     const content = text.trim();

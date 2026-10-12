@@ -123,8 +123,7 @@ export function applyEffects(
         continue;
       }
       const cur = typeof current === "number" ? current : 0;
-      const nextVal =
-        e.op === "+=" ? cur + parsed.result : cur - parsed.result;
+      const nextVal = e.op === "+=" ? cur + parsed.result : cur - parsed.result;
       next[e.key] = nextVal;
       applied.push({
         key: e.key,

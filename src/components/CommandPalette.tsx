@@ -16,11 +16,7 @@ export function CommandPalette({ commands, onClose }: Props) {
     const q = query.trim().toLowerCase();
     if (!q) return commands;
     return commands.filter((c) => {
-      const haystack = [
-        c.label,
-        c.category,
-        ...(c.keywords ?? []),
-      ]
+      const haystack = [c.label, c.category, ...(c.keywords ?? [])]
         .join(" ")
         .toLowerCase();
       return haystack.includes(q);
@@ -54,7 +50,7 @@ export function CommandPalette({ commands, onClose }: Props) {
         if (cmd) {
           onClose();
           void Promise.resolve(cmd.run()).catch((err) =>
-            toast.error("命令执行失败: " + err)
+            toast.error("命令执行失败: " + err),
           );
         }
       }
@@ -67,9 +63,7 @@ export function CommandPalette({ commands, onClose }: Props) {
   useEffect(() => {
     const list = listRef.current;
     if (!list) return;
-    const el = list.querySelector<HTMLElement>(
-      `[data-index="${activeIndex}"]`
-    );
+    const el = list.querySelector<HTMLElement>(`[data-index="${activeIndex}"]`);
     el?.scrollIntoView({ block: "nearest" });
   }, [activeIndex]);
 
@@ -118,10 +112,7 @@ export function CommandPalette({ commands, onClose }: Props) {
           }}
         />
 
-        <div
-          ref={listRef}
-          style={{ overflowY: "auto", padding: "4px 0" }}
-        >
+        <div ref={listRef} style={{ overflowY: "auto", padding: "4px 0" }}>
           {filtered.length === 0 && (
             <div
               style={{
@@ -144,7 +135,7 @@ export function CommandPalette({ commands, onClose }: Props) {
                 onClick={() => {
                   onClose();
                   void Promise.resolve(cmd.run()).catch((err) =>
-                    toast.error("命令执行失败: " + err)
+                    toast.error("命令执行失败: " + err),
                   );
                 }}
                 style={{

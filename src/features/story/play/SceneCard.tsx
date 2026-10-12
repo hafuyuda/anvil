@@ -44,7 +44,7 @@ export function SceneCard({ card, cards, lastRolls }: Props) {
       <SectionLabel variant="block" style={{ marginBottom: 6 }}>
         当前场景
       </SectionLabel>
-      
+
       <div
         style={{
           fontSize: 20,

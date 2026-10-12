@@ -321,7 +321,6 @@ export function ScenarioEditor({ scenario }: Props) {
           </div>
         </div>
       )}
-
     </div>
   );
 }

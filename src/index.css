@@ -39,8 +39,8 @@
   /* 阴影 */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.5);
-  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.6),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --shadow-card:
+    0 2px 8px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.04);
 
   /* 字体 */
   --font-body: system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -54,9 +54,9 @@
 
   color-scheme: dark;
 
-    /* 卡牌：共用 */
+  /* 卡牌：共用 */
   --card-frame-default-accent: var(--accent-copper);
-  
+
   /* 卡牌（游戏王风格） */
   --card-yugioh-outer-1: #d4c5a0;
   --card-yugioh-outer-2: #b8a678;
@@ -121,22 +121,22 @@
   --card-foil-edge: #c9a961;
   --card-foil-duration: 5s;
 
-    /* 卡牌：闪卡 —— 银箔 */
+  /* 卡牌：闪卡 —— 银箔 */
   --card-foil-silver-base: #b8c0c8;
   --card-foil-silver-shine: #ffffff;
   --card-foil-silver-edge: #9ca8b0;
-  
-    /* 卡背 */
+
+  /* 卡背 */
   --card-back-bg-1: #2a2520;
   --card-back-bg-2: #1a1612;
   --card-back-border: #c9a961;
   --card-back-glyph: #c9a961;
   --card-back-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
-  
-    /* 卡牌图像出框单位：相对图像区高度的比例 */
+
+  /* 卡牌图像出框单位：相对图像区高度的比例 */
   --card-image-extend-unit: 40%;
-  
-    /* 对话气泡（派生自主题，随主题变化） */
+
+  /* 对话气泡（派生自主题，随主题变化） */
   --chat-panel-bg: var(--bg-panel);
   --chat-bubble-bg: var(--bg-surface);
   --chat-bubble-border: var(--border-default);
@@ -155,8 +155,6 @@
   --chat-whisper-text: var(--fg-primary);
   --chat-system-text: var(--fg-muted);
   --chat-system-line: var(--border-subtle);
-
-
 }
 
 * {
@@ -192,7 +190,9 @@ body {
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   cursor: pointer;
-  transition: background 0.12s, border-color 0.12s;
+  transition:
+    background 0.12s,
+    border-color 0.12s;
   user-select: none;
 }
 

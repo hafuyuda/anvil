@@ -165,37 +165,37 @@ function Row({ label, value }: { label: string; value: number }) {
   );
 }
 
-  async function handleExportDiagnostics() {
-    const output = await saveDialog({
-      defaultPath: `anvil-diagnostics-${Date.now()}.json`,
-      filters: [{ name: "JSON", extensions: ["json"] }],
-      title: "导出诊断信息",
-    });
-    if (!output) return;
+async function handleExportDiagnostics() {
+  const output = await saveDialog({
+    defaultPath: `anvil-diagnostics-${Date.now()}.json`,
+    filters: [{ name: "JSON", extensions: ["json"] }],
+    title: "导出诊断信息",
+  });
+  if (!output) return;
 
-    await runWithError(async () => {
-      const projectPath = useProjectStore.getState().projectPath;
-      const manifest = useProjectStore.getState().manifest;
-      const appSettings = getAppSettings();
-      const currentStats = await ipc.projectStats();
+  await runWithError(async () => {
+    const projectPath = useProjectStore.getState().projectPath;
+    const manifest = useProjectStore.getState().manifest;
+    const appSettings = getAppSettings();
+    const currentStats = await ipc.projectStats();
 
-      const payload = {
-        exported_at: new Date().toISOString(),
-        project: {
-          path: projectPath,
-          name: manifest?.name ?? null,
-          version: manifest?.version ?? null,
-          schema_version: manifest?.schema_version ?? null,
-        },
-        stats: currentStats,
-        app_settings: appSettings,
-        system: {
-          user_agent: navigator.userAgent,
-          platform: navigator.platform,
-        },
-      };
+    const payload = {
+      exported_at: new Date().toISOString(),
+      project: {
+        path: projectPath,
+        name: manifest?.name ?? null,
+        version: manifest?.version ?? null,
+        schema_version: manifest?.schema_version ?? null,
+      },
+      stats: currentStats,
+      app_settings: appSettings,
+      system: {
+        user_agent: navigator.userAgent,
+        platform: navigator.platform,
+      },
+    };
 
-      await ipc.saveTextFile(output, JSON.stringify(payload, null, 2));
-      toast.success(`诊断信息已导出到：${output}`);
-    }, "导出失败");
-  }
+    await ipc.saveTextFile(output, JSON.stringify(payload, null, 2));
+    toast.success(`诊断信息已导出到：${output}`);
+  }, "导出失败");
+}

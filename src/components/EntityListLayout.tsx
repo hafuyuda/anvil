@@ -119,9 +119,7 @@ export function EntityListLayout<T extends Item>({
                     ? "2px solid var(--accent-gold)"
                     : "2px solid transparent",
                   background: active ? "var(--bg-raised)" : "transparent",
-                  color: active
-                    ? "var(--fg-primary)"
-                    : "var(--fg-secondary)",
+                  color: active ? "var(--fg-primary)" : "var(--fg-secondary)",
                   fontSize: 13,
                   fontWeight: active ? 600 : 400,
                   userSelect: "none",

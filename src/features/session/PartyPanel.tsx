@@ -100,9 +100,7 @@ export function PartyPanel({
                 <div
                   style={{
                     fontSize: 12,
-                    color: active
-                      ? "var(--fg-primary)"
-                      : "var(--fg-secondary)",
+                    color: active ? "var(--fg-primary)" : "var(--fg-secondary)",
                     fontWeight: active ? 600 : 400,
                     overflow: "hidden",
                     textOverflow: "ellipsis",
@@ -131,13 +129,7 @@ export function PartyPanel({
   );
 }
 
-function Avatar({
-  name,
-  color,
-}: {
-  name: string;
-  color?: string | null;
-}) {
+function Avatar({ name, color }: { name: string; color?: string | null }) {
   const letter = name.slice(0, 1);
   const c = color ?? "var(--fg-secondary)";
   return (
