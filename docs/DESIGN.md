@@ -898,17 +898,18 @@ CardFrame/
 ├── types.ts               类型 + SIZE_MAP + 预设
 ├── mapping.ts             mapContent + resolveFeatures
 ├── primitives/            基础构件
-│   ├── CardShell.tsx      外层容器（选中态、尺寸、过渡）
-│   ├── CardInner.tsx      内层容器（flex column + 定位上下文）
-│   ├── CardImage.tsx      图像区（裁剪 / 出框 / 首字 fallback）
-│   ├── CardBack.tsx       卡背
-│   └── FoilOverlay.tsx    闪卡覆盖层
+│   ├── CardShell.tsx · CardInner.tsx
+│   ├── CardImage.tsx · CardBack.tsx · FoilOverlay.tsx
+│   └── back-styles/
+│       ├── types.ts · registry.ts
+│       └── impl/
+│           ├── anvil.tsx · rune.tsx
 └── styles/                风格实现
-    ├── YuGiOh.tsx
-    ├── Generic.tsx
-    ├── Minimal.tsx
-    ├── MTG.tsx
-    └── Pokemon.tsx
+    ├── types.ts · registry.ts
+    └── impl/
+        ├── YuGiOh.tsx · Generic.tsx · Minimal.tsx
+        ├── MTG.tsx · Pokemon.tsx · Rainbow.tsx
+
 ```
 
 ### 15.2 数据流
@@ -928,7 +929,7 @@ shouldFoil → 包一层 FoilOverlay（读 features）
 
 **`CardFeatures`**：crop / extend / foil / foilVariant。附加视觉处理，风格组件不关心。
 
-### 15.3 五风格
+### 15.3 风格
 
 `CardFrame` 按优先级分派：
 
@@ -936,15 +937,15 @@ shouldFoil → 包一层 FoilOverlay（读 features）
 2. `cardType.card_frame.style`
 3. `DEFAULT_CARD_FRAME_STYLE`（yugioh）
 
-| 风格   | key       | 视觉定位                                     |
-| ------ | --------- | -------------------------------------------- |
-| 游戏王 | `yugioh`  | 金属渐变外框 + 羊皮纸描述框 + 星号等级       |
-| 通用   | `generic` | 深底细描边 + 顶部色条 + 底部属性行           |
-| 极简   | `minimal` | 无外框 + 左竖条 + 大留白                     |
-| 万智牌 | `mtg`     | 深色石质外框 + 顶部标题条 + 底部羊皮纸文字栏 |
-| 宝可梦 | `pokemon` | 浅色圆角 + 顶部标题 + HP + 艺术图            |
-
-**尺寸**：small 140×205 · medium 190×280 · large 260×385
+| 风格                                                     | key       | 视觉定位                                     |
+| -------------------------------------------------------- | --------- | -------------------------------------------- |
+| 游戏王                                                   | `yugioh`  | 金属渐变外框 + 羊皮纸描述框 + 星号等级       |
+| 通用                                                     | `generic` | 深底细描边 + 顶部色条 + 底部属性行           |
+| 极简                                                     | `minimal` | 无外框 + 左竖条 + 大留白                     |
+| 万智牌                                                   | `mtg`     | 深色石质外框 + 顶部标题条 + 底部羊皮纸文字栏 |
+| 宝可梦                                                   | `pokemon` | 浅色圆角 + 顶部标题 + HP + 艺术图            |
+| 彩虹                                                     | `rainbow` | 七色渐变外框 + 渐变首字 + 渐变星级           |
+| **尺寸**：small 140×205 · medium 190×280 · large 260×385 |
 
 ### 15.4 图像区
 

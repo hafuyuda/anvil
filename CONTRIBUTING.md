@@ -313,7 +313,7 @@ src/
     - 风格组件**只接收 `content`**
     - `CardFrame/index.tsx` 组装：算 content + features → 分派风格 → 需要时包 `FoilOverlay`
 
-19. **加新风格**改 4 处：`styles/` 新建组件、`types.ts` 联合类型、`CARD_FRAME_STYLE_LABELS`、`index.tsx` switch。
+19. **加新卡框风格**只加一个文件：在 `styles/impl/` 下新建 `.tsx`，默认导出 `CardStyleDef`（`id` / `label` / `Component`）。注册表用 `import.meta.glob` 自动发现，无需改 `types.ts` / 标签表 / `index.tsx`。卡背同理，放 `primitives/back-styles/impl/`，默认导出 `CardBackStyleDef`。
 
 20. **加新闪卡效果**改 4 处：`FoilOverlay` 的 `VARIANTS` 表、`index.css` 变量、`FoilTriggerRow` 下拉、`resolveFeatures` 规范化。**不改任何风格组件。**
 
@@ -603,5 +603,3 @@ CSS 动画如果用 `background-position` / `mixBlendMode`，会落到主线程�
 ## 协议
 
 贡献的代码默认采用项目的 [MIT 协议](LICENSE)。
-
-

@@ -21,6 +21,9 @@ interface Props {
  * 兼容旧数据：如果 styleId 是图片路径（未注册的风格 id），
  * 仍按图片渲染；否则走注册表风格。
  */
+// styleId 为已注册风格 id → 渲染对应风格
+// styleId 为旧图片路径（未注册）→ 渲染 <img>，兼容旧项目
+// styleId 为空或未知 → 回退 anvil
 export function CardBack({ styleId, size = "small", accent }: Props) {
   const spec = SIZE_MAP[size];
 
