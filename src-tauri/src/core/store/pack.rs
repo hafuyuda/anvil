@@ -781,7 +781,7 @@ fn list_named_json(dir: &Path) -> anyhow::Result<Vec<InspectNamed>> {
     Ok(out)
 }
 
-fn read_json_or_default<T: serde::de::DeserializeOwned + Default>(
+pub(crate) fn read_json_or_default<T: serde::de::DeserializeOwned + Default>(
     path: &Path,
 ) -> anyhow::Result<T> {
     if !path.exists() {

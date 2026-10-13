@@ -6,6 +6,7 @@ pub mod cards;
 pub mod export_html;
 pub mod manifest;
 pub mod pack;
+pub mod preset;
 pub mod project;
 pub mod relations;
 pub mod scenarios;

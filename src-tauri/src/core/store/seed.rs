@@ -1,8 +1,8 @@
 use super::project::Project;
 use std::io::Read;
 
-/// 内置示例世界包。编译进二进制。
-const EXAMPLE_PACK: &[u8] = include_bytes!("../../../assets/example_world.anvilpack");
+/// 旧命令，兼容用。新代码走 `add_preset`。
+const EXAMPLE_PACK: &[u8] = include_bytes!("../../../assets/presets/anvil_castle.anvilpack");
 
 impl Project {
     /// 把内置示例世界解压到当前项目。

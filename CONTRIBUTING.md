@@ -136,7 +136,8 @@ src-tauri/src/
 │   │   ├── relations.rs
 │   │   ├── scenarios.rs
 │   │   ├── scripts.rs
-│   │   ├── seed.rs         # 从内置 pack 解压示例世界
+│   │   ├── seed.rs         # 从内置 pack 解压示例世界（空项目）
+│   │   ├── preset.rs       # 内置预设注册表 + 非空项目追加导入
 │   │   ├── sessions.rs
 │   │   └── theme.rs
 │   ├── index/          # SQLite 索引 + FTS
@@ -315,7 +316,7 @@ src/
 
 19. **加新卡框风格**只加一个文件：在 `styles/impl/` 下新建 `.tsx`，默认导出 `CardStyleDef`（`id` / `label` / `Component`）。注册表用 `import.meta.glob` 自动发现，无需改 `types.ts` / 标签表 / `index.tsx`。卡背同理，放 `primitives/back-styles/impl/`，默认导出 `CardBackStyleDef`。
 
-20. **加新闪卡效果**改 4 处：`FoilOverlay` 的 `VARIANTS` 表、`index.css` 变量、`FoilTriggerRow` 下拉、`resolveFeatures` 规范化。**不改任何风格组件。**
+20. **加新闪卡效果**只加一个文件：在 `primitives/foil-styles/impl/` 下新建 `.ts`，默认导出 `FoilStyleDef`（`id` / `label` / `css`）。注册表用 `import.meta.glob` 自动发现，CSS 在模块加载时一次性注入。**不改任何卡框风格组件。**
 
 ### 设置
 
@@ -491,7 +492,7 @@ pnpm prettier --write src/
 
 提交 PR 前请手动验证：
 
-1. 打开项目 → 载入示例世界 → 数据完整
+1. 打开项目 → 载入示例世界 → 数据完整；再打开非空项目 → 项目菜单「添加预设…」→ 选「铁砧堡」→ 内容追加且无 id 冲突、同名实体带 `(2)` 后缀
 2. 卡片墙 → 搜索、筛选、多选、批量操作、排序
 3. 类型 → 字段编辑、拖拽排序、卡框映射、闪卡触发（含风格切换）、裁剪、出框、卡背、类型复制
 4. 关系 → 面板显示方向、反向名、悬浮预览

@@ -1,4 +1,7 @@
 import type { CardType } from "../../../core/ipc";
+import { listFoilStyles } from "../../../components/CardFrame/primitives/foil-styles/registry";
+
+const foilStyles = listFoilStyles();
 
 export function FoilTriggerRow({
   cardType,
@@ -197,8 +200,11 @@ export function FoilTriggerRow({
                   value={foilStyle ?? "gold"}
                   onChange={(e) => onChange({ foil_style: e.target.value })}
                 >
-                  <option value="gold">金箔</option>
-                  <option value="silver">银箔</option>
+                  {foilStyles.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.label}
+                    </option>
+                  ))}
                 </select>
               </label>
 

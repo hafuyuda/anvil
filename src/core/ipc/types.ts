@@ -338,6 +338,12 @@ export interface MergeResult {
   skipped_types: string[];
 }
 
+export interface PresetInfo {
+  id: string;
+  label: string;
+  description: string;
+}
+
 export interface ProjectStats {
   card_types: number;
   relation_kinds: number;

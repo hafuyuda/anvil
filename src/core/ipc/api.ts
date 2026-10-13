@@ -15,6 +15,7 @@ import type {
   MergeOptions,
   MergeResult,
   PackInspection,
+  PresetInfo,
   ProjectStats,
   AudioMeta,
 } from "./types";
@@ -47,6 +48,11 @@ export const ipc = {
     invoke<PackInspection>("inspect_pack_cmd", { src }),
   mergePack: (src: string, options: MergeOptions) =>
     invoke<MergeResult>("merge_pack", { src, options }),
+
+  // ── 预设 ──
+  listPresets: () => invoke<PresetInfo[]>("list_presets_cmd"),
+  addPreset: (presetId: string) =>
+    invoke<MergeResult>("add_preset", { presetId }),
 
   // ── 卡牌 ──
   saveCard: (card: Card) => invoke<void>("save_card", { card }),

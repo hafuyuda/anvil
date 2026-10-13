@@ -68,6 +68,16 @@
 - 卡片墙移除「导入棋盘」入口（网格 / 列表 / 批量操作三处），改由棋盘侧承担
 - 卡片墙职责收窄：只管卡的组织（加入卡组），不管卡的摆放
 
+- **多预设「添加预设」功能**：内置预设从单一示例世界改为预设注册表（`assets/presets/`）
+  - TopBar → 项目菜单新增「添加预设…」，可把预设作为副本追加到**非空项目**
+  - 内容实体全部重新生成 UUID；同名实体加 `(2)` / `(3)`；卡类型与关系类型按名字复用
+  - 棋盘 token 的 pile（卡盒）`group_id` / 卡 id 映射到新项目，会话 `board_id` 置空
+  - 原「载入示例世界」命令保留兼容，指向 `anvil_castle`（铁砧堡）预设
+
+- **闪卡风格注册表化**：新增闪卡效果只加一个 `impl/*.ts` 文件
+  - 金箔 / 银箔迁移为 `foil-styles/impl/` 下的独立文件，新增「全息彩虹」风格验证扩展点
+  - 注册表用 `import.meta.glob` 自动发现，CSS 在模块加载时一次性注入 `<head>`
+  - `resolveFeatures` 用 `hasFoilStyle` 规范化，未知 id 回退金箔不崩
 - **卡背风格注册表化**：新增风格只加一个 `impl/*.tsx` 文件
   - 内置图案迁移为 `anvil` 风格，新增 `rune` 风格（暗紫同心圆环 + ᚱ 符文）
   - 类型编辑器和项目设置的「卡背」字段从图片上传改为风格下拉；旧图片数据保留兼容，显示提示条 + 清除按钮
@@ -89,6 +99,12 @@
 - `useBoardActions` 新增 `addCardsToBoard`（批量），`addCardToBoard` 改为其包装
 - `stores/slices/types.ts` 加 `CardGroupView` 类型；`uiSlice` 加 `cardGroupView` + `setCardGroupView`
 - `SettingsCategory` 联合类型从 8 个值精简为 5 个
+- 新增 `core/store/preset.rs`：预设注册表 + `import_preset_from`；`assets/example_world.anvilpack` 移至 `assets/presets/anvil_castle.anvilpack`
+- `pack.rs` 的 `read_json_or_default` 改为 `pub(crate)`，供 preset.rs 复用
+- 新增 IPC 命令：`list_presets_cmd` / `add_preset`
+- 前端新增 `hooks/useAddPreset.ts` · `features/project/AddPresetDialog.tsx`；`TopBar` `MenuItem` 加 `disabled` prop
+- 闪卡风格改为注册表 + `import.meta.glob` 自动发现，新增风格只加一个文件
+- 新增 `primitives/foil-styles/`（`types.ts` · `registry.ts` · `impl/*.ts`）；`FoilOverlay` 改为 className 结构，金/银/彩虹 CSS 迁入 impl
 
 ## [0.2.0] - 2026-10-09
 

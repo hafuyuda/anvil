@@ -513,11 +513,12 @@ MyWorld.anvil/
 anvil/
 ├── src-tauri/
 │   ├── assets/
-│   │   └── example_world.anvilpack   # 内置示例世界（编译嵌入）
+│   │   └── presets/
+│   │       └── anvil_castle.anvilpack   # 内置预设（编译嵌入）
 │   └── src/
 │       ├── core/
 │       │   ├── model/       # 数据模型
-│       │   ├── store/       # 文本文件读写 + 索引 + 资源包（16 个文件，每领域一个）
+│       │   ├── store/       # 文本文件读写 + 索引 + 资源包（17 个文件，每领域一个）
 │       │   │   ├── assets.rs       # 图片 + 音频
 │       │   │   ├── atomic.rs       # 原子写
 │       │   │   ├── boards.rs
@@ -525,8 +526,9 @@ anvil/
 │       │   │   ├── card_groups.rs
 │       │   │   ├── export_html.rs  # HTML 导出
 │       │   │   ├── manifest.rs
-│       │   │   ├── pack.rs         # 资源包导出 / 导入 / 合并
-│       │   │   ├── project.rs      # 项目打开 / 重载 / 索引判断
+│   │   │   ├── pack.rs         # 资源包导出 / 导入 / 合并
+│   │   │   ├── preset.rs       # 内置预设注册表 + 追加导入
+│   │   │   ├── project.rs      # 项目打开 / 重载 / 索引判断
 │       │   │   ├── relations.rs
 │       │   │   ├── scenarios.rs
 │       │   │   ├── scripts.rs
@@ -969,7 +971,11 @@ shouldFoil → 包一层 FoilOverlay（读 features）
 
 **风格**：
 
-- `foil_style` 指定，`"gold"`（默认）或 `"silver"`
+- `foil_style` 指定，默认 `"gold"`
+- 每个风格在 `primitives/foil-styles/impl/` 下是一个 `.ts` 文件
+- 默认导出 `{ id, label, css }`
+- 注册表（`foil-styles/registry.ts`）用 `import.meta.glob` 自动发现，CSS 在模块加载时一次性注入到 `<head>`
+- 加新风格只加一个文件
 - 颜色通过 CSS 变量配置：`--card-foil-base` / `--card-foil-shine` / `--card-foil-edge`（金），`--card-foil-silver-base` / `--card-foil-silver-shine` / `--card-foil-silver-edge`（银）
 
 **渲染**：
@@ -978,6 +984,7 @@ shouldFoil → 包一层 FoilOverlay（读 features）
 - 流光用 `transform: translate3d` 动画，GPU 合成
 - **不用 `mixBlendMode`**（每次重绘做色彩混合，代价高）
 - `prefers-reduced-motion: reduce` 时禁用动画
+- `.foil-overlay` 的结构定位在 `index.css`，颜色与动画交给各风格 impl CSS（`.foil--{id}` 限定选择器）
 
 **启用**：
 
@@ -985,7 +992,7 @@ shouldFoil → 包一层 FoilOverlay（读 features）
 - 卡片墙和检查器预览启用，棋盘 / 跑团不启用
 - 两个条件都满足才闪：视图层启用 + 数据层命中
 
-**扩展**：加第三种效果只改 4 处（`VARIANTS` 表、CSS 变量、风格下拉、`resolveFeatures` 规范化）。
+**扩展**：加新效果只加一个文件（`impl/*.ts`），注册表与下拉自动发现。
 
 ### 15.7 卡背
 
@@ -1127,13 +1134,18 @@ world.anvilpack (zip)
 - **音频**：合并时**不处理** `assets/audio/`（已知缺口，见 §24）
 - **Manifest**：目标项目的元数据不被覆盖
 
-### 18.4 内置示例世界
+### 18.4 内置预设
 
-`src-tauri/assets/example_world.anvilpack`，编译时通过 `include_bytes!` 嵌入。
+内置预设是编译进二进制的 `.anvilpack`，存放在 `src-tauri/assets/presets/` 下，通过 `include_bytes!` 嵌入。
 
-「载入示例世界」命令：要求项目为空（无类型、无卡片），解压 pack 到当前项目根（跳过 `manifest.json`），重建索引。
+有两条入口：
 
-内容：6 个类型 / 30 张卡 / 5 个关系类型 + 22 条关系 / 3 个卡组 / 1 个剧情「失踪的学徒」+ 5 个场景完整剧本 / 2 个棋盘 / 1 个会话 / 4 张 SVG 背景图。覆盖 5 种卡框风格、闪卡、卡背、卡盒、翻牌、剧本结构化编辑器、音频选择器。
+- **载入示例世界**（`seed_example_world`）：要求项目为空（无类型、无卡片），把 `anvil_castle` 整个解压到当前项目根（跳过 `manifest.json`），重建索引。用于新手上手。
+- **添加预设…**（TopBar → 项目菜单）：把指定预设作为**副本**追加到当前已打开的项目。内容实体全部重新生成 UUID；与现有项目同名的实体加 `(2)` / `(3)`；卡类型与关系类型按**名字**复用（已有同名字的类型不再新建），其余内容（卡 / 关系 / 剧情 / 棋盘 / 会话 / 卡组 / 图片）一律新建。不修改目标项目的 manifest。
+
+预设注册表定义在 `src-tauri/src/core/store/preset.rs`，`PRESETS` 常量列出所有可用预设（id / label / description）。新增预设只需把 `.anvilpack` 放进 `assets/presets/` 并在 `PRESETS` 中登记一行。`anvil_castle`（铁砧堡）是首个预设，内容：6 个类型 / 30 张卡 / 5 个关系类型 + 22 条关系 / 3 个卡组 / 1 个剧情「失踪的学徒」+ 5 个场景完整剧本 / 2 个棋盘 / 1 个会话 / 4 张 SVG 背景图。覆盖 5 种卡框风格、闪卡、卡背、卡盒、翻牌、剧本结构化编辑器、音频选择器。
+
+导入顺序：类型 → 关系 → 剧情 → 卡组 → 棋盘 → 会话 → 图片。棋盘 token 的 pile（卡盒）里 `group_id` 映射到新建卡组 id，`remaining`/`initial` 里的卡 id 映射到新建卡 id，`total` 重算；会话的 `board_id` 置空（不绑定棋盘）。
 
 ---
 
@@ -1353,7 +1365,7 @@ world.anvilpack (zip)
 24. **高频重复样式抽成语义组件。** 差异大于共性时不抽。
 25. **音频走 asset protocol。** 不走 base64，不进 JS 堆。
 26. **卡框渲染分层。** `mapContent` 提取内容，`resolveFeatures` 判断特性，风格组件只看内容。
-27. **视觉特性可扩展。** 闪卡风格通过变体表 + CSS 变量定义，加新效果不改风格组件。
+27. **视觉特性可扩展。** 闪卡 / 卡背 / 卡框风格均为注册表（`import.meta.glob` 自动发现），加新风格只加一个文件，不改任何现有组件。
 28. **动画走合成属性。** `transform` / `opacity`。不用 `background-position`、`mixBlendMode` 等触发主线程重绘的属性。
 29. **设置的边界由存储位置决定。** 项目文件夹 vs `localStorage`，决定进哪个分类。
 30. **设置形态统一。** 居中浮层，左分类右内容。带搜索框和键盘切换。

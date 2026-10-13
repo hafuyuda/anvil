@@ -1,4 +1,5 @@
 import type { Card, CardType, CropRect, ImageExtend } from "../../core/ipc";
+import { hasFoilStyle } from "./primitives/foil-styles/registry";
 
 /**
  * 卡牌的「内容」——从 Card.values 里提取的显示数据。
@@ -28,7 +29,7 @@ export interface CardFeatures {
   crop: CropRect | null;
   extend: ImageExtend | null;
   foil: boolean;
-  foilVariant: "gold" | "silver";
+  foilVariant: string;
 }
 
 // ────────────────────────────────────────────────────────────
@@ -238,8 +239,8 @@ export function resolveFeatures(card: Card, cardType: CardType): CardFeatures {
     foil = matchesFoil(v, new Set(cfg.foil_values));
   }
 
-  const foilVariant: "gold" | "silver" =
-    cfg?.foil_style === "silver" ? "silver" : "gold";
+  const foilVariant =
+    cfg?.foil_style && hasFoilStyle(cfg.foil_style) ? cfg.foil_style : "gold";
 
   return { crop, extend, foil, foilVariant };
 }

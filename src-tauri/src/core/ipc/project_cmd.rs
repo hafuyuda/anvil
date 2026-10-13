@@ -240,6 +240,20 @@ pub fn merge_pack(
         .map_err(|e| e.to_string())
 }
 
+use crate::core::store::preset::{list_presets, PresetInfo};
+
+#[tauri::command]
+pub fn list_presets_cmd() -> Result<Vec<PresetInfo>, String> {
+    Ok(list_presets())
+}
+
+#[tauri::command]
+pub fn add_preset(state: State<AppState>, preset_id: String) -> Result<MergeResult, String> {
+    let guard = state.project.lock().unwrap();
+    let p = guard.as_ref().ok_or("no project open")?;
+    p.add_preset(&preset_id).map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 pub fn list_unused_images(state: State<AppState>) -> Result<Vec<String>, String> {
     let guard = state.project.lock().unwrap();

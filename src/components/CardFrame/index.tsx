@@ -96,10 +96,11 @@ export function CardFrame({
         width: spec.w,
         height: spec.h,
         flexShrink: 0,
+        borderRadius: spec.borderRadius,
       }}
     >
       {renderStyle()}
-      <FoilOverlay radius={spec.borderRadius} variant={features.foilVariant} />
+      <FoilOverlay variant={features.foilVariant} />
     </div>
   );
 }

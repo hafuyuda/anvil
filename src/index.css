@@ -371,20 +371,31 @@ h4 {
   }
 }
 
-@keyframes card-foil-sweep {
-  0% {
-    transform: translate3d(70%, 70%, 0);
-  }
-  100% {
-    transform: translate3d(-70%, -70%, 0);
-  }
+/* 闪卡覆盖层：结构定位在 index.css，颜色与动画交给各风格 impl CSS。
+   .foil-overlay 通过 border-radius: inherit 跟随卡片圆角。 */
+.foil-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  overflow: hidden;
 }
 
-/* 尊重系统「减少动态效果」偏好 */
-@media (prefers-reduced-motion: reduce) {
-  .card-foil-shine {
-    animation: none !important;
-  }
+.foil-overlay__base {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.foil-overlay__shine {
+  position: absolute;
+  inset: -50%;
+}
+
+.foil-overlay__edge {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
 }
 
 /* tauri-plugin-frame 注入的标题栏覆盖层：

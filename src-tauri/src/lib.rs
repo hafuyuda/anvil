@@ -37,6 +37,8 @@ pub fn run() {
             list_images,
             inspect_pack_cmd,
             merge_pack,
+            list_presets_cmd,
+            add_preset,
             list_unused_images,
             cleanup_unused_images,
             project_stats,

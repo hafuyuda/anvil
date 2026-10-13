@@ -10,6 +10,7 @@ import { resetTheme } from "../lib/theme";
 import { setLastOpenPath } from "../lib/recentProjects";
 import { clearAssetCache } from "../lib/assetCache";
 import { runWithError } from "../lib/runWithError";
+import { AddPresetDialog } from "../features/project/AddPresetDialog";
 
 export function TopBar() {
   const projectPath = useProjectStore((s) => s.projectPath);
@@ -27,6 +28,7 @@ export function TopBar() {
   const openSettings = useUIStore((s) => s.openSettings);
 
   const [menuOpen, setMenuOpen] = useState(false);
+  const [addPresetOpen, setAddPresetOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -183,6 +185,16 @@ export function TopBar() {
               }}
             />
 
+            <MenuItem
+              label="添加预设…"
+              disabled={!projectPath}
+              onClick={() => {
+                if (!projectPath) return;
+                setMenuOpen(false);
+                setAddPresetOpen(true);
+              }}
+            />
+
             {projectPath && (
               <>
                 <Divider />
@@ -250,6 +262,10 @@ export function TopBar() {
       <button className="btn" onClick={() => openSettings()}>
         设置
       </button>
+
+      {addPresetOpen && (
+        <AddPresetDialog onClose={() => setAddPresetOpen(false)} />
+      )}
     </div>
   );
 }
@@ -258,15 +274,20 @@ function MenuItem({
   label,
   onClick,
   danger,
+  disabled,
 }: {
   label: string;
   onClick: () => void;
   danger?: boolean;
+  disabled?: boolean;
 }) {
   const [hover, setHover] = useState(false);
   return (
     <button
-      onClick={onClick}
+      onClick={() => {
+        if (disabled) return;
+        onClick();
+      }}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       style={{
@@ -276,13 +297,18 @@ function MenuItem({
         padding: "6px 10px",
         border: "none",
         borderRadius: "var(--radius-sm)",
-        background: hover
-          ? danger
-            ? "color-mix(in srgb, var(--danger) 20%, transparent)"
-            : "var(--bg-raised)"
-          : "transparent",
-        color: danger ? "var(--danger)" : "var(--fg-primary)",
-        cursor: "pointer",
+        background:
+          hover && !disabled
+            ? danger
+              ? "color-mix(in srgb, var(--danger) 20%, transparent)"
+              : "var(--bg-raised)"
+            : "transparent",
+        color: disabled
+          ? "var(--fg-muted)"
+          : danger
+            ? "var(--danger)"
+            : "var(--fg-primary)",
+        cursor: disabled ? "not-allowed" : "pointer",
         fontFamily: "inherit",
         fontSize: 13,
       }}
