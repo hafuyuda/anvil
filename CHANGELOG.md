@@ -3,7 +3,7 @@
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 格式，
 版本号遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
-## [Unreleased]
+## [0.3.0] - 2026-10-13
 
 ### 新增
 
@@ -110,6 +110,12 @@
 - `CardFrameConfig` 删除 legacy 字段，`schema_version` 升到 `0.3`
 - 新增 `styles/slotUtils.ts` · `model/card_type.rs::migrate_card_frame_json`
 - 6 个风格全部改为读 `content.slots`
+
+### 破坏性变更
+
+- 卡框配置从 20 个固定字段改为 `bindings` 槽位映射。
+  打开旧项目时自动迁移，`manifest.schema_version` 升到 `0.3`。
+  迁移后旧字段从 JSON 清除。**旧版本 Anvil 无法读取迁移后的项目。**
 
 ## [0.2.0] - 2026-10-09
 
