@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { ipc } from "../core/ipc";
 import { useProjectStore } from "../stores/projectStore";
-import { useOpenProject } from "../hooks/useOpenProject";
-import { useCreateProject } from "../hooks/useCreateProject";
-import { useExportPack } from "../hooks/useExportPack";
-import { useImportPack } from "../hooks/useImportPack";
+import { useOpenProject } from "../core/actions/useOpenProject";
+import { useCreateProject } from "../core/actions/useCreateProject";
+import { useExportPack } from "../core/actions/useExportPack";
+import { useImportPack } from "../core/actions/useImportPack";
 import { useUIStore } from "../stores/uiStore";
 import { resetTheme } from "../lib/theme";
 import { setLastOpenPath } from "../lib/recentProjects";

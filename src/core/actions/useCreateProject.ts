@@ -1,9 +1,9 @@
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
-import { ipc } from "../core/ipc";
-import { openProjectAt } from "../core/openProjectAt";
-import { confirmDialog } from "../lib/confirm";
-import { runWithError } from "../lib/runWithError";
-import { toast } from "../lib/toast";
+import { ipc } from "../ipc";
+import { openProjectAt } from "./openProjectAt";
+import { confirmDialog } from "../../lib/confirm";
+import { runWithError } from "../../lib/runWithError";
+import { toast } from "../../lib/toast";
 
 export function useCreateProject() {
   async function createProject() {

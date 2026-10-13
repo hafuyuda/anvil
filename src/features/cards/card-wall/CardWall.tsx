@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { ipc, type Card, type CardType } from "../../../core/ipc";
-import { useOpenProject } from "../../../hooks/useOpenProject";
+import { useOpenProject } from "../../../core/actions/useOpenProject";
 import { useProjectStore } from "../../../stores/projectStore";
 import { useDeleteUndo } from "../../../hooks/useDeleteUndo";
 import { newId } from "../../../lib/id";

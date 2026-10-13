@@ -12,7 +12,7 @@ import { useGlobalCommands } from "../features/commands/useGlobalCommands";
 import { CommandPalette } from "../components/overlay/CommandPalette";
 import { ipc } from "../core/ipc";
 import { MergePackDialog } from "../features/project/MergePackDialog";
-import { tryAutoOpenLastProject } from "../core/openProjectAt";
+import { tryAutoOpenLastProject } from "../core/actions/openProjectAt";
 import { ToastHost } from "../components/overlay/ToastHost";
 import { useAppSettings } from "../hooks/useAppSettings";
 import { applyFontScale } from "../lib/fontScale";

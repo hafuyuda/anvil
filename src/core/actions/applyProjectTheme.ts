@@ -1,6 +1,6 @@
-import { ipc } from "./ipc";
-import { applyTheme, resetTheme } from "../lib/theme";
-import { getBuiltinTheme, hasBuiltinTheme } from "../themes/registry";
+import { ipc } from "../ipc";
+import { applyTheme, resetTheme } from "../../lib/theme";
+import { getBuiltinTheme, hasBuiltinTheme } from "../../themes/registry";
 
 export async function applyProjectTheme() {
   try {

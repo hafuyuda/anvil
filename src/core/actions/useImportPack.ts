@@ -1,8 +1,8 @@
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
-import { ipc } from "../core/ipc";
-import { openProjectAt } from "../core/openProjectAt";
-import { toast } from "../lib/toast";
-import { runWithError } from "../lib/runWithError";
+import { ipc } from "../ipc";
+import { openProjectAt } from "./openProjectAt";
+import { toast } from "../../lib/toast";
+import { runWithError } from "../../lib/runWithError";
 
 export function useImportPack() {
   async function importPack() {

@@ -1,14 +1,14 @@
 import { useEffect, useRef } from "react";
 import { commandRegistry } from "../../lib/commands";
 import { useProjectStore } from "../../stores/projectStore";
-import { useOpenProject } from "../../hooks/useOpenProject";
-import { useCreateProject } from "../../hooks/useCreateProject";
-import { useExportPack } from "../../hooks/useExportPack";
-import { useImportPack } from "../../hooks/useImportPack";
+import { useOpenProject } from "../../core/actions/useOpenProject";
+import { useCreateProject } from "../../core/actions/useCreateProject";
+import { useExportPack } from "../../core/actions/useExportPack";
+import { useImportPack } from "../../core/actions/useImportPack";
 import { ipc } from "../../core/ipc";
 import { useUIStore } from "../../stores/uiStore";
 import { getRecentProjects } from "../../lib/recentProjects";
-import { openProjectAt } from "../../core/openProjectAt";
+import { openProjectAt } from "../../core/actions/openProjectAt";
 import { runWithError } from "../../lib/runWithError";
 import { resetModuleOrder } from "../../lib/moduleOrder";
 

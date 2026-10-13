@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useProjectStore } from "../stores/projectStore";
-import { useOpenProject } from "../hooks/useOpenProject";
-import { useCreateProject } from "../hooks/useCreateProject";
-import { openProjectAt } from "../core/openProjectAt";
+import { useOpenProject } from "../core/actions/useOpenProject";
+import { useCreateProject } from "../core/actions/useCreateProject";
+import { openProjectAt } from "../core/actions/openProjectAt";
 import { getRecentProjects, removeRecentProject } from "../lib/recentProjects";
 import { CardWall } from "../features/cards/card-wall/CardWall";
 import { CardTypeList } from "../features/cards/card-type/CardTypeList";

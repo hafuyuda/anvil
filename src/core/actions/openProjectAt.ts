@@ -1,11 +1,11 @@
-import { ipc } from "./ipc";
-import { useProjectStore } from "../stores/projectStore";
+import { ipc } from "../ipc";
+import { useProjectStore } from "../../stores/projectStore";
 import { applyProjectTheme } from "./applyProjectTheme";
 import {
   addRecentProject,
   removeRecentProject,
   setLastOpenPath,
-} from "../lib/recentProjects";
+} from "../../lib/recentProjects";
 
 export async function openProjectAt(path: string): Promise<void> {
   await ipc.openProject(path);

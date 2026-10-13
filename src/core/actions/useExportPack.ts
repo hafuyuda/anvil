@@ -1,8 +1,8 @@
 import { save as saveDialog } from "@tauri-apps/plugin-dialog";
-import { ipc } from "../core/ipc";
-import { useProjectStore } from "../stores/projectStore";
-import { toast } from "../lib/toast";
-import { runWithError } from "../lib/runWithError";
+import { ipc } from "../ipc";
+import { useProjectStore } from "../../stores/projectStore";
+import { toast } from "../../lib/toast";
+import { runWithError } from "../../lib/runWithError";
 
 export function useExportPack() {
   const projectPath = useProjectStore((s) => s.projectPath);
