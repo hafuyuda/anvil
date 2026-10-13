@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
-pub const CURRENT_SCHEMA_VERSION: &str = "0.1";
+pub const CURRENT_SCHEMA_VERSION: &str = "0.3";
+
 pub const KIND_PROJECT: &str = "anvil-project";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

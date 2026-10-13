@@ -1,22 +1,20 @@
 import { create } from "zustand";
 
-export type SettingsCategory =
-  "general" | "appearance" | "resources" | "editor" | "advanced";
-
 interface UIState {
   paletteOpen: boolean;
   mergePackOpen: boolean;
   settingsOpen: boolean;
-  settingsCategory: SettingsCategory | null;
+  // 分类 id 由 features/settings/categories 注册表维护，未知 id 由设置页回退默认分类。
+  settingsCategory: string | null;
 
   openPalette: () => void;
   closePalette: () => void;
   togglePalette: () => void;
   openMergePack: () => void;
   closeMergePack: () => void;
-  openSettings: (category?: SettingsCategory) => void;
+  openSettings: (category?: string) => void;
   closeSettings: () => void;
-  setSettingsCategory: (c: SettingsCategory) => void;
+  setSettingsCategory: (c: string) => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({

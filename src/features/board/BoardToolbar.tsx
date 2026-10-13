@@ -1,6 +1,6 @@
 import type { GridConfig } from "../../core/ipc";
-import { GRID_SHAPES } from "./constants";
 import { Toggle } from "../../components/Toggle";
+import { DEFAULT_GRID_SHAPE, listGridShapes } from "./grid/registry";
 
 interface Props {
   name: string;
@@ -115,13 +115,13 @@ export function BoardToolbar({
 
       <select
         className="select"
-        value={grid.shape ?? "square"}
+        value={grid.shape ?? DEFAULT_GRID_SHAPE}
         onChange={(e) => onShapeChange(e.target.value)}
         style={{ width: 80 }}
         disabled={!grid.visible}
       >
-        {GRID_SHAPES.map((s) => (
-          <option key={s.value} value={s.value}>
+        {listGridShapes().map((s) => (
+          <option key={s.id} value={s.id}>
             {s.label}
           </option>
         ))}

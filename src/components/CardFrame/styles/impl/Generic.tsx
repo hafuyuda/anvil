@@ -1,8 +1,26 @@
 import { SIZE_MAP } from "../../types";
-import type { CardStyleDef, CardStyleProps } from "../types";
+import type { CardStyleDef, CardStyleProps, SlotDef } from "../types";
 import { CardImage } from "../../primitives/CardImage";
 import { CardShell } from "../../primitives/CardShell";
 import { CardInner } from "../../primitives/CardInner";
+import { readText, readStat, readBody, readImage } from "../slotUtils";
+
+const GENERIC_SLOTS: SlotDef[] = [
+  {
+    key: "title",
+    kind: "text",
+    label: "标题字段（留空用卡名）",
+    defaultSource: "name",
+  },
+  { key: "subtitle", kind: "text", label: "副标题" },
+  { key: "image", kind: "image", label: "图像字段" },
+  { key: "level", kind: "stat", label: "等级字段", defaultStatLabel: "★" },
+  { key: "type_line", kind: "text", label: "类型行（留空用类型名）" },
+  { key: "atk", kind: "stat", label: "攻击字段", defaultStatLabel: "ATK" },
+  { key: "def", kind: "stat", label: "防御字段", defaultStatLabel: "DEF" },
+  { key: "hp", kind: "stat", label: "HP 字段", defaultStatLabel: "HP" },
+  { key: "body", kind: "body", label: "正文字段（可多选，按选择顺序显示）" },
+];
 
 export function CardFrameGeneric({
   cardType,
@@ -14,17 +32,23 @@ export function CardFrameGeneric({
   const spec = SIZE_MAP[size];
   const accent = cardType.color ?? "var(--card-frame-default-accent)";
 
+  const title = readText(content.slots.title);
+  const subtitle = readText(content.slots.subtitle);
+  const typeLine = readText(content.slots.type_line);
+  const image = readImage(content.slots.image);
+  const level = readStat(content.slots.level);
+  const atk = readStat(content.slots.atk);
+  const def = readStat(content.slots.def);
+  const hp = readStat(content.slots.hp);
+  const bodyLines = readBody(content.slots.body);
   const displayBody =
-    content.body.length > 0 ? content.body : (cardType.description ?? "");
+    bodyLines.length > 0 ? bodyLines.join("\n") : (cardType.description ?? "");
 
   const accentLine = `color-mix(in srgb, ${accent} 45%, transparent)`;
   const accentSoft = `color-mix(in srgb, ${accent} 18%, transparent)`;
   const titleBarBg = `color-mix(in srgb, ${accent} 22%, var(--card-generic-bg))`;
 
-  const hasStats =
-    content.atk !== undefined ||
-    content.def !== undefined ||
-    content.hp !== undefined;
+  const hasStats = atk !== null || def !== null || hp !== null;
 
   return (
     <CardShell
@@ -46,7 +70,6 @@ export function CardFrameGeneric({
         background="var(--card-generic-bg)"
         gap={spec.padding / 2}
       >
-        {/* 标题栏 */}
         <div
           style={{
             display: "flex",
@@ -69,9 +92,9 @@ export function CardFrameGeneric({
               whiteSpace: "nowrap",
               fontFamily: "var(--font-title)",
             }}
-            title={content.title}
+            title={title}
           >
-            {content.title}
+            {title}
           </span>
           <span
             style={{
@@ -85,7 +108,7 @@ export function CardFrameGeneric({
           </span>
         </div>
 
-        {content.subtitle && (
+        {subtitle && (
           <div
             style={{
               fontSize: spec.metaSize,
@@ -96,14 +119,14 @@ export function CardFrameGeneric({
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
             }}
-            title={content.subtitle}
+            title={subtitle}
           >
-            {content.subtitle}
+            {subtitle}
           </div>
         )}
 
         <CardImage
-          path={content.image}
+          path={image}
           crop={content.crop}
           extend={content.extend}
           height={spec.imageHeight}
@@ -121,7 +144,7 @@ export function CardFrameGeneric({
                 userSelect: "none",
               }}
             >
-              {content.title.slice(0, 2) || "?"}
+              {title.slice(0, 2) || "?"}
             </div>
           }
         />
@@ -147,21 +170,21 @@ export function CardFrameGeneric({
               whiteSpace: "nowrap",
               flex: 1,
             }}
-            title={content.typeLine}
+            title={typeLine}
           >
-            {content.typeLine}
+            {typeLine}
           </span>
-          {content.level !== undefined && (
+          {level !== null && (
             <span
               style={{
                 color: "var(--card-generic-text)",
                 fontFamily: "var(--font-mono)",
                 flexShrink: 0,
               }}
-              title={content.levelLabel}
+              title={level.label ?? undefined}
             >
-              {content.levelLabel ? `${content.levelLabel} ` : ""}
-              {content.level}
+              {level.label ? `${level.label} ` : ""}
+              {level.value}
             </span>
           )}
         </div>
@@ -210,28 +233,28 @@ export function CardFrameGeneric({
               borderTop: `1px solid ${accentSoft}`,
             }}
           >
-            {content.atk !== undefined && (
+            {atk !== null && (
               <span>
                 <span style={{ color: "var(--card-generic-text-dim)" }}>
-                  {content.atkLabel ?? "ATK"}
+                  {atk.label ?? "ATK"}
                 </span>{" "}
-                {content.atk}
+                {atk.value}
               </span>
             )}
-            {content.def !== undefined && (
+            {def !== null && (
               <span>
                 <span style={{ color: "var(--card-generic-text-dim)" }}>
-                  {content.defLabel ?? "DEF"}
+                  {def.label ?? "DEF"}
                 </span>{" "}
-                {content.def}
+                {def.value}
               </span>
             )}
-            {content.hp !== undefined && (
+            {hp !== null && (
               <span>
                 <span style={{ color: "var(--card-generic-text-dim)" }}>
-                  {content.hpLabel ?? "HP"}
+                  {hp.label ?? "HP"}
                 </span>{" "}
-                {content.hp}
+                {hp.value}
               </span>
             )}
           </div>
@@ -245,4 +268,5 @@ export default {
   id: "generic",
   label: "通用",
   Component: CardFrameGeneric,
+  slots: GENERIC_SLOTS,
 } satisfies CardStyleDef;

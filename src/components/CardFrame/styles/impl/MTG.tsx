@@ -1,8 +1,25 @@
 import { SIZE_MAP } from "../../types";
-import type { CardStyleDef, CardStyleProps } from "../types";
+import type { CardStyleDef, CardStyleProps, SlotDef } from "../types";
 import { CardImage } from "../../primitives/CardImage";
 import { CardShell } from "../../primitives/CardShell";
 import { CardInner } from "../../primitives/CardInner";
+import { readText, readStat, readBody, readImage } from "../slotUtils";
+
+const MTG_SLOTS: SlotDef[] = [
+  {
+    key: "title",
+    kind: "text",
+    label: "标题字段（留空用卡名）",
+    defaultSource: "name",
+  },
+  { key: "image", kind: "image", label: "图像字段" },
+  { key: "type_line", kind: "text", label: "类型行（留空用类型名）" },
+  { key: "level", kind: "stat", label: "等级字段", defaultStatLabel: "等级" },
+  { key: "atk", kind: "stat", label: "攻击字段", defaultStatLabel: "ATK" },
+  { key: "def", kind: "stat", label: "防御字段", defaultStatLabel: "DEF" },
+  { key: "hp", kind: "stat", label: "HP 字段", defaultStatLabel: "HP" },
+  { key: "body", kind: "body", label: "正文字段（可多选，按选择顺序显示）" },
+];
 
 export function CardFrameMTG({
   cardType,
@@ -14,19 +31,23 @@ export function CardFrameMTG({
   const spec = SIZE_MAP[size];
   const accent = cardType.color ?? "var(--card-frame-default-accent)";
 
+  const title = readText(content.slots.title);
+  const typeLine = readText(content.slots.type_line);
+  const image = readImage(content.slots.image);
+  const level = readStat(content.slots.level);
+  const atk = readStat(content.slots.atk);
+  const def = readStat(content.slots.def);
+  const hp = readStat(content.slots.hp);
+  const bodyLines = readBody(content.slots.body);
   const displayBody =
-    content.body.length > 0 ? content.body : (cardType.description ?? "");
+    bodyLines.length > 0 ? bodyLines.join("\n") : (cardType.description ?? "");
 
   const accentSoft = `color-mix(in srgb, ${accent} 40%, transparent)`;
   const accentStrong = `color-mix(in srgb, ${accent} 65%, transparent)`;
   const titleBarBg = `linear-gradient(180deg, ${accent} 0%, color-mix(in srgb, ${accent} 70%, #000) 100%)`;
 
-  const hasStats =
-    content.atk !== undefined ||
-    content.def !== undefined ||
-    content.hp !== undefined;
-
-  const pips = content.level ? Math.min(content.level, 8) : 0;
+  const hasStats = atk !== null || def !== null || hp !== null;
+  const pips = level ? Math.min(level.value, 8) : 0;
 
   return (
     <CardShell
@@ -72,11 +93,11 @@ export function CardFrameMTG({
               fontFamily: "var(--font-title)",
               letterSpacing: 0.3,
             }}
-            title={content.title}
+            title={title}
           >
-            {content.title}
+            {title}
           </span>
-          {pips > 0 && (
+          {pips > 0 && level && (
             <span
               style={{
                 fontSize: spec.metaSize,
@@ -86,7 +107,7 @@ export function CardFrameMTG({
                 marginLeft: 4,
                 letterSpacing: -1,
               }}
-              title={`${content.levelLabel ?? "等级"} ${content.level}`}
+              title={`${level.label ?? "等级"} ${level.value}`}
             >
               {"●".repeat(pips)}
             </span>
@@ -103,13 +124,13 @@ export function CardFrameMTG({
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
           }}
-          title={content.typeLine}
+          title={typeLine}
         >
-          {content.typeLine}
+          {typeLine}
         </div>
 
         <CardImage
-          path={content.image}
+          path={image}
           crop={content.crop}
           extend={content.extend}
           height={spec.imageHeight}
@@ -127,7 +148,7 @@ export function CardFrameMTG({
                 userSelect: "none",
               }}
             >
-              {content.title.slice(0, 2) || "?"}
+              {title.slice(0, 2) || "?"}
             </div>
           }
         />
@@ -179,19 +200,19 @@ export function CardFrameMTG({
                 borderRadius: 2,
               }}
             >
-              {content.atk !== undefined && (
+              {atk !== null && (
                 <span>
-                  {content.atkLabel ?? "ATK"}/{content.atk}
+                  {atk.label ?? "ATK"}/{atk.value}
                 </span>
               )}
-              {content.def !== undefined && (
+              {def !== null && (
                 <span>
-                  {content.defLabel ?? "DEF"}/{content.def}
+                  {def.label ?? "DEF"}/{def.value}
                 </span>
               )}
-              {content.hp !== undefined && (
+              {hp !== null && (
                 <span>
-                  {content.hpLabel ?? "HP"}/{content.hp}
+                  {hp.label ?? "HP"}/{hp.value}
                 </span>
               )}
             </div>
@@ -206,4 +227,5 @@ export default {
   id: "mtg",
   label: "万智牌",
   Component: CardFrameMTG,
+  slots: MTG_SLOTS,
 } satisfies CardStyleDef;

@@ -1,8 +1,18 @@
 import { SIZE_MAP } from "../../types";
-import type { CardStyleDef, CardStyleProps } from "../types";
+import type { CardStyleDef, CardStyleProps, SlotDef } from "../types";
 import { CardImage } from "../../primitives/CardImage";
 import { CardShell } from "../../primitives/CardShell";
 import { CardInner } from "../../primitives/CardInner";
+import { readText, readStat, readBody, readImage } from "../slotUtils";
+
+const POKEMON_SLOTS: SlotDef[] = [
+  { key: "title", kind: "text", label: "标题", defaultSource: "name" },
+  { key: "hp", kind: "stat", label: "HP", defaultStatLabel: "HP" },
+  { key: "type_line", kind: "text", label: "类型行" },
+  { key: "level", kind: "stat", label: "等级" },
+  { key: "body", kind: "body", label: "描述" },
+  { key: "image", kind: "image", label: "图像" },
+];
 
 export function CardFramePokemon({
   cardType,
@@ -14,16 +24,31 @@ export function CardFramePokemon({
   const spec = SIZE_MAP[size];
   const accent = cardType.color ?? "var(--card-frame-default-accent)";
 
+  const title = readText(content.slots.title);
+  const hp = readStat(content.slots.hp);
+  const hpText = hp ? `${hp.label ?? "HP"} ${hp.value}` : null;
+  const typeLine = readText(content.slots.type_line);
+  const level = readStat(content.slots.level);
+  const bodyLines = readBody(content.slots.body);
   const displayBody =
-    content.body.length > 0 ? content.body : (cardType.description ?? "");
+    bodyLines.length > 0 ? bodyLines.join("\n") : (cardType.description ?? "");
+  const imagePath = readImage(content.slots.image);
+
+  // ── 字号缩放（small 缩、large 微放） ──
+  const fontScale = size === "small" ? 0.85 : size === "large" ? 1.05 : 1.0;
+  const titleFontSize = Math.round((spec.titleSize + 1) * fontScale);
+  const statFontSize = Math.round((spec.statSize + 1) * fontScale);
+  const bodyFontSize = Math.round(spec.bodySize * fontScale);
+  const typeFontSize = Math.round(spec.typeSize * fontScale);
+
+  // ── 描述最大行数 ──
+  const bodyClamp = size === "small" ? 3 : 4;
+
+  // ── 过渡渐变高度 ──
+  const transitionHeight = size === "small" ? 12 : size === "large" ? 20 : 16;
 
   const accentStrong = `color-mix(in srgb, ${accent} 70%, #000)`;
   const titleBarBg = `linear-gradient(180deg, color-mix(in srgb, ${accent} 85%, #fff) 0%, ${accent} 100%)`;
-
-  const hpText =
-    content.hp !== undefined
-      ? `${content.hpLabel ?? "HP"} ${content.hp}`
-      : null;
 
   const pad = Math.round(spec.w * 0.05);
   const barPadY = Math.round(spec.h * 0.022);
@@ -65,7 +90,7 @@ export function CardFramePokemon({
         >
           <span
             style={{
-              fontSize: spec.titleSize + 1,
+              fontSize: titleFontSize,
               fontWeight: 700,
               color: "#fff",
               textShadow: "0 1px 1px rgba(0,0,0,0.35)",
@@ -77,14 +102,14 @@ export function CardFramePokemon({
               minWidth: 0,
               lineHeight: 1.15,
             }}
-            title={content.title}
+            title={title}
           >
-            {content.title}
+            {title}
           </span>
           {hpText && (
             <span
               style={{
-                fontSize: spec.statSize + 1,
+                fontSize: statFontSize,
                 fontWeight: 700,
                 color: "var(--card-pokemon-fullart-hp)",
                 fontFamily: "var(--font-mono)",
@@ -108,7 +133,7 @@ export function CardFramePokemon({
           }}
         >
           <CardImage
-            path={content.image}
+            path={imagePath}
             crop={content.crop}
             fullBleed
             borderRadius={0}
@@ -135,7 +160,7 @@ export function CardFramePokemon({
                     userSelect: "none",
                   }}
                 >
-                  {content.title.slice(0, 2) || "?"}
+                  {title.slice(0, 2) || "?"}
                 </div>
               </div>
             }
@@ -155,73 +180,52 @@ export function CardFramePokemon({
               flexDirection: "column",
               gap: 4,
               pointerEvents: "none",
+              maxHeight: "60%",
+              overflow: "hidden",
             }}
           >
+            {/* 面板顶部过渡渐变（覆盖在面板上方） */}
+            <div
+              style={{
+                position: "absolute",
+                left: 0,
+                right: 0,
+                top: 0,
+                height: transitionHeight,
+                transform: "translateY(-100%)",
+                background:
+                  "linear-gradient(0deg, var(--card-pokemon-fullart-panel) 0%, transparent 100%)",
+                pointerEvents: "none",
+              }}
+            />
+
             {displayBody && (
               <div
                 style={{
-                  fontSize: spec.bodySize,
+                  fontSize: bodyFontSize,
                   lineHeight: 1.4,
                   color: "var(--card-pokemon-fullart-text)",
                   textShadow,
                   whiteSpace: "pre-wrap",
+                  display: "-webkit-box",
+                  WebkitLineClamp: bodyClamp,
+                  WebkitBoxOrient: "vertical",
                   overflow: "hidden",
                 }}
-                title={
-                  Array.isArray(displayBody)
-                    ? displayBody.join("\n\n")
-                    : displayBody
-                }
+                title={displayBody}
               >
                 {displayBody}
               </div>
             )}
 
-            {(content.atk !== undefined || content.def !== undefined) && (
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "flex-end",
-                  gap: 10,
-                  fontSize: spec.statSize,
-                  fontWeight: 700,
-                  color: "var(--card-pokemon-fullart-text)",
-                  fontFamily: "var(--font-mono)",
-                  paddingTop: 3,
-                  borderTop: "1px solid var(--card-pokemon-fullart-divider)",
-                  textShadow,
-                }}
-              >
-                {content.atk !== undefined && (
-                  <span>
-                    <span style={{ opacity: 0.75 }}>
-                      {content.atkLabel ?? "ATK"}
-                    </span>{" "}
-                    {content.atk}
-                  </span>
-                )}
-                {content.def !== undefined && (
-                  <span>
-                    <span style={{ opacity: 0.75 }}>
-                      {content.defLabel ?? "DEF"}
-                    </span>{" "}
-                    {content.def}
-                  </span>
-                )}
-              </div>
-            )}
-
-            {(content.subtitle ||
-              content.typeLine ||
-              content.level !== undefined) && (
+            {(typeLine || level) && (
               <div
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
                   gap: 6,
-                  fontSize: spec.typeSize,
+                  fontSize: typeFontSize,
                   color: "var(--card-pokemon-fullart-text-dim)",
-                  fontStyle: content.subtitle ? "normal" : "italic",
                   textShadow: "0 1px 2px rgba(0,0,0,0.9)",
                 }}
               >
@@ -232,18 +236,19 @@ export function CardFramePokemon({
                     whiteSpace: "nowrap",
                     flex: 1,
                     minWidth: 0,
+                    fontStyle: typeLine ? "normal" : "italic",
                   }}
-                  title={content.subtitle ?? content.typeLine}
+                  title={typeLine}
                 >
-                  {content.subtitle ?? content.typeLine}
+                  {typeLine}
                 </span>
-                {content.level !== undefined && (
+                {level && (
                   <span
                     style={{ fontFamily: "var(--font-mono)", flexShrink: 0 }}
-                    title={content.levelLabel}
+                    title={level.label ?? undefined}
                   >
-                    {content.levelLabel ? `${content.levelLabel} ` : "Lv "}
-                    {content.level}
+                    {level.label ? `${level.label} ` : "Lv "}
+                    {level.value}
                   </span>
                 )}
               </div>
@@ -259,4 +264,5 @@ export default {
   id: "pokemon",
   label: "宝可梦",
   Component: CardFramePokemon,
+  slots: POKEMON_SLOTS,
 } satisfies CardStyleDef;

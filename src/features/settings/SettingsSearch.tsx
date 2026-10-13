@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { SettingsCategory } from "../../stores/uiStore";
-import { CATEGORIES } from "./categories";
+import { listCategories } from "./categories/registry";
 
 interface Props {
-  onNavigate: (c: SettingsCategory) => void;
+  onNavigate: (c: string) => void;
 }
 
 export function SettingsSearch({ onNavigate }: Props) {
@@ -15,7 +14,7 @@ export function SettingsSearch({ onNavigate }: Props) {
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return [];
-    return CATEGORIES.filter(
+    return listCategories().filter(
       (c) =>
         c.label.toLowerCase().includes(q) ||
         c.keywords.some((k) => k.toLowerCase().includes(q)),
@@ -26,7 +25,7 @@ export function SettingsSearch({ onNavigate }: Props) {
     setActiveIdx(0);
   }, [results.length]);
 
-  function pick(c: SettingsCategory) {
+  function pick(c: string) {
     onNavigate(c);
     setQuery("");
     setOpen(false);
@@ -57,7 +56,7 @@ export function SettingsSearch({ onNavigate }: Props) {
       e.preventDefault();
       e.stopPropagation();
       const r = results[activeIdx];
-      if (r) pick(r.key);
+      if (r) pick(r.id);
     }
   }
 
@@ -127,9 +126,9 @@ export function SettingsSearch({ onNavigate }: Props) {
           ) : (
             results.map((r, i) => (
               <button
-                key={r.key}
+                key={r.id}
                 onMouseDown={(e) => e.preventDefault()}
-                onClick={() => pick(r.key)}
+                onClick={() => pick(r.id)}
                 onMouseEnter={() => setActiveIdx(i)}
                 style={{
                   display: "flex",

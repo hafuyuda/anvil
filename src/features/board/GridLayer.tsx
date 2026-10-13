@@ -1,4 +1,5 @@
 import type { GridConfig } from "../../core/ipc";
+import { getGridShape } from "./grid/registry";
 
 interface Props {
   grid: GridConfig;
@@ -8,62 +9,13 @@ interface Props {
 
 /**
  * 棋盘网格 SVG 层。
- * 支持 4 种形状：方格 / 点阵 / 横线 / 竖线。
+ * 形状由 grid/registry 分派（方格 / 点阵 / 横线 / 竖线 / 未来扩展），
+ * 未知 shape 回退 square。
  */
 export function GridLayer({ grid, width, height }: Props) {
   if (!grid.visible || grid.size <= 0) return null;
 
-  const step = grid.size;
-  const shape = grid.shape ?? "square";
-  const elements: React.ReactNode[] = [];
-
-  if (shape === "square" || shape === "vertical") {
-    for (let x = 0; x <= width; x += step) {
-      elements.push(
-        <line
-          key={`vx${x}`}
-          x1={x}
-          y1={0}
-          x2={x}
-          y2={height}
-          stroke="var(--border-subtle)"
-          strokeWidth={0.5}
-        />,
-      );
-    }
-  }
-
-  if (shape === "square" || shape === "horizontal") {
-    for (let y = 0; y <= height; y += step) {
-      elements.push(
-        <line
-          key={`hy${y}`}
-          x1={0}
-          y1={y}
-          x2={width}
-          y2={y}
-          stroke="var(--border-subtle)"
-          strokeWidth={0.5}
-        />,
-      );
-    }
-  }
-
-  if (shape === "dots") {
-    for (let x = 0; x <= width; x += step) {
-      for (let y = 0; y <= height; y += step) {
-        elements.push(
-          <circle
-            key={`d${x}-${y}`}
-            cx={x}
-            cy={y}
-            r={1}
-            fill="var(--border-default)"
-          />,
-        );
-      }
-    }
-  }
+  const def = getGridShape(grid.shape);
 
   return (
     <svg
@@ -71,7 +23,13 @@ export function GridLayer({ grid, width, height }: Props) {
       height={height}
       style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
     >
-      {elements}
+      {def.render({
+        size: grid.size,
+        width,
+        height,
+        offsetX: grid.offset_x,
+        offsetY: grid.offset_y,
+      })}
     </svg>
   );
 }

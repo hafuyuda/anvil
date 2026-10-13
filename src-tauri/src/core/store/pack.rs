@@ -210,9 +210,10 @@ impl Project {
     fn merge_pack_from(&self, temp: &Path, options: &MergeOptions) -> anyhow::Result<MergeResult> {
         let now = crate::core::util::now_ms();
 
-        // ── 1. 读对方的类型定义 ──
-        let remote_types: Vec<crate::core::model::card_type::CardType> =
-            read_json_or_default(&temp.join("types").join("card_types.json"))?;
+        // ── 1. 读对方的类型定义（旧包先跑 JSON 迁移） ──
+        let remote_types = crate::core::model::card_type::read_card_types_migrated(
+            &temp.join("types").join("card_types.json"),
+        )?;
         let remote_kinds: Vec<crate::core::model::relation_kind::RelationKind> =
             read_json_or_default(&temp.join("types").join("relation_kinds.json"))?;
 

@@ -1,11 +1,29 @@
 import { SIZE_MAP } from "../../types";
-import type { CardStyleDef, CardStyleProps } from "../types";
+import type { CardStyleDef, CardStyleProps, SlotDef } from "../types";
 import { CardImage } from "../../primitives/CardImage";
 import { CardShell } from "../../primitives/CardShell";
 import { CardInner } from "../../primitives/CardInner";
+import { readText, readStat, readBody, readImage } from "../slotUtils";
 
 const RAINBOW_GRADIENT =
   "linear-gradient(135deg, var(--card-rainbow-1) 0%, var(--card-rainbow-2) 18%, var(--card-rainbow-3) 36%, var(--card-rainbow-4) 54%, var(--card-rainbow-5) 72%, var(--card-rainbow-6) 86%, var(--card-rainbow-7) 100%)";
+
+const RAINBOW_SLOTS: SlotDef[] = [
+  {
+    key: "title",
+    kind: "text",
+    label: "标题字段（留空用卡名）",
+    defaultSource: "name",
+  },
+  { key: "subtitle", kind: "text", label: "副标题" },
+  { key: "image", kind: "image", label: "图像字段" },
+  { key: "level", kind: "stat", label: "等级字段", defaultStatLabel: "★" },
+  { key: "type_line", kind: "text", label: "类型行（留空用类型名）" },
+  { key: "atk", kind: "stat", label: "攻击字段", defaultStatLabel: "ATK" },
+  { key: "def", kind: "stat", label: "防御字段", defaultStatLabel: "DEF" },
+  { key: "hp", kind: "stat", label: "HP 字段", defaultStatLabel: "HP" },
+  { key: "body", kind: "body", label: "正文字段（可多选，按选择顺序显示）" },
+];
 
 export function CardFrameRainbow({
   cardType,
@@ -17,16 +35,22 @@ export function CardFrameRainbow({
   const spec = SIZE_MAP[size];
   const accent = cardType.color ?? "var(--card-frame-default-accent)";
 
+  const title = readText(content.slots.title);
+  const subtitle = readText(content.slots.subtitle);
+  const typeLine = readText(content.slots.type_line);
+  const image = readImage(content.slots.image);
+  const level = readStat(content.slots.level);
+  const atk = readStat(content.slots.atk);
+  const def = readStat(content.slots.def);
+  const hp = readStat(content.slots.hp);
+  const bodyLines = readBody(content.slots.body);
   const displayBody =
-    content.body.length > 0 ? content.body : (cardType.description ?? "");
+    bodyLines.length > 0 ? bodyLines.join("\n") : (cardType.description ?? "");
 
   const borderSoft = `color-mix(in srgb, ${accent} 35%, transparent)`;
-  const stars = content.level ? "★".repeat(Math.min(content.level, 12)) : "";
+  const stars = level ? "★".repeat(Math.min(level.value, 12)) : "";
 
-  const hasStats =
-    content.atk !== undefined ||
-    content.def !== undefined ||
-    content.hp !== undefined;
+  const hasStats = atk !== null || def !== null || hp !== null;
 
   return (
     <CardShell
@@ -47,7 +71,6 @@ export function CardFrameRainbow({
         background="var(--card-rainbow-bg)"
         gap={spec.padding / 2}
       >
-        {/* 标题栏 */}
         <div
           style={{
             display: "flex",
@@ -70,9 +93,9 @@ export function CardFrameRainbow({
               whiteSpace: "nowrap",
               fontFamily: "var(--font-title)",
             }}
-            title={content.title}
+            title={title}
           >
-            {content.title}
+            {title}
           </span>
           <span
             style={{
@@ -87,7 +110,7 @@ export function CardFrameRainbow({
           </span>
         </div>
 
-        {content.subtitle && (
+        {subtitle && (
           <div
             style={{
               fontSize: spec.metaSize,
@@ -100,14 +123,14 @@ export function CardFrameRainbow({
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
             }}
-            title={content.subtitle}
+            title={subtitle}
           >
-            {content.subtitle}
+            {subtitle}
           </div>
         )}
 
         <CardImage
-          path={content.image}
+          path={image}
           crop={content.crop}
           extend={content.extend}
           height={spec.imageHeight}
@@ -129,12 +152,12 @@ export function CardFrameRainbow({
                 userSelect: "none",
               }}
             >
-              {content.title.slice(0, 2) || "?"}
+              {title.slice(0, 2) || "?"}
             </div>
           }
         />
 
-        {stars && (
+        {stars && level && (
           <div
             style={{
               display: "flex",
@@ -146,7 +169,7 @@ export function CardFrameRainbow({
               flexShrink: 0,
             }}
           >
-            {content.levelLabel && (
+            {level.label && (
               <span
                 style={{
                   color: "var(--card-rainbow-text-dim)",
@@ -154,7 +177,7 @@ export function CardFrameRainbow({
                   fontSize: spec.metaSize,
                 }}
               >
-                {content.levelLabel}
+                {level.label}
               </span>
             )}
             <span
@@ -187,9 +210,9 @@ export function CardFrameRainbow({
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
           }}
-          title={content.typeLine}
+          title={typeLine}
         >
-          {content.typeLine}
+          {typeLine}
         </div>
 
         <div
@@ -240,19 +263,19 @@ export function CardFrameRainbow({
                 borderRadius: 2,
               }}
             >
-              {content.atk !== undefined && (
+              {atk !== null && (
                 <span>
-                  {content.atkLabel ?? "ATK"}/{content.atk}
+                  {atk.label ?? "ATK"}/{atk.value}
                 </span>
               )}
-              {content.def !== undefined && (
+              {def !== null && (
                 <span>
-                  {content.defLabel ?? "DEF"}/{content.def}
+                  {def.label ?? "DEF"}/{def.value}
                 </span>
               )}
-              {content.hp !== undefined && (
+              {hp !== null && (
                 <span>
-                  {content.hpLabel ?? "HP"}/{content.hp}
+                  {hp.label ?? "HP"}/{hp.value}
                 </span>
               )}
             </div>
@@ -267,4 +290,5 @@ export default {
   id: "rainbow",
   label: "彩虹",
   Component: CardFrameRainbow,
+  slots: RAINBOW_SLOTS,
 } satisfies CardStyleDef;

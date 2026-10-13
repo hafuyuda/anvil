@@ -264,7 +264,7 @@ src/
 
 3. **文本真相源。** 项目是一个文件夹，文本文件（JSON / JSONL / Markdown）是唯一真相源。SQLite（`.anvil/index.db`）是可删除、可重建的索引。
 
-4. **字段只增不减。** `FieldDef` 删除时用 `deprecated = true`，不真删。新增 Rust 结构体字段用 `#[serde(default)]`，保证旧项目文件能读。
+4. **字段只增不减。** `FieldDef` 删除时用 `deprecated = true`，不真删。新增 Rust 结构体字段用 `#[serde(default)]`，保证旧项目文件能读。CardFrameConfig 的 legacy 字段已在 0.3 迁移中删除，属于一次性的破坏性迁移，有 schema_version 保护
 
 ### 前端架构
 
@@ -314,7 +314,7 @@ src/
     - 风格组件**只接收 `content`**
     - `CardFrame/index.tsx` 组装：算 content + features → 分派风格 → 需要时包 `FoilOverlay`
 
-19. **加新卡框风格**只加一个文件：在 `styles/impl/` 下新建 `.tsx`，默认导出 `CardStyleDef`（`id` / `label` / `Component`）。注册表用 `import.meta.glob` 自动发现，无需改 `types.ts` / 标签表 / `index.tsx`。卡背同理，放 `primitives/back-styles/impl/`，默认导出 `CardBackStyleDef`。
+19. **加新卡框风格**只加一个文件：在 `styles/impl/` 下新建 `.tsx`，默认导出 `CardStyleDef`（`id` / `label` / `Component`）。注册表用 `import.meta.glob` 自动发现，无需改 `types.ts` / 标签表 / `index.tsx`。卡背同理，放 `primitives/back-styles/impl/`，默认导出 `CardBackStyleDef`。需要在 impl/*.tsx 里默认导出的 def 上声明 slots
 
 20. **加新闪卡效果**只加一个文件：在 `primitives/foil-styles/impl/` 下新建 `.ts`，默认导出 `FoilStyleDef`（`id` / `label` / `css`）。注册表用 `import.meta.glob` 自动发现，CSS 在模块加载时一次性注入。**不改任何卡框风格组件。**
 
@@ -334,9 +334,9 @@ src/
 
 23. **设置层级：项目默认 → 应用默认 → 内置默认。** 项目设了就覆盖应用，项目没设就继承应用。
 
-24. **加设置分类改 4 处**：`uiStore.ts` 的 `SettingsCategory` 联合类型、`categories.ts` 的 `CategoryMeta`、`SettingsPage.tsx` 的 `CategoryContent` switch、新建对应 Panel。
+24. **加设置分类只加一个文件**：在 `features/settings/categories/impl/` 新建 `.tsx`，默认导出 `CategoryDef { id, label, glyph, keywords, requiresProject, order, Panel }`。Vite 自动发现，左 NAV、搜索、`↑↓` 切换、`requiresProject` 过滤全部自动生效。`settingsCategory` 在 store 里是 `string`，未知 id 由注册表回退默认分类（`appearance`），不用改 store / `SettingsPage`。
 
-25. **`SettingsCategory` 联合类型与 `categories.ts` 必须同步。** `categories.ts` 里每个分类要写 `keywords`（给搜索用）和 `requiresProject`（决定未打开项目时是否隐藏）。
+25. **设置分类**：加分类只在 `features/settings/categories/impl/` 下新建一个文件，默认导出 `CategoryDef`。完整模式见 [`docs/REGISTRY_PATTERN.md`](docs/REGISTRY_PATTERN.md)。
 
 26. **应用设置存 `localStorage`**（`anvil.appSettings`）。当前 9 项：`defaultCardFrameStyle` / `typewriterSpeed` / `typewriterEnabled` / `typewriterNarration` / `autoSaveDelayMs` / `recentProjectsMax` / `fontScale` / `playerVolume` / `playerLoop`。后两项**不出现在设置面板**，只由播放器 UI 调。
 

@@ -74,9 +74,9 @@ export function CardEditor({ card, cardType }: Props) {
 
   // 当前卡的图，用于图像覆盖预览
   const cardImagePath: string | null = (() => {
-    const cfg = cardType.card_frame;
-    if (cfg?.image) {
-      const v = draft.values[cfg.image];
+    const imageKey = cardType.card_frame?.bindings?.image?.source;
+    if (imageKey) {
+      const v = draft.values[imageKey];
       if (typeof v === "string" && v.trim()) return v;
     }
     for (const f of visibleFields) {

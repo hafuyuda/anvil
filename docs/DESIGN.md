@@ -161,25 +161,21 @@ pub struct ImageExtend {
 }
 
 pub struct CardFrameConfig {
-    pub style: Option<String>,       // "yugioh" | "generic" | "minimal" | "mtg" | "pokemon"
-    pub title: Option<String>,
-    pub subtitle: Option<String>,
-    pub image: Option<String>,
-    pub image_crop: Option<CropRect>,
-    pub image_extend: Option<ImageExtend>,
-    pub level: Option<String>,
-    pub level_label: Option<String>,
-    pub type_line: Option<String>,
-    pub body: Vec<String>,
-    pub atk: Option<String>,
-    pub atk_label: Option<String>,
-    pub def: Option<String>,
-    pub def_label: Option<String>,
-    pub hp: Option<String>,
-    pub hp_label: Option<String>,
+    #[serde(default)]
+    pub style: Option<String>,
+    /// 槽位绑定：slot_key → SlotBinding。
+    #[serde(default)]
+    pub bindings: BTreeMap<String, SlotBinding>,
+    #[serde(default)]
     pub foil_field: Option<String>,
+    #[serde(default)]
     pub foil_values: Vec<String>,
-    pub foil_style: Option<String>,  // "gold" | "silver"
+    #[serde(default)]
+    pub foil_style: Option<String>,
+    #[serde(default)]
+    pub image_crop: Option<CropRect>,
+    #[serde(default)]
+    pub image_extend: Option<ImageExtend>,
 }
 ```
 
@@ -891,7 +887,7 @@ if (!r.ok) return;
 ---
 
 ## 15. 卡牌渲染
-
+槽位由风格声明，SlotDef 决定编辑器配置项
 ### 15.1 目录结构
 
 ```
@@ -1342,7 +1338,7 @@ world.anvilpack (zip)
 1. **数据 > 视图。** 先想清楚数据模型，再想 UI。
 2. **文本真相源 > 二进制锁定。** 项目可用 git 管理，SQLite 只是索引。
 3. **边界清晰 > 功能快。** `features/cards/` 是共享核心，任何功能不得绕过它私建卡模型。
-4. **格式稳定 > 内部优雅。** 资源包一旦发布，破坏性修改要有迁移路径。
+4. **内部优雅 > 格式稳定。**
 5. **本地优先。** 不引入网络依赖就能完整工作。
 6. **可读的开源项目。** 命名清晰，注释写「为什么」而不是「是什么」。
 7. **内置模块 > 插件。** 四大功能是产品本身，插件只做受限扩展。

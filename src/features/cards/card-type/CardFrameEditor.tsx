@@ -1,9 +1,13 @@
-import type { CardType } from "../../../core/ipc";
+import type { CardType, SlotBinding } from "../../../core/ipc";
 import {
   getCardStyle,
   isCardStyleId,
   listCardStyles,
 } from "../../../components/CardFrame";
+import {
+  DEFAULT_SLOTS,
+  type SlotDef,
+} from "../../../components/CardFrame/styles/types";
 import {
   hasCardBackStyle,
   listCardBackStyles,
@@ -42,16 +46,20 @@ export function CardFrameEditor({
   onChangeColor,
   onChangeCardBack,
 }: Props) {
-  const cfg = cardType.card_frame ?? { body: [], foil_values: [] };
+  const cfg = cardType.card_frame ?? {
+    bindings: {},
+    foil_values: [],
+  };
   const fields = cardType.fields.filter((f) => !f.deprecated);
 
   const cards = useProjectStore((s) => s.cards) ?? [];
 
   const sampleImagePath: string | null = (() => {
     const typeCards = cards.filter((c) => c.type_id === cardType.id);
+    const imageKey = cfg.bindings?.image?.source;
     for (const card of typeCards) {
-      if (cfg.image) {
-        const v = card.values[cfg.image];
+      if (imageKey) {
+        const v = card.values[imageKey];
         if (typeof v === "string" && v.trim()) return v;
       }
       for (const f of fields) {
@@ -65,8 +73,9 @@ export function CardFrameEditor({
   })();
 
   const styleValue: string | null = isCardStyleId(cfg.style) ? cfg.style : null;
+  const styleDef = getCardStyle(styleValue);
+  const slots: SlotDef[] = styleDef.slots ?? DEFAULT_SLOTS;
 
-  // 卡背：已注册风格 id 走下拉；图片路径（旧数据）显示原始值
   const backIsImage =
     cardType.card_back != null && !hasCardBackStyle(cardType.card_back);
   const backStyleValue: string | null = backIsImage
@@ -78,6 +87,145 @@ export function CardFrameEditor({
     value: NonNullable<CardType["card_frame"]>[K],
   ) {
     onChange({ ...cfg, [key]: value });
+  }
+
+  function patchBinding(slotKey: string, patch: Partial<SlotBinding>) {
+    const bindings = { ...(cfg.bindings ?? {}) };
+    const existing = bindings[slotKey] ?? { values: [] };
+    bindings[slotKey] = { ...existing, ...patch };
+    set("bindings", bindings);
+  }
+
+  function getSource(slotKey: string): string | null {
+    return (cfg.bindings ?? {})[slotKey]?.source ?? null;
+  }
+
+  function getLabel(slotKey: string): string {
+    return (cfg.bindings ?? {})[slotKey]?.label ?? "";
+  }
+
+  function getValues(slotKey: string): string[] {
+    return (cfg.bindings ?? {})[slotKey]?.values ?? [];
+  }
+
+  function renderSlot(slot: SlotDef) {
+    // body：多选列表，跨两列
+    if (slot.kind === "body") {
+      const values = getValues(slot.key);
+      return (
+        <div key={slot.key} style={{ gridColumn: "1 / -1" }}>
+          <div
+            style={{
+              fontSize: 12,
+              color: "var(--fg-muted)",
+              marginBottom: 4,
+            }}
+          >
+            {slot.label}
+          </div>
+          <div
+            style={{
+              maxHeight: 160,
+              overflow: "auto",
+              border: "1px solid var(--border-subtle)",
+              padding: 6,
+              borderRadius: "var(--radius-md)",
+              background: "var(--bg-surface)",
+            }}
+          >
+            {fields.length === 0 && (
+              <div
+                style={{
+                  fontSize: 12,
+                  color: "var(--fg-muted)",
+                  padding: 4,
+                }}
+              >
+                暂无字段
+              </div>
+            )}
+            {fields.map((f) => {
+              const checked = values.includes(f.key);
+              return (
+                <label
+                  key={f.key}
+                  style={{
+                    display: "flex",
+                    gap: 6,
+                    fontSize: 12,
+                    color: "var(--fg-secondary)",
+                    cursor: "pointer",
+                    padding: "2px 0",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={(e) => {
+                      const next = e.target.checked
+                        ? [...values, f.key]
+                        : values.filter((k) => k !== f.key);
+                      patchBinding(slot.key, { values: next });
+                    }}
+                    style={{ accentColor: "var(--accent-gold)" }}
+                  />
+                  {f.label}（{f.key}）
+                </label>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    // 选项来源按 slot 类型过滤
+    const fieldOptions =
+      slot.kind === "image"
+        ? fields.filter((f) => f.ty.kind === "image")
+        : slot.kind === "stat"
+          ? fields.filter((f) => f.ty.kind === "number")
+          : fields;
+
+    // stat：字段 + 显示名，两列子 grid
+    if (slot.kind === "stat") {
+      return (
+        <div
+          key={slot.key}
+          style={{
+            gridColumn: "1 / -1",
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 8,
+          }}
+        >
+          <FieldSelect
+            label={slot.label}
+            value={getSource(slot.key)}
+            onChange={(v) => patchBinding(slot.key, { source: v })}
+            options={fieldOptions}
+          />
+          <LabeledInput
+            label="显示名"
+            value={getLabel(slot.key)}
+            onChange={(v) => patchBinding(slot.key, { label: v || null })}
+            placeholder={
+              slot.defaultStatLabel ? `默认 ${slot.defaultStatLabel}` : ""
+            }
+          />
+        </div>
+      );
+    }
+
+    // text / image：单字段选择
+    return (
+      <FieldSelect
+        key={slot.key}
+        label={slot.label}
+        value={getSource(slot.key)}
+        onChange={(v) => patchBinding(slot.key, { source: v })}
+        options={fieldOptions}
+      />
+    );
   }
 
   return (
@@ -152,6 +300,7 @@ export function CardFrameEditor({
         />
       </div>
 
+      {/* 槽位配置（按当前风格的 slots 动态生成） */}
       <div
         style={{
           display: "grid",
@@ -159,30 +308,7 @@ export function CardFrameEditor({
           gap: 8,
         }}
       >
-        <FieldSelect
-          label="标题字段（留空用卡名）"
-          value={cfg.title}
-          onChange={(v) => set("title", v)}
-          options={fields}
-        />
-        <FieldSelect
-          label="副标题"
-          value={cfg.subtitle}
-          onChange={(v) => set("subtitle", v)}
-          options={fields}
-        />
-        <FieldSelect
-          label="类型行（留空用类型名）"
-          value={cfg.type_line}
-          onChange={(v) => set("type_line", v)}
-          options={fields}
-        />
-        <FieldSelect
-          label="图像字段"
-          value={cfg.image}
-          onChange={(v) => set("image", v)}
-          options={fields.filter((f) => f.ty.kind === "image")}
-        />
+        {slots.map(renderSlot)}
       </div>
 
       {/* 图像裁剪 */}
@@ -208,147 +334,6 @@ export function CardFrameEditor({
         value={cfg.image_extend ?? null}
         onChange={(v) => set("image_extend", v)}
       />
-
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: 8,
-        }}
-      >
-        <FieldSelect
-          label="等级字段"
-          value={cfg.level}
-          onChange={(v) => set("level", v)}
-          options={fields.filter((f) => f.ty.kind === "number")}
-        />
-        <LabeledInput
-          label="等级显示名（留空用星号）"
-          value={cfg.level_label ?? ""}
-          onChange={(v) => set("level_label", v || null)}
-          placeholder="例如：LV"
-        />
-      </div>
-
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: 8,
-        }}
-      >
-        <FieldSelect
-          label="攻击字段"
-          value={cfg.atk}
-          onChange={(v) => set("atk", v)}
-          options={fields.filter((f) => f.ty.kind === "number")}
-        />
-        <LabeledInput
-          label="攻击显示名（默认 ATK）"
-          value={cfg.atk_label ?? ""}
-          onChange={(v) => set("atk_label", v || null)}
-          placeholder="例如：伤害"
-        />
-      </div>
-
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: 8,
-        }}
-      >
-        <FieldSelect
-          label="防御字段"
-          value={cfg.def}
-          onChange={(v) => set("def", v)}
-          options={fields.filter((f) => f.ty.kind === "number")}
-        />
-        <LabeledInput
-          label="防御显示名（默认 DEF）"
-          value={cfg.def_label ?? ""}
-          onChange={(v) => set("def_label", v || null)}
-          placeholder="例如：价值"
-        />
-      </div>
-
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: 8,
-        }}
-      >
-        <FieldSelect
-          label="HP 字段"
-          value={cfg.hp}
-          onChange={(v) => set("hp", v)}
-          options={fields.filter((f) => f.ty.kind === "number")}
-        />
-        <LabeledInput
-          label="HP 显示名（默认 HP）"
-          value={cfg.hp_label ?? ""}
-          onChange={(v) => set("hp_label", v || null)}
-          placeholder="例如：生命"
-        />
-      </div>
-
-      <div>
-        <div
-          style={{
-            fontSize: 12,
-            color: "var(--fg-muted)",
-            marginBottom: 4,
-          }}
-        >
-          正文字段（可多选，按选择顺序显示）
-        </div>
-        <div
-          style={{
-            maxHeight: 160,
-            overflow: "auto",
-            border: "1px solid var(--border-subtle)",
-            padding: 6,
-            borderRadius: "var(--radius-md)",
-            background: "var(--bg-surface)",
-          }}
-        >
-          {fields.length === 0 && (
-            <div style={{ fontSize: 12, color: "var(--fg-muted)", padding: 4 }}>
-              暂无字段
-            </div>
-          )}
-          {fields.map((f) => {
-            const checked = cfg.body.includes(f.key);
-            return (
-              <label
-                key={f.key}
-                style={{
-                  display: "flex",
-                  gap: 6,
-                  fontSize: 12,
-                  color: "var(--fg-secondary)",
-                  cursor: "pointer",
-                  padding: "2px 0",
-                }}
-              >
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={(e) => {
-                    const body = e.target.checked
-                      ? [...cfg.body, f.key]
-                      : cfg.body.filter((k) => k !== f.key);
-                    set("body", body);
-                  }}
-                  style={{ accentColor: "var(--accent-gold)" }}
-                />
-                {f.label}（{f.key}）
-              </label>
-            );
-          })}
-        </div>
-      </div>
 
       {/* 闪卡触发 */}
       <FoilTriggerRow

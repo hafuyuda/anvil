@@ -83,6 +83,8 @@
   - 类型编辑器和项目设置的「卡背」字段从图片上传改为风格下拉；旧图片数据保留兼容，显示提示条 + 清除按钮
   - 未知 id 回退 `anvil`，不崩
 - 宝可梦卡框改为全图卡面：实体标题栏（类型色）+ 全图 + 底部半透明技能面板
+- 卡框配置从 20 个固定字段改为 `bindings` 槽位映射，槽位由风格声明
+- 加新卡框风格只需声明 `slots`，编辑器自动生成配置项
 
 ### 内部
 
@@ -105,6 +107,9 @@
 - 前端新增 `hooks/useAddPreset.ts` · `features/project/AddPresetDialog.tsx`；`TopBar` `MenuItem` 加 `disabled` prop
 - 闪卡风格改为注册表 + `import.meta.glob` 自动发现，新增风格只加一个文件
 - 新增 `primitives/foil-styles/`（`types.ts` · `registry.ts` · `impl/*.ts`）；`FoilOverlay` 改为 className 结构，金/银/彩虹 CSS 迁入 impl
+- `CardFrameConfig` 删除 legacy 字段，`schema_version` 升到 `0.3`
+- 新增 `styles/slotUtils.ts` · `model/card_type.rs::migrate_card_frame_json`
+- 6 个风格全部改为读 `content.slots`
 
 ## [0.2.0] - 2026-10-09
 

@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { useUIStore, type SettingsCategory } from "../../stores/uiStore";
+import { useUIStore } from "../../stores/uiStore";
 import { useProjectStore } from "../../stores/projectStore";
-import { CATEGORIES, type CategoryMeta } from "./categories";
-import { ProjectGeneralPanel } from "./ProjectGeneralPanel";
-import { ProjectResourcesPanel } from "./ProjectResourcesPanel";
-import { AppearancePanel } from "./AppearancePanel";
-import { EditorPanel } from "./EditorPanel";
-import { AdvancedPanel } from "./AdvancedPanel";
+import {
+  DEFAULT_SETTINGS_CATEGORY,
+  getCategory,
+  listCategories,
+  type CategoryDef,
+} from "./categories/registry";
 import { SettingsSearch } from "./SettingsSearch";
 import { ipc } from "../../core/ipc";
 import { nowMs } from "../../lib/time";
@@ -26,14 +26,14 @@ export function SettingsPage() {
   const close = useUIStore((s) => s.closeSettings);
 
   const visibleCategories = useMemo(
-    () => CATEGORIES.filter((c) => !c.requiresProject || projectPath),
+    () => listCategories().filter((c) => !c.requiresProject || !!projectPath),
     [projectPath],
   );
 
   // 默认 / 失效分类 → 第一个可见
   useEffect(() => {
-    if (category && visibleCategories.some((c) => c.key === category)) return;
-    setCategory(visibleCategories[0]?.key ?? "appearance");
+    if (category && visibleCategories.some((c) => c.id === category)) return;
+    setCategory(visibleCategories[0]?.id ?? DEFAULT_SETTINGS_CATEGORY);
   }, [category, visibleCategories, setCategory]);
 
   // 键盘：Esc 关闭；↑↓ 切分类
@@ -54,13 +54,13 @@ export function SettingsPage() {
 
       if (e.key === "ArrowUp" || e.key === "ArrowDown") {
         e.preventDefault();
-        const idx = visibleCategories.findIndex((c) => c.key === category);
+        const idx = visibleCategories.findIndex((c) => c.id === category);
         if (idx < 0) return;
         const next =
           e.key === "ArrowDown"
             ? (idx + 1) % visibleCategories.length
             : (idx - 1 + visibleCategories.length) % visibleCategories.length;
-        setCategory(visibleCategories[next].key);
+        setCategory(visibleCategories[next].id);
       }
     }
     window.addEventListener("keydown", onKey);
@@ -207,10 +207,10 @@ export function SettingsPage() {
           >
             {visibleCategories.map((c) => (
               <CategoryItem
-                key={c.key}
+                key={c.id}
                 category={c}
-                active={category === c.key}
-                onClick={() => setCategory(c.key)}
+                active={category === c.id}
+                onClick={() => setCategory(c.id)}
               />
             ))}
           </div>
@@ -244,7 +244,7 @@ function CategoryItem({
   active,
   onClick,
 }: {
-  category: CategoryMeta;
+  category: CategoryDef;
   active: boolean;
   onClick: () => void;
 }) {
@@ -298,21 +298,10 @@ function CategoryContent({
   category,
   onSaveTheme,
 }: {
-  category: SettingsCategory;
+  category: string;
   onSaveTheme: (id: string | null) => Promise<void>;
 }) {
-  switch (category) {
-    case "general":
-      return <ProjectGeneralPanel />;
-    case "appearance":
-      return <AppearancePanel onSaveTheme={onSaveTheme} />;
-    case "resources":
-      return <ProjectResourcesPanel />;
-    case "editor":
-      return <EditorPanel />;
-    case "advanced":
-      return <AdvancedPanel />;
-    default:
-      return null;
-  }
+  // 未知 id 由 getCategory 回退默认分类；Panel 分派不再需要 switch。
+  const { Panel } = getCategory(category);
+  return <Panel onSaveTheme={onSaveTheme} />;
 }

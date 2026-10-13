@@ -2,23 +2,23 @@ import type { Card, CardType, CropRect, ImageExtend } from "../../core/ipc";
 import { hasFoilStyle } from "./primitives/foil-styles/registry";
 
 /**
+ * 槽位值：由 `CardContent` 旧字段镜像而来。
+ * 阶段 2 只做「旧字段 → slots」的只读镜像，
+ * 阶段 3 起由 `CardType.card_frame.bindings` 驱动。
+ */
+export type SlotValue =
+  | { kind: "text"; text: string }
+  | { kind: "stat"; value: number; label: string | null }
+  | { kind: "body"; lines: string[] }
+  | { kind: "image"; path: string | null };
+
+/**
  * 卡牌的「内容」——从 Card.values 里提取的显示数据。
  * 不涉及该不该显示、怎么显示。
  */
 export interface CardContent {
-  title: string;
-  subtitle?: string;
-  typeLine: string;
-  level?: number;
-  levelLabel?: string;
-  atk?: number;
-  atkLabel?: string;
-  def?: number;
-  defLabel?: string;
-  hp?: number;
-  hpLabel?: string;
-  body: string;
-  image?: string;
+  /** 槽位视图：风格组件唯一读取入口 */
+  slots: Record<string, SlotValue>;
 }
 
 /**
@@ -44,53 +44,99 @@ export function mapContent(card: Card, cardType: CardType): CardContent {
   return contentFallback(card, cardType);
 }
 
+interface SlotInput {
+  title: string;
+  subtitle?: string;
+  typeLine: string;
+  level?: number;
+  levelLabel?: string;
+  atk?: number;
+  atkLabel?: string;
+  def?: number;
+  defLabel?: string;
+  hp?: number;
+  hpLabel?: string;
+  bodyLines: string[];
+  image?: string;
+}
+
+function buildSlots(input: SlotInput): Record<string, SlotValue> {
+  const slots: Record<string, SlotValue> = {};
+
+  if (input.title) {
+    slots.title = { kind: "text", text: input.title };
+  }
+  if (input.subtitle) {
+    slots.subtitle = { kind: "text", text: input.subtitle };
+  }
+  if (input.typeLine) {
+    slots.type_line = { kind: "text", text: input.typeLine };
+  }
+  if (input.level !== undefined) {
+    slots.level = {
+      kind: "stat",
+      value: input.level,
+      label: input.levelLabel ?? null,
+    };
+  }
+  if (input.atk !== undefined) {
+    slots.atk = {
+      kind: "stat",
+      value: input.atk,
+      label: input.atkLabel ?? null,
+    };
+  }
+  if (input.def !== undefined) {
+    slots.def = {
+      kind: "stat",
+      value: input.def,
+      label: input.defLabel ?? null,
+    };
+  }
+  if (input.hp !== undefined) {
+    slots.hp = {
+      kind: "stat",
+      value: input.hp,
+      label: input.hpLabel ?? null,
+    };
+  }
+  if (input.bodyLines.length > 0) {
+    slots.body = { kind: "body", lines: [...input.bodyLines] };
+  }
+  if (input.image) {
+    slots.image = { kind: "image", path: input.image };
+  }
+
+  return slots;
+}
+
 function contentFromConfig(
   card: Card,
   cardType: CardType,
   cfg: NonNullable<CardType["card_frame"]>,
 ): CardContent {
-  const title =
-    cfg.title && typeof card.values[cfg.title] === "string"
-      ? (card.values[cfg.title] as string)
-      : card.name;
+  const bindings = cfg.bindings ?? {};
 
-  const subtitle =
-    cfg.subtitle && typeof card.values[cfg.subtitle] === "string"
-      ? (card.values[cfg.subtitle] as string)
-      : undefined;
-
-  const level =
-    cfg.level && typeof card.values[cfg.level] === "number"
-      ? (card.values[cfg.level] as number)
-      : undefined;
-
-  const atk =
-    cfg.atk && typeof card.values[cfg.atk] === "number"
-      ? (card.values[cfg.atk] as number)
-      : undefined;
-
-  const def =
-    cfg.def && typeof card.values[cfg.def] === "number"
-      ? (card.values[cfg.def] as number)
-      : undefined;
-
-  const hp =
-    cfg.hp && typeof card.values[cfg.hp] === "number"
-      ? (card.values[cfg.hp] as number)
-      : undefined;
-
+  const title = readString(card, bindings.title?.source) ?? card.name;
+  const subtitle = readString(card, bindings.subtitle?.source);
   const typeLine =
-    cfg.type_line && typeof card.values[cfg.type_line] === "string"
-      ? (card.values[cfg.type_line] as string)
-      : cardType.name;
-
+    readString(card, bindings.type_line?.source) ?? cardType.name;
   const image =
-    cfg.image && typeof card.values[cfg.image] === "string"
-      ? (card.values[cfg.image] as string)
-      : findImageField(card, cardType);
+    readString(card, bindings.image?.source) ?? findImageField(card, cardType);
 
+  const level = readNumber(card, bindings.level?.source);
+  const atk = readNumber(card, bindings.atk?.source);
+  const def = readNumber(card, bindings.def?.source);
+  const hp = readNumber(card, bindings.hp?.source);
+
+  const levelLabel = bindings.level?.label?.trim() || undefined;
+  const atkLabel = bindings.atk?.label?.trim() || undefined;
+  const defLabel = bindings.def?.label?.trim() || undefined;
+  const hpLabel = bindings.hp?.label?.trim() || undefined;
+
+  const bodySources = bindings.body?.values ?? [];
   const bodyParts: string[] = [];
-  for (const key of cfg.body) {
+  for (const key of bodySources) {
     const v = card.values[key];
     if (typeof v === "string" && v.trim()) {
       bodyParts.push(v);
@@ -99,21 +145,43 @@ function contentFromConfig(
     }
   }
 
-  return {
+  const slots = buildSlots({
     title,
     subtitle,
     typeLine,
     level,
-    levelLabel: cfg.level_label?.trim() || undefined,
+    levelLabel,
     atk,
-    atkLabel: cfg.atk_label?.trim() || undefined,
+    atkLabel,
     def,
-    defLabel: cfg.def_label?.trim() || undefined,
+    defLabel,
     hp,
-    hpLabel: cfg.hp_label?.trim() || undefined,
-    body: bodyParts.join("\n"),
+    hpLabel,
+    bodyLines: bodyParts,
     image,
-  };
+  });
+
+  return { slots };
+}
+
+/** 读字符串值：key 空、值非 string、值空白都返回 undefined */
+function readString(
+  card: Card,
+  key: string | null | undefined,
+): string | undefined {
+  if (!key) return undefined;
+  const v = card.values[key];
+  return typeof v === "string" && v.trim() ? v : undefined;
+}
+
+/** 读数字值：key 空、值非 number 返回 undefined */
+function readNumber(
+  card: Card,
+  key: string | null | undefined,
+): number | undefined {
+  if (!key) return undefined;
+  const v = card.values[key];
+  return typeof v === "number" ? v : undefined;
 }
 
 function contentFallback(card: Card, cardType: CardType): CardContent {
@@ -196,16 +264,18 @@ function contentFallback(card: Card, cardType: CardType): CardContent {
     }
   }
 
-  return {
+  const slots = buildSlots({
     title: card.name,
     typeLine: cardType.name,
     level,
     atk,
     def,
     hp,
-    body: bodyParts.join("\n"),
+    bodyLines: bodyParts,
     image,
-  };
+  });
+
+  return { slots };
 }
 
 function findImageField(card: Card, cardType: CardType): string | undefined {

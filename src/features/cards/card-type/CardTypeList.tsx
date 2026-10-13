@@ -114,7 +114,7 @@ function CardTypeSection() {
       card_frame:
         defaultStyle === "yugioh"
           ? null
-          : { style: defaultStyle, body: [], foil_values: [] },
+          : { style: defaultStyle, bindings: {}, foil_values: [] },
       created_at: now,
       updated_at: now,
     };
@@ -134,7 +134,12 @@ function CardTypeSection() {
     const clonedFrame = t.card_frame
       ? {
           ...t.card_frame,
-          body: [...t.card_frame.body],
+          bindings: Object.fromEntries(
+            Object.entries(t.card_frame.bindings ?? {}).map(([k, v]) => [
+              k,
+              { ...v, values: [...(v.values ?? [])] },
+            ]),
+          ),
           foil_values: [...(t.card_frame.foil_values ?? [])],
         }
       : null;

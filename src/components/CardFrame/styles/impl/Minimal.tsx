@@ -1,6 +1,23 @@
 import { SIZE_MAP } from "../../types";
-import type { CardStyleDef, CardStyleProps } from "../types";
+import type { CardStyleDef, CardStyleProps, SlotDef } from "../types";
 import { CardShell } from "../../primitives/CardShell";
+import { readText, readStat, readBody } from "../slotUtils";
+
+const MINIMAL_SLOTS: SlotDef[] = [
+  {
+    key: "title",
+    kind: "text",
+    label: "标题字段（留空用卡名）",
+    defaultSource: "name",
+  },
+  { key: "subtitle", kind: "text", label: "副标题" },
+  { key: "type_line", kind: "text", label: "类型行（留空用类型名）" },
+  { key: "level", kind: "stat", label: "等级字段", defaultStatLabel: "Lv" },
+  { key: "atk", kind: "stat", label: "攻击字段", defaultStatLabel: "ATK" },
+  { key: "def", kind: "stat", label: "防御字段", defaultStatLabel: "DEF" },
+  { key: "hp", kind: "stat", label: "HP 字段", defaultStatLabel: "HP" },
+  { key: "body", kind: "body", label: "正文字段（可多选，按选择顺序显示）" },
+];
 
 export function CardFrameMinimal({
   cardType,
@@ -12,16 +29,21 @@ export function CardFrameMinimal({
   const spec = SIZE_MAP[size];
   const accent = cardType.color ?? "var(--card-frame-default-accent)";
 
+  const title = readText(content.slots.title);
+  const subtitle = readText(content.slots.subtitle);
+  const typeLine = readText(content.slots.type_line);
+  const level = readStat(content.slots.level);
+  const atk = readStat(content.slots.atk);
+  const def = readStat(content.slots.def);
+  const hp = readStat(content.slots.hp);
+  const bodyLines = readBody(content.slots.body);
   const displayBody =
-    content.body.length > 0 ? content.body : (cardType.description ?? "");
+    bodyLines.length > 0 ? bodyLines.join("\n") : (cardType.description ?? "");
 
   const accentLine = `color-mix(in srgb, ${accent} 55%, transparent)`;
   const accentSoft = `color-mix(in srgb, ${accent} 25%, transparent)`;
 
-  const hasStats =
-    content.atk !== undefined ||
-    content.def !== undefined ||
-    content.hp !== undefined;
+  const hasStats = atk !== null || def !== null || hp !== null;
 
   return (
     <CardShell
@@ -51,12 +73,12 @@ export function CardFrameMinimal({
           flexShrink: 0,
           letterSpacing: 0.3,
         }}
-        title={content.title}
+        title={title}
       >
-        {content.title}
+        {title}
       </div>
 
-      {content.subtitle && (
+      {subtitle && (
         <div
           style={{
             fontSize: spec.metaSize,
@@ -68,9 +90,9 @@ export function CardFrameMinimal({
             flexShrink: 0,
             fontStyle: "italic",
           }}
-          title={content.subtitle}
+          title={subtitle}
         >
-          {content.subtitle}
+          {subtitle}
         </div>
       )}
 
@@ -87,10 +109,10 @@ export function CardFrameMinimal({
           flexShrink: 0,
           fontFamily: "var(--font-mono)",
         }}
-        title={content.typeLine}
+        title={typeLine}
       >
         {cardType.icon ? `${cardType.icon} ` : ""}
-        {content.typeLine}
+        {typeLine}
       </div>
 
       <div
@@ -122,7 +144,7 @@ export function CardFrameMinimal({
         />
       </div>
 
-      {(hasStats || content.level !== undefined) && (
+      {(hasStats || level !== null) && (
         <div
           style={{
             flexShrink: 0,
@@ -146,32 +168,32 @@ export function CardFrameMinimal({
               whiteSpace: "nowrap",
             }}
           >
-            {content.level !== undefined &&
-              `${content.levelLabel ? `${content.levelLabel} ` : "Lv "}${content.level}`}
+            {level !== null &&
+              `${level.label ? `${level.label} ` : "Lv "}${level.value}`}
           </span>
           <span style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-            {content.atk !== undefined && (
+            {atk !== null && (
               <span>
                 <span style={{ color: "var(--card-minimal-text-dim)" }}>
-                  {content.atkLabel ?? "ATK"}
+                  {atk.label ?? "ATK"}
                 </span>{" "}
-                {content.atk}
+                {atk.value}
               </span>
             )}
-            {content.def !== undefined && (
+            {def !== null && (
               <span>
                 <span style={{ color: "var(--card-minimal-text-dim)" }}>
-                  {content.defLabel ?? "DEF"}
+                  {def.label ?? "DEF"}
                 </span>{" "}
-                {content.def}
+                {def.value}
               </span>
             )}
-            {content.hp !== undefined && (
+            {hp !== null && (
               <span>
                 <span style={{ color: "var(--card-minimal-text-dim)" }}>
-                  {content.hpLabel ?? "HP"}
+                  {hp.label ?? "HP"}
                 </span>{" "}
-                {content.hp}
+                {hp.value}
               </span>
             )}
           </span>
@@ -185,4 +207,5 @@ export default {
   id: "minimal",
   label: "极简",
   Component: CardFrameMinimal,
+  slots: MINIMAL_SLOTS,
 } satisfies CardStyleDef;

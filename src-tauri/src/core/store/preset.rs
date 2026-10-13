@@ -68,9 +68,10 @@ impl Project {
     fn import_preset_from(&self, temp: &Path) -> anyhow::Result<MergeResult> {
         let now = crate::core::util::now_ms();
 
-        // ── 1. 读源包类型 ──
-        let remote_types: Vec<CardType> =
-            read_json_or_default(&temp.join("types").join("card_types.json"))?;
+        // ── 1. 读源包类型（旧包先跑 JSON 迁移） ──
+        let remote_types = crate::core::model::card_type::read_card_types_migrated(
+            &temp.join("types").join("card_types.json"),
+        )?;
         let remote_kinds: Vec<RelationKind> =
             read_json_or_default(&temp.join("types").join("relation_kinds.json"))?;
 

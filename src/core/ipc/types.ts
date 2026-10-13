@@ -56,21 +56,18 @@ export interface ImageExtend {
   right: number;
 }
 
+export interface SlotBinding {
+  /** 单字段映射：card.values[source] */
+  source?: string | null;
+  /** 多字段映射（body 用）：card.values[values[i]] */
+  values: string[];
+  /** 覆盖该槽位的默认标签（如 ATK / HP） */
+  label?: string | null;
+}
+
 export interface CardFrameConfig {
   style?: string | null;
-  title?: string | null;
-  subtitle?: string | null;
-  image?: string | null;
-  level?: string | null;
-  level_label?: string | null;
-  type_line?: string | null;
-  body: string[];
-  atk?: string | null;
-  atk_label?: string | null;
-  def?: string | null;
-  def_label?: string | null;
-  hp?: string | null;
-  hp_label?: string | null;
+  bindings: Record<string, SlotBinding>;
   foil_field?: string | null;
   foil_values: string[];
   image_crop?: CropRect | null;
