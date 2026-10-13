@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
-import type { CropRect, ImageExtend } from "../../../core/ipc";
-import { useAssetUrl } from "../../../hooks/useAssetUrl";
+import type { CropRect, ImageExtend } from "../../../../core/ipc";
+import { useAssetUrl } from "../../../../hooks/useAssetUrl";
 
 interface Props {
   path: string | null | undefined;

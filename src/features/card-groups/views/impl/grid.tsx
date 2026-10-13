@@ -16,7 +16,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { Card, CardType } from "../../../../core/ipc";
-import { CardGrid, GridCard } from "../../../../components/CardGrid";
+import { CardGrid, GridCard } from "../../../../components/card/CardGrid";
 import type { CardGroupViewDef, CardGroupViewProps } from "../types";
 
 function GridView({

@@ -1,4 +1,4 @@
-import { Modal } from "./Modal";
+import { Modal } from "../ui/Modal";
 
 interface Option {
   value: string;

@@ -1,4 +1,4 @@
-import type { Card, CardType } from "../../core/ipc";
+import type { Card, CardType } from "../../../core/ipc";
 import { FoilOverlay } from "./primitives/FoilOverlay";
 import { mapContent, resolveFeatures } from "./mapping";
 import {

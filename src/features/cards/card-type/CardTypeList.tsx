@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ipc, type CardType } from "../../../core/ipc";
 import { useProjectStore } from "../../../stores/projectStore";
-import { EntityListLayout } from "../../../components/EntityListLayout";
+import { EntityListLayout } from "../../../components/layout/EntityListLayout";
 import { CardTypeEditor } from "./CardTypeEditor";
 import { RelationKindList } from "../relation/RelationKindList";
 import { useDeleteUndo } from "../../../hooks/useDeleteUndo";
@@ -10,7 +10,7 @@ import { nowMs } from "../../../lib/time";
 import { toast } from "../../../lib/toast";
 import { confirmDialog } from "../../../lib/confirm";
 import { runWithError } from "../../../lib/runWithError";
-import { isCardStyleId } from "../../../components/CardFrame";
+import { isCardStyleId } from "../../../components/card/CardFrame";
 import { getAppSettings } from "../../../lib/appSettings";
 
 export function CardTypeList() {

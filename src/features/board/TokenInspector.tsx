@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { type Token } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
-import { ScaledCardFrame } from "../../components/ScaledCardFrame";
+import { ScaledCardFrame } from "../../components/card/ScaledCardFrame";
 import { useDeleteUndo } from "../../hooks/useDeleteUndo";
 import { confirmDialog } from "../../lib/confirm";
-import { SectionLabel } from "../../components/SectionLabel";
-import { EmptyState } from "../../components/EmptyState";
+import { SectionLabel } from "../../components/ui/SectionLabel";
+import { EmptyState } from "../../components/ui/EmptyState";
 
 interface Props {
   token: Token;

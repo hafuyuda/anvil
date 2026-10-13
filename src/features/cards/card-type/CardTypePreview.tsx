@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useProjectStore } from "../../../stores/projectStore";
-import { ScaledCardFrame } from "../../../components/ScaledCardFrame";
+import { ScaledCardFrame } from "../../../components/card/ScaledCardFrame";
 import type { CardType } from "../../../core/ipc";
 
 interface Props {

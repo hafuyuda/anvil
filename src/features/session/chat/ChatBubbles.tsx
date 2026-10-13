@@ -1,5 +1,5 @@
 import type { ChatPayload } from "../../../core/ipc";
-import { HoverPreview } from "../../../components/HoverPreview";
+import { HoverPreview } from "../../../components/card/HoverPreview";
 
 export function Avatar({
   name,

@@ -4,7 +4,7 @@ import {
   setAppSettings,
   type AppSettings,
 } from "../../lib/appSettings";
-import { SectionLabel } from "../../components/SectionLabel";
+import { SectionLabel } from "../../components/ui/SectionLabel";
 
 export function AppEditorPanel() {
   const [draft, setDraft] = useState<AppSettings>(() => getAppSettings());

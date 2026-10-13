@@ -9,7 +9,7 @@ import {
 import { useProjectStore } from "../../../../stores/projectStore";
 import { newId } from "../../../../lib/id";
 import { nowMs } from "../../../../lib/time";
-import { SectionLabel } from "../../../../components/SectionLabel";
+import { SectionLabel } from "../../../../components/ui/SectionLabel";
 import { toast } from "../../../../lib/toast";
 import { runWithError } from "../../../../lib/runWithError";
 

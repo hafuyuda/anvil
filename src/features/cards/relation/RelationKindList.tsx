@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ipc, type RelationKind } from "../../../core/ipc";
 import { useProjectStore } from "../../../stores/projectStore";
-import { EntityListLayout } from "../../../components/EntityListLayout";
+import { EntityListLayout } from "../../../components/layout/EntityListLayout";
 import { RelationKindEditor } from "./RelationKindEditor";
 import { newId } from "../../../lib/id";
 import { nowMs } from "../../../lib/time";

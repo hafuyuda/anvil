@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import type { Card, CardType } from "../../../core/ipc";
-import { CardGrid, GridCard } from "../../../components/CardGrid";
+import { CardGrid, GridCard } from "../../../components/card/CardGrid";
 
 interface Props {
   cards: Card[];

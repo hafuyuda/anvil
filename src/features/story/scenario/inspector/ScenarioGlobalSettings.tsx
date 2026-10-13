@@ -2,7 +2,7 @@ import { ipc, type Relation, type Scenario } from "../../../../core/ipc";
 import { useProjectStore } from "../../../../stores/projectStore";
 import { newId } from "../../../../lib/id";
 import { nowMs } from "../../../../lib/time";
-import { SectionLabel } from "../../../../components/SectionLabel";
+import { SectionLabel } from "../../../../components/ui/SectionLabel";
 import { toast } from "../../../../lib/toast";
 import { confirmDialog } from "../../../../lib/confirm";
 import { ScenarioNodesEditor } from "../ScenarioNodesEditor";

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ipc, type CardGroup } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
-import { Modal } from "../../components/Modal";
+import { Modal } from "../../components/ui/Modal";
 import { newId } from "../../lib/id";
 import { nowMs } from "../../lib/time";
 import { toast } from "../../lib/toast";

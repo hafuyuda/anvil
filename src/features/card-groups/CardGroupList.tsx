@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ipc, type CardGroup } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
-import { EntityListLayout } from "../../components/EntityListLayout";
+import { EntityListLayout } from "../../components/layout/EntityListLayout";
 import { CardGroupEditor } from "./CardGroupEditor";
 import { useDeleteUndo } from "../../hooks/useDeleteUndo";
 import { newId } from "../../lib/id";

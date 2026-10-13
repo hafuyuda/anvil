@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
-import type { Card } from "../core/ipc";
-import { useProjectStore } from "../stores/projectStore";
-import { CardPickerGridDialog } from "./CardPickerGridDialog";
-import { HoverPreview } from "./HoverPreview";
+import type { Card } from "../../core/ipc";
+import { useProjectStore } from "../../stores/projectStore";
+import { CardPickerGridDialog } from "../overlay/CardPickerGridDialog";
+import { HoverPreview } from "../card/HoverPreview";
 
 interface Props {
   value: unknown;

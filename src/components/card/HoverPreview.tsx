@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useProjectStore } from "../stores/projectStore";
+import { useProjectStore } from "../../stores/projectStore";
 import { CardFrame } from "./CardFrame";
 
 interface Props {

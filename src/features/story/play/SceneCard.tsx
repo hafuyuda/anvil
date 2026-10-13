@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import type { Card } from "../../../core/ipc";
 import type { LastRoll } from "./usePlayState";
-import { SectionLabel } from "../../../components/SectionLabel";
+import { SectionLabel } from "../../../components/ui/SectionLabel";
 
 interface Props {
   card: Card;

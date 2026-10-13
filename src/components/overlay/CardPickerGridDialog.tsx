@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
-import type { Card, CardType } from "../core/ipc";
-import { Modal } from "./Modal";
-import { CardGrid, GridCard } from "./CardGrid";
+import type { Card, CardType } from "../../core/ipc";
+import { Modal } from "../ui/Modal";
+import { CardGrid, GridCard } from "../card/CardGrid";
 
 interface Props {
   cards: Card[];

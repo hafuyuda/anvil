@@ -1,5 +1,5 @@
 import type { CardType } from "../../../core/ipc";
-import { listFoilStyles } from "../../../components/CardFrame/primitives/foil-styles/registry";
+import { listFoilStyles } from "../../../components/card/CardFrame/primitives/foil-styles/registry";
 
 const foilStyles = listFoilStyles();
 

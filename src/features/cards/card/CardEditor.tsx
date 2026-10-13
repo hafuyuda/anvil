@@ -1,7 +1,7 @@
 import { ipc, type Card, type CardType } from "../../../core/ipc";
 import { useProjectStore } from "../../../stores/projectStore";
 import { useDraft } from "../../../hooks/useDraft";
-import { FieldInput } from "../../../components/FieldInput";
+import { FieldInput } from "../../../components/field/FieldInput";
 import { RelationsPanel } from "./RelationsPanel";
 import { nowMs } from "../../../lib/time";
 import { useDeleteUndo } from "../../../hooks/useDeleteUndo";

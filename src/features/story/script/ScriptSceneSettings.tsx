@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { ipc } from "../../../core/ipc";
-import { PickerDialog } from "../../../components/PickerDialog";
+import { PickerDialog } from "../../../components/overlay/PickerDialog";
 import type { ScriptFrontmatter } from "./types";
-import { AudioSelect } from "../../../components/AudioSelect";
+import { AudioSelect } from "../../../components/field/AudioSelect";
 import { toast } from "../../../lib/toast";
 import { runWithError } from "../../../lib/runWithError";
 

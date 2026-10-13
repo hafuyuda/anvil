@@ -1,5 +1,5 @@
 import type { GridConfig } from "../../core/ipc";
-import { Toggle } from "../../components/Toggle";
+import { Toggle } from "../../components/ui/Toggle";
 import { DEFAULT_GRID_SHAPE, listGridShapes } from "./grid/registry";
 
 interface Props {

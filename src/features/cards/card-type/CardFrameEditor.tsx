@@ -3,15 +3,15 @@ import {
   getCardStyle,
   isCardStyleId,
   listCardStyles,
-} from "../../../components/CardFrame";
+} from "../../../components/card/CardFrame";
 import {
   DEFAULT_SLOTS,
   type SlotDef,
-} from "../../../components/CardFrame/styles/types";
+} from "../../../components/card/CardFrame/styles/types";
 import {
   hasCardBackStyle,
   listCardBackStyles,
-} from "../../../components/CardFrame/primitives/back-styles/registry";
+} from "../../../components/card/CardFrame/primitives/back-styles/registry";
 import { useProjectStore } from "../../../stores/projectStore";
 import { AccentColorRow } from "./AccentColorRow";
 import { CropEditor } from "./CropEditor";

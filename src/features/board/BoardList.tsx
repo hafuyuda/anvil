@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ipc, type Board } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
-import { EntityListLayout } from "../../components/EntityListLayout";
+import { EntityListLayout } from "../../components/layout/EntityListLayout";
 import { BoardEditor } from "./BoardEditor";
 import { DEFAULT_GRID } from "./constants";
 import { newId } from "../../lib/id";

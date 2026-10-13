@@ -9,14 +9,14 @@ import { useUIStore } from "../stores/uiStore";
 import { useKeyboard } from "../hooks/useKeyboard";
 import { useCommands } from "../hooks/useCommands";
 import { useGlobalCommands } from "../features/commands/useGlobalCommands";
-import { CommandPalette } from "../components/CommandPalette";
+import { CommandPalette } from "../components/overlay/CommandPalette";
 import { ipc } from "../core/ipc";
 import { MergePackDialog } from "../features/project/MergePackDialog";
 import { tryAutoOpenLastProject } from "../core/openProjectAt";
-import { ToastHost } from "../components/ToastHost";
+import { ToastHost } from "../components/overlay/ToastHost";
 import { useAppSettings } from "../hooks/useAppSettings";
 import { applyFontScale } from "../lib/fontScale";
-import { ConfirmHost } from "../components/ConfirmHost";
+import { ConfirmHost } from "../components/overlay/ConfirmHost";
 import { SettingsPage } from "../features/settings/SettingsPage";
 import { MiniPlayer } from "../features/player/MiniPlayer";
 

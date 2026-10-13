@@ -8,7 +8,7 @@ import {
 import { useProjectStore } from "../../../stores/projectStore";
 import { RelationForm } from "../relation/RelationForm";
 import { useDeleteUndo } from "../../../hooks/useDeleteUndo";
-import { HoverPreview } from "../../../components/HoverPreview";
+import { HoverPreview } from "../../../components/card/HoverPreview";
 import { confirmDialog } from "../../../lib/confirm";
 import { runWithError } from "../../../lib/runWithError";
 

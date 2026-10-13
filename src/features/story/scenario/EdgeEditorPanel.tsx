@@ -11,8 +11,8 @@ import { validateEffects } from "../effects";
 import { useDeleteUndo } from "../../../hooks/useDeleteUndo";
 import { confirmDialog } from "../../../lib/confirm";
 import { runWithError } from "../../../lib/runWithError";
-import { SectionLabel } from "../../../components/SectionLabel";
-import { LabeledBlock } from "../../../components/LabeledBlock";
+import { SectionLabel } from "../../../components/ui/SectionLabel";
+import { LabeledBlock } from "../../../components/ui/LabeledBlock";
 
 interface Props {
   relation: Relation;

@@ -5,7 +5,7 @@ import {
   type AppSettings,
 } from "../../lib/appSettings";
 import { applyFontScale } from "../../lib/fontScale";
-import { SectionLabel } from "../../components/SectionLabel";
+import { SectionLabel } from "../../components/ui/SectionLabel";
 
 export function AppInterfacePanel() {
   const [draft, setDraft] = useState<AppSettings>(() => getAppSettings());

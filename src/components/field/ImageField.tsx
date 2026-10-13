@@ -1,8 +1,8 @@
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
-import { ipc } from "../core/ipc";
-import { useAssetUrl } from "../hooks/useAssetUrl";
-import { confirmDialog } from "../lib/confirm";
-import { runWithError } from "../lib/runWithError";
+import { ipc } from "../../core/ipc";
+import { useAssetUrl } from "../../hooks/useAssetUrl";
+import { confirmDialog } from "../../lib/confirm";
+import { runWithError } from "../../lib/runWithError";
 
 interface Props {
   value: string | null | undefined;

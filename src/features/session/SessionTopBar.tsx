@@ -1,5 +1,5 @@
 import type { Board, Session } from "../../core/ipc";
-import { SaveInput } from "../../components/SaveInput";
+import { SaveInput } from "../../components/ui/SaveInput";
 import { useProjectStore } from "../../stores/projectStore";
 
 interface Props {

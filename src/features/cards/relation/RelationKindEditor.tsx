@@ -2,9 +2,9 @@ import { useMemo } from "react";
 import { ipc, type RelationKind } from "../../../core/ipc";
 import { useProjectStore } from "../../../stores/projectStore";
 import { useDraft } from "../../../hooks/useDraft";
-import { TypeMultiSelect } from "../../../components/TypeMultiSelect";
+import { TypeMultiSelect } from "../../../components/field/TypeMultiSelect";
 import { nowMs } from "../../../lib/time";
-import { SectionLabel } from "../../../components/SectionLabel";
+import { SectionLabel } from "../../../components/ui/SectionLabel";
 
 interface Props {
   relationKind: RelationKind;

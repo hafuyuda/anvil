@@ -5,7 +5,7 @@ import {
   type RollInfo,
   isChatKind,
 } from "../../core/ipc";
-import { Modal } from "../../components/Modal";
+import { Modal } from "../../components/ui/Modal";
 import { runWithError } from "../../lib/runWithError";
 
 interface Props {

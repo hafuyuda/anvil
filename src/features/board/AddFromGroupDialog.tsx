@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
 import type { CardGroup } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
-import { Modal } from "../../components/Modal";
-import { SectionLabel } from "../../components/SectionLabel";
-import { EmptyState } from "../../components/EmptyState";
+import { Modal } from "../../components/ui/Modal";
+import { SectionLabel } from "../../components/ui/SectionLabel";
+import { EmptyState } from "../../components/ui/EmptyState";
 
 interface Props {
   onClose: () => void;

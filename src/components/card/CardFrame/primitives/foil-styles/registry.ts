@@ -1,4 +1,4 @@
-import { createStyleRegistry } from "../../../../lib/styleRegistry";
+import { createStyleRegistry } from "../../../../../lib/styleRegistry";
 import type { FoilStyleDef } from "./types";
 
 // 自动发现：impl/ 下每个 .ts 默认导出一个 FoilStyleDef。

@@ -1,5 +1,5 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { toast, type ToastPayload } from "../lib/toast";
+import { toast, type ToastPayload } from "../../lib/toast";
 
 const TOAST_DURATION = 3000;
 

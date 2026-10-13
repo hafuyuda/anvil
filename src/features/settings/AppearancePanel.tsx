@@ -1,7 +1,7 @@
 import { useProjectStore } from "../../stores/projectStore";
 import { ThemePanel } from "../project/ThemePanel";
 import { AppInterfacePanel } from "./AppInterfacePanel";
-import { SectionLabel } from "../../components/SectionLabel";
+import { SectionLabel } from "../../components/ui/SectionLabel";
 
 interface Props {
   onSaveTheme: (id: string | null) => Promise<void>;

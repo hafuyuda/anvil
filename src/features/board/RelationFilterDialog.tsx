@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { RelationKind } from "../../core/ipc";
-import { Modal } from "../../components/Modal";
+import { Modal } from "../../components/ui/Modal";
 
 interface Props {
   relationKinds: RelationKind[];

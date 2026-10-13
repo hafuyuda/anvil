@@ -1,5 +1,5 @@
 import { SIZE_MAP, type CardFrameSize } from "../types";
-import { useAssetUrl } from "../../../hooks/useAssetUrl";
+import { useAssetUrl } from "../../../../hooks/useAssetUrl";
 import { getCardBackStyle, hasCardBackStyle } from "./back-styles/registry";
 
 interface Props {

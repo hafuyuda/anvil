@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { ipc, type Session } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
-import { EntityListLayout } from "../../components/EntityListLayout";
+import { EntityListLayout } from "../../components/layout/EntityListLayout";
 import { SessionEditor } from "./SessionEditor";
 import { newId } from "../../lib/id";
 import { nowMs } from "../../lib/time";

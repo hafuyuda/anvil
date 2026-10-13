@@ -1,4 +1,4 @@
-import type { Card, CardType } from "../../core/ipc";
+import type { Card, CardType } from "../../../core/ipc";
 import type { CardFrameSize } from "../CardFrame";
 
 export interface CardGridProps {

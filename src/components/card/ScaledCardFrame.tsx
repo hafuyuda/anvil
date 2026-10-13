@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CardFrame } from "./CardFrame";
 import { SIZE_MAP, type CardFrameSize } from "./CardFrame/types";
-import type { Card, CardType } from "../core/ipc";
+import type { Card, CardType } from "../../core/ipc";
 
 interface Props {
   card: Card;

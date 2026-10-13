@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Command } from "../lib/commands";
-import { toast } from "../lib/toast";
+import type { Command } from "../../lib/commands";
+import { toast } from "../../lib/toast";
 
 interface Props {
   commands: Command[];

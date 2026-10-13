@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Modal } from "../../../components/Modal";
+import { Modal } from "../../../components/ui/Modal";
 import type { RollInfo } from "../../../core/ipc";
 import { DICE_ERROR_HINT, rollDice } from "../../../lib/dice";
 

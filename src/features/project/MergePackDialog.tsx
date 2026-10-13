@@ -6,7 +6,7 @@ import {
   type PackInspection,
   type TypeMapAction,
 } from "../../core/ipc";
-import { Modal } from "../../components/Modal";
+import { Modal } from "../../components/ui/Modal";
 import { useProjectStore } from "../../stores/projectStore";
 import { MergePackInfoCard } from "./MergePackInfoCard";
 import { TypeMapRow, KindMapRow } from "./MergePackMappingRows";

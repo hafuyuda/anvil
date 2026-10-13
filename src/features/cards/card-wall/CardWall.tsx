@@ -14,7 +14,7 @@ import { AddToGroupDialog } from "../../card-groups/AddToGroupDialog";
 import { toast } from "../../../lib/toast";
 import { confirmDialog } from "../../../lib/confirm";
 import { runWithError } from "../../../lib/runWithError";
-import { PickerDialog } from "../../../components/PickerDialog";
+import { PickerDialog } from "../../../components/overlay/PickerDialog";
 
 export function CardWall() {
   const {
@@ -22,7 +22,6 @@ export function CardWall() {
     cards,
     cardTypes,
 
-    setProject,
     addCard,
     selectCard,
     selectedCardId,
@@ -79,52 +78,6 @@ export function CardWall() {
       addCard(card);
       selectCard(card.id);
     }, "保存失败");
-  }
-
-  // ── 载入示例世界 ──
-
-  async function handleSeed() {
-    if (!projectPath) return;
-    if (
-      !(await confirmDialog({
-        message: "将写入示例类型和卡牌，当前项目为空才会生效。继续？",
-        confirmLabel: "继续",
-      }))
-    )
-      return;
-    await runWithError(async () => {
-      await ipc.seedExampleWorld();
-      const [
-        newCards,
-        newTypes,
-        newKinds,
-        newRelations,
-        newScenarios,
-        newBoards,
-        newSessions,
-        newCardGroups,
-      ] = await Promise.all([
-        ipc.listCards(),
-        ipc.listCardTypes(),
-        ipc.listRelationKinds(),
-        ipc.listAllRelations(),
-        ipc.listScenarios(),
-        ipc.listBoards(),
-        ipc.listSessions(),
-        ipc.listCardGroups(),
-      ]);
-      setProject(
-        projectPath,
-        newCards,
-        newTypes,
-        newKinds,
-        newRelations,
-        newScenarios,
-        newBoards,
-        newSessions,
-        newCardGroups,
-      );
-    }, "载入示例失败");
   }
 
   // ── 批量删除 ──
@@ -226,26 +179,7 @@ export function CardWall() {
             alignItems: "center",
             gap: 16,
           }}
-        >
-          <div style={{ flex: 1 }}>
-            <div
-              style={{
-                fontSize: 13,
-                color: "var(--fg-primary)",
-                fontFamily: "var(--font-title)",
-                marginBottom: 4,
-              }}
-            >
-              这是一个空项目
-            </div>
-            <div style={{ fontSize: 12, color: "var(--fg-muted)" }}>
-              要不要载入「矮人铁匠铺」示例世界？
-            </div>
-          </div>
-          <button className="btn btn-primary" onClick={handleSeed}>
-            载入示例世界
-          </button>
-        </div>
+        ></div>
       )}
 
       <CardWallToolbar

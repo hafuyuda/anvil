@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { ScriptLine } from "./types";
-import { AudioSelect } from "../../../components/AudioSelect";
+import { AudioSelect } from "../../../components/field/AudioSelect";
 
 const TYPE_LABELS: { value: ScriptLine["type"]; label: string }[] = [
   { value: "narration", label: "旁白" },

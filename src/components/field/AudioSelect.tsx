@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
-import { ipc } from "../core/ipc";
-import { Modal } from "./Modal";
-import { invalidateAsset, loadAsset } from "../lib/assetCache";
+import { ipc } from "../../core/ipc";
+import { Modal } from "../ui/Modal";
+import { invalidateAsset, loadAsset } from "../../lib/assetCache";
 import { useRef } from "react";
-import { runWithError } from "../lib/runWithError";
+import { runWithError } from "../../lib/runWithError";
 
 interface Props {
   value: string | null | undefined;

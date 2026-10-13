@@ -1,4 +1,4 @@
-import type { FieldDef, FieldType } from "../core/ipc";
+import type { FieldDef, FieldType } from "../../core/ipc";
 import { ImageField } from "./ImageField";
 import { RefField } from "./RefField";
 

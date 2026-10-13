@@ -4,8 +4,8 @@ import {
   setAppSettings,
   type AppSettings,
 } from "../../lib/appSettings";
-import { SectionLabel } from "../../components/SectionLabel";
-import { Toggle } from "../../components/Toggle";
+import { SectionLabel } from "../../components/ui/SectionLabel";
+import { Toggle } from "../../components/ui/Toggle";
 
 export function AppVnPanel() {
   const [draft, setDraft] = useState<AppSettings>(() => getAppSettings());

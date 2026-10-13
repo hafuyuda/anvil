@@ -1,4 +1,4 @@
-import type { Card, CardType, CropRect, ImageExtend } from "../../core/ipc";
+import type { Card, CardType, CropRect, ImageExtend } from "../../../core/ipc";
 import { hasFoilStyle } from "./primitives/foil-styles/registry";
 
 /**

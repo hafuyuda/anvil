@@ -1,6 +1,6 @@
 import type { Card, CardType, Token } from "../../core/ipc";
-import { CardFrame } from "../../components/CardFrame";
-import { CardBack } from "../../components/CardFrame/primitives/CardBack";
+import { CardFrame } from "../../components/card/CardFrame";
+import { CardBack } from "../../components/card/CardFrame/primitives/CardBack";
 import { PileToken } from "./PileToken";
 import { useProjectStore } from "../../stores/projectStore";
 

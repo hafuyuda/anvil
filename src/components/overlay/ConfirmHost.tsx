@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { subscribeConfirm, type ConfirmOptions } from "../lib/confirm";
-import { Modal } from "./Modal";
+import { subscribeConfirm, type ConfirmOptions } from "../../lib/confirm";
+import { Modal } from "../ui/Modal";
 
 interface Pending extends ConfirmOptions {
   id: string;

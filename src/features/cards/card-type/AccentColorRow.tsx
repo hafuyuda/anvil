@@ -1,4 +1,4 @@
-import { CARD_ACCENT_PRESETS } from "../../../components/CardFrame";
+import { CARD_ACCENT_PRESETS } from "../../../components/card/CardFrame";
 
 export function AccentColorRow({
   value,

@@ -1,6 +1,6 @@
 import { AppEditorPanel } from "./AppEditorPanel";
 import { AppVnPanel } from "./AppVnPanel";
-import { SectionLabel } from "../../components/SectionLabel";
+import { SectionLabel } from "../../components/ui/SectionLabel";
 
 export function EditorPanel() {
   return (

@@ -2,7 +2,7 @@ import { resetAppSettings } from "../../lib/appSettings";
 import { clearAssetCache } from "../../lib/assetCache";
 import { confirmDialog } from "../../lib/confirm";
 import { toast } from "../../lib/toast";
-import { SectionLabel } from "../../components/SectionLabel";
+import { SectionLabel } from "../../components/ui/SectionLabel";
 import { resetModuleOrder } from "../../lib/moduleOrder";
 
 export function AppAdvancedPanel() {

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { ipc, type Relation, type RelationKind } from "../../../core/ipc";
 import { useProjectStore } from "../../../stores/projectStore";
-import { FieldInput } from "../../../components/FieldInput";
+import { FieldInput } from "../../../components/field/FieldInput";
 import { newId } from "../../../lib/id";
 import { nowMs } from "../../../lib/time";
 import { toast } from "../../../lib/toast";

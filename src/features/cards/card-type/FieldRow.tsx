@@ -1,6 +1,6 @@
 import type { FieldDef, FieldType } from "../../../core/ipc";
 import { useProjectStore } from "../../../stores/projectStore";
-import { TypeMultiSelect } from "../../../components/TypeMultiSelect";
+import { TypeMultiSelect } from "../../../components/field/TypeMultiSelect";
 import { FIELD_KINDS, defaultFieldType } from "./shared";
 import { OptionsEditor } from "./OptionsEditor";
 

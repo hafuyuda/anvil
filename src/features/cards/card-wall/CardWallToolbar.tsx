@@ -1,5 +1,5 @@
 import type { CardType } from "../../../core/ipc";
-import { Toolbar, ToolbarSpacer } from "../../../components/Toolbar";
+import { Toolbar, ToolbarSpacer } from "../../../components/ui/Toolbar";
 import type { SortKey } from "./useCardWallFilters";
 import type { CardWallView } from "../../../stores/projectStore";
 

@@ -1,5 +1,5 @@
 import type { ComponentType } from "react";
-import type { CardType } from "../../../core/ipc";
+import type { CardType } from "../../../../core/ipc";
 import type { CardFrameSize } from "../types";
 import type { CardContent, CardFeatures } from "../mapping";
 

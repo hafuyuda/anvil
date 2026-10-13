@@ -1,8 +1,8 @@
 import type { Card, CardGroup, CardType, Token } from "../../core/ipc";
-import { PickerDialog } from "../../components/PickerDialog";
+import { PickerDialog } from "../../components/overlay/PickerDialog";
 import { AddFromGroupDialog } from "./AddFromGroupDialog";
 import { PileDrawDialog } from "./PileDrawDialog";
-import { CardPickerGridDialog } from "../../components/CardPickerGridDialog";
+import { CardPickerGridDialog } from "../../components/overlay/CardPickerGridDialog";
 
 interface Props {
   // 背景选择
