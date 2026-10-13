@@ -320,10 +320,11 @@ impl Project {
             }
         }
 
-        // ── 7. 导入棋盘 ──
+        // ── 7. 导入棋盘（收集 board_id_map，供会话引用） ──
         let mut imported_boards = 0usize;
         let mut existing_board_names: HashSet<String> =
             self.load_boards()?.into_iter().map(|b| b.name).collect();
+        let mut board_id_map: BTreeMap<String, String> = BTreeMap::new(); // ← 新增
 
         let board_dir = temp.join("boards");
         if board_dir.exists() {
@@ -339,7 +340,10 @@ impl Project {
                     Err(_) => continue,
                 };
 
-                board.id = uuid::Uuid::new_v4().to_string();
+                let old_id = board.id.clone(); // ← 新增
+                let new_id = uuid::Uuid::new_v4().to_string();
+                board.id = new_id.clone(); // ← 改动（原来是直接赋 uuid）
+                board_id_map.insert(old_id, new_id); // ← 新增
 
                 board.tokens = board
                     .tokens
@@ -371,7 +375,7 @@ impl Project {
             }
         }
 
-        // ── 8. 导入会话 ──
+        // ── 8. 导入会话（board_id 走映射） ──
         let mut imported_sessions = 0usize;
         let mut existing_session_names: HashSet<String> =
             self.load_sessions()?.into_iter().map(|s| s.name).collect();
@@ -394,7 +398,11 @@ impl Project {
                 };
 
                 session.id = uuid::Uuid::new_v4().to_string();
-                session.board_id = None;
+                // ← 改动：从直接置 None，改为按 board_id_map 映射；映射不到才置 None
+                session.board_id = session
+                    .board_id
+                    .as_ref()
+                    .and_then(|id| board_id_map.get(id).cloned());
 
                 session.tokens = session
                     .tokens

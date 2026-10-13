@@ -22,7 +22,6 @@ pub fn run() {
             close_project,
             reload_project,
             rebuild_index,
-            seed_example_world,
             load_manifest,
             save_manifest,
             export_pack,

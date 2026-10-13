@@ -11,6 +11,5 @@ pub mod project;
 pub mod relations;
 pub mod scenarios;
 pub mod scripts;
-pub mod seed;
 pub mod sessions;
 pub mod theme;

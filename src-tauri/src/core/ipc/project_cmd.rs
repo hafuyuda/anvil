@@ -78,13 +78,6 @@ pub fn rebuild_index(state: State<AppState>) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn seed_example_world(state: State<AppState>) -> Result<(), String> {
-    let guard = state.project.lock().unwrap();
-    let p = guard.as_ref().ok_or("no project open")?;
-    p.seed_example_world().map_err(|e| e.to_string())
-}
-
-#[tauri::command]
 pub fn load_manifest(state: State<AppState>) -> Result<Manifest, String> {
     let guard = state.project.lock().unwrap();
     let p = guard.as_ref().ok_or("no project open")?;

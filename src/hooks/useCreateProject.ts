@@ -3,6 +3,7 @@ import { ipc } from "../core/ipc";
 import { openProjectAt } from "../core/openProjectAt";
 import { confirmDialog } from "../lib/confirm";
 import { runWithError } from "../lib/runWithError";
+import { toast } from "../lib/toast";
 
 export function useCreateProject() {
   async function createProject() {
@@ -38,7 +39,31 @@ export function useCreateProject() {
     );
     if (!r.ok) return;
 
-    await runWithError(() => openProjectAt(dest), "打开新项目失败");
+    const opened = await runWithError(
+      () => openProjectAt(dest),
+      "打开新项目失败",
+    );
+    if (!opened.ok) return;
+
+    // 新增：新建后询问是否加入示例内容
+    const wantsExample = await confirmDialog({
+      title: "添加示例内容？",
+      message:
+        "是否在新项目里添加「铁砧堡」示例世界？\n\n" +
+        "包含 6 个卡类型、30 张卡、5 个关系类型、剧情「失踪的学徒」、\n" +
+        "2 个棋盘和 1 个跑团会话。你随时可以通过「项目 → 添加预设…」再次添加。",
+      confirmLabel: "添加",
+      cancelLabel: "跳过",
+    });
+    if (!wantsExample) return;
+
+    const added = await runWithError(
+      () => ipc.addPreset("anvil_castle"),
+      "添加示例世界失败",
+    );
+    if (added.ok) {
+      toast.success("已添加铁砧堡示例世界");
+    }
   }
 
   return createProject;

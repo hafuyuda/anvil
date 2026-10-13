@@ -30,7 +30,6 @@ export const ipc = {
     invoke<boolean>("is_directory_empty", { path }),
   reloadProject: () => invoke<ProjectSnapshot>("reload_project"),
   rebuildIndex: () => invoke<void>("rebuild_index"),
-  seedExampleWorld: () => invoke<void>("seed_example_world"),
 
   // ── Manifest ──
   loadManifest: () => invoke<Manifest>("load_manifest"),
