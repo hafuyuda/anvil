@@ -114,6 +114,12 @@
   --card-pokemon-hp: #c8401f;
   --card-pokemon-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
   --card-pokemon-shadow-selected: 0 4px 14px rgba(0, 0, 0, 0.55);
+  --card-pokemon-fullart-bg: #1a1612;
+  --card-pokemon-fullart-panel: rgba(0, 0, 0, 0.72);
+  --card-pokemon-fullart-text: #ffffff;
+  --card-pokemon-fullart-text-dim: rgba(255, 255, 255, 0.78);
+  --card-pokemon-fullart-hp: #ff5f5f;
+  --card-pokemon-fullart-divider: rgba(255, 255, 255, 0.22);
 
   /* 卡牌：彩虹（rainbow） */
   --card-rainbow-1: #ff5f6d;

@@ -7,7 +7,7 @@ interface Props {
   crop?: CropRect | null;
   extend?: ImageExtend | null;
   /** 图像区固定高度（像素） */
-  height: number;
+  height?: number;
   /** 图像区圆角 */
   borderRadius: number;
   /** 图像区边框（CSS border 值）。出框时自动隐藏 */
@@ -16,6 +16,8 @@ interface Props {
   background?: string;
   /** 无图时渲染的内容 */
   fallback: ReactNode;
+  /** 铺满父容器（absolute inset:0），忽略 height 和 extend */
+  fullBleed?: boolean;
 }
 
 /**
@@ -31,8 +33,38 @@ export function CardImage({
   border,
   background,
   fallback,
+  fullBleed = false,
 }: Props) {
   const url = useAssetUrl(path);
+
+  if (fullBleed) {
+    return (
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          overflow: "hidden",
+          background,
+        }}
+      >
+        {url ? (
+          <CropImage url={url} crop={crop} />
+        ) : (
+          <div
+            style={{
+              width: "100%",
+              height: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            {fallback}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   const isExtending =
     !!extend &&
