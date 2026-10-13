@@ -1,9 +1,8 @@
-import type { BuiltinTheme } from "./types";
+import type { ThemeDef } from "../types";
 
-export const anvilDark: BuiltinTheme = {
+const def: ThemeDef = {
   id: "builtin:anvil-dark",
   name: "Anvil Dark",
-  description: "默认。深棕金铁匠风。",
   variables: {
     "--bg-app": "#1a1612",
     "--bg-panel": "#25201a",
@@ -58,3 +57,5 @@ export const anvilDark: BuiltinTheme = {
     "--chat-panel-bg": "#1f1a14",
   },
 };
+
+export default def;

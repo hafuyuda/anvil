@@ -1,9 +1,8 @@
-import type { BuiltinTheme } from "./types";
+import type { ThemeDef } from "../types";
 
-export const parchment: BuiltinTheme = {
+const def: ThemeDef = {
   id: "builtin:parchment",
   name: "Parchment",
-  description: "跑团 / 长读。羊皮纸与墨水。",
   variables: {
     "--bg-app": "#2a1f15",
     "--bg-panel": "#3a2c1f",
@@ -58,3 +57,5 @@ export const parchment: BuiltinTheme = {
     "--chat-panel-bg": "#2a1f15",
   },
 };
+
+export default def;

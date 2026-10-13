@@ -1,9 +1,8 @@
-import type { BuiltinTheme } from "./types";
+import type { ThemeDef } from "../types";
 
-export const highContrast: BuiltinTheme = {
+const def: ThemeDef = {
   id: "builtin:high-contrast",
   name: "High Contrast",
-  description: "无障碍。纯黑底，高亮文字，强边框。",
   variables: {
     "--bg-app": "#000000",
     "--bg-panel": "#0a0a0a",
@@ -58,3 +57,5 @@ export const highContrast: BuiltinTheme = {
     "--chat-panel-bg": "#000000",
   },
 };
+
+export default def;

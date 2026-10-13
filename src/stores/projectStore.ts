@@ -15,7 +15,6 @@ export type {
   UndoEntry,
   ModuleKey,
   CardWallView,
-  CardGroupView,
 } from "./slices/types";
 
 export const useProjectStore = create<ProjectState>()((...a) => ({

@@ -66,7 +66,45 @@ pub struct MergeResult {
     pub imported_sessions: usize,
     pub imported_card_groups: usize,
     pub imported_assets: usize,
+    pub imported_audios: usize,
     pub skipped_types: Vec<String>,
+}
+
+/// 把 `src_dir` 下的文件复制到 `dest_dir`。
+/// 只处理 `allowed_exts` 白名单内的文件；同名跳过；返回复制数量。
+pub(crate) fn merge_asset_dir(
+    src_dir: &Path,
+    dest_dir: &Path,
+    allowed_exts: &[&str],
+) -> anyhow::Result<usize> {
+    if !src_dir.exists() {
+        return Ok(0);
+    }
+    std::fs::create_dir_all(dest_dir)?;
+    let mut imported = 0usize;
+    for entry in std::fs::read_dir(src_dir)? {
+        let entry = entry?;
+        if !entry.file_type()?.is_file() {
+            continue;
+        }
+        let name = entry.file_name();
+        let name_str = name.to_string_lossy();
+        let ext = Path::new(name_str.as_ref())
+            .extension()
+            .and_then(|s| s.to_str())
+            .map(|s| s.to_lowercase());
+        let Some(ext) = ext else { continue };
+        if !allowed_exts.contains(&ext.as_str()) {
+            continue;
+        }
+        let dest = dest_dir.join(&name);
+        if dest.exists() {
+            continue;
+        }
+        std::fs::copy(entry.path(), &dest)?;
+        imported += 1;
+    }
+    Ok(imported)
 }
 
 impl Project {
@@ -288,6 +326,7 @@ impl Project {
                 imported_sessions: 0,
                 imported_card_groups: 0,
                 imported_assets: 0,
+                imported_audios: 0,
                 skipped_types: skipped_type_names,
             });
         }
@@ -582,26 +621,18 @@ impl Project {
             }
         }
 
-        // ── 11. Assets ──
-        let mut imported_assets = 0usize;
-        let remote_assets = temp.join("assets").join("images");
-        if remote_assets.exists() {
-            let local_assets = self.images_dir();
-            std::fs::create_dir_all(&local_assets)?;
-            for entry in std::fs::read_dir(&remote_assets)? {
-                let entry = entry?;
-                if !entry.file_type()?.is_file() {
-                    continue;
-                }
-                let name = entry.file_name();
-                let dest = local_assets.join(&name);
-                if dest.exists() {
-                    continue;
-                }
-                std::fs::copy(entry.path(), &dest)?;
-                imported_assets += 1;
-            }
-        }
+        // ── 11. Assets（图片 + 音频） ──
+        let imported_assets = merge_asset_dir(
+            &temp.join("assets").join("images"),
+            &self.images_dir(),
+            &["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp"],
+        )?;
+
+        let imported_audios = merge_asset_dir(
+            &temp.join("assets").join("audio"),
+            &self.root.join("assets").join("audio"),
+            &["mp3", "ogg", "wav", "m4a"],
+        )?;
 
         Ok(MergeResult {
             imported_types,
@@ -612,6 +643,7 @@ impl Project {
             imported_sessions,
             imported_card_groups,
             imported_assets,
+            imported_audios,
             skipped_types: skipped_type_names,
         })
     }

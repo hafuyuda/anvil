@@ -1,4 +1,4 @@
-use super::pack::{read_json_or_default, MergeResult};
+use super::pack::{merge_asset_dir, read_json_or_default, MergeResult};
 use super::project::Project;
 use crate::core::model::board::{Board, PileData};
 use crate::core::model::card::Card;
@@ -442,26 +442,18 @@ impl Project {
             }
         }
 
-        // ── 9. 导入图片 ──
-        let mut imported_assets = 0usize;
-        let remote_assets = temp.join("assets").join("images");
-        if remote_assets.exists() {
-            let local_assets = self.images_dir();
-            std::fs::create_dir_all(&local_assets)?;
-            for entry in std::fs::read_dir(&remote_assets)? {
-                let entry = entry?;
-                if !entry.file_type()?.is_file() {
-                    continue;
-                }
-                let name = entry.file_name();
-                let dest = local_assets.join(&name);
-                if dest.exists() {
-                    continue;
-                }
-                std::fs::copy(entry.path(), &dest)?;
-                imported_assets += 1;
-            }
-        }
+        // ── 9. 导入资源（图片 + 音频） ──
+        let imported_assets = merge_asset_dir(
+            &temp.join("assets").join("images"),
+            &self.images_dir(),
+            &["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp"],
+        )?;
+
+        let imported_audios = merge_asset_dir(
+            &temp.join("assets").join("audio"),
+            &self.root.join("assets").join("audio"),
+            &["mp3", "ogg", "wav", "m4a"],
+        )?;
 
         self.rebuild_index()?;
 
@@ -474,6 +466,7 @@ impl Project {
             imported_sessions,
             imported_card_groups,
             imported_assets,
+            imported_audios,
             skipped_types: Vec::new(),
         })
     }

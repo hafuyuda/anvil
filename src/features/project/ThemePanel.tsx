@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
 import { ipc, type Theme } from "../../core/ipc";
 import { applyTheme, resetTheme } from "../../lib/theme";
-import { BUILTIN_THEMES, type BuiltinTheme } from "../../themes";
+import {
+  getBuiltinTheme,
+  hasBuiltinTheme,
+  listBuiltinThemes,
+  type ThemeDef,
+} from "../../themes/registry";
 import { newId } from "../../lib/id";
 import { nowMs } from "../../lib/time";
 import { readCurrentVariables } from "./theme/themeConstants";
@@ -11,13 +16,15 @@ import { toast } from "../../lib/toast";
 import { confirmDialog } from "../../lib/confirm";
 import { runWithError } from "../../lib/runWithError";
 
+const BUILTIN_THEMES = listBuiltinThemes();
+
 interface Props {
   manifestThemeId: string | null;
   onChangeThemeId: (id: string | null) => void;
 }
 
 type Selection =
-  | { type: "builtin"; theme: BuiltinTheme }
+  | { type: "builtin"; theme: ThemeDef }
   | { type: "project"; theme: Theme }
   | null;
 
@@ -34,7 +41,7 @@ export function ThemePanel({ manifestThemeId, onChangeThemeId }: Props) {
       .catch(() => setThemes([]));
   }, []);
 
-  function selectBuiltin(t: BuiltinTheme) {
+  function selectBuiltin(t: ThemeDef) {
     setSelection({ type: "builtin", theme: t });
     setDraft(null);
     setDirty(false);
@@ -115,10 +122,9 @@ export function ThemePanel({ manifestThemeId, onChangeThemeId }: Props) {
   function applyAsProjectTheme(id: string | null) {
     onChangeThemeId(id);
     if (id) {
-      const builtin = BUILTIN_THEMES.find((t) => t.id === id);
-      if (builtin) {
+      if (hasBuiltinTheme(id)) {
         resetTheme();
-        applyTheme(builtin.variables);
+        applyTheme(getBuiltinTheme(id).variables);
         return;
       }
       const t = themes.find((x) => x.id === id);

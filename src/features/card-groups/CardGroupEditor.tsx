@@ -5,6 +5,9 @@ import { useDraft } from "../../hooks/useDraft";
 import { nowMs } from "../../lib/time";
 import { CardGroupCards } from "./CardGroupCards";
 import { CardGroupPicker } from "./CardGroupPicker";
+import { getCardGroupView, listCardGroupViews } from "./views/registry";
+
+const GROUP_VIEWS = listCardGroupViews();
 
 interface Props {
   group: CardGroup;
@@ -152,38 +155,26 @@ export function CardGroupEditor({ group }: Props) {
 
           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
             <div style={{ display: "flex", gap: 2 }}>
-              <button
-                className="btn btn-icon"
-                onClick={() => setView("grid")}
-                title="卡片视图"
-                style={{
-                  fontSize: 12,
-                  background:
-                    view === "grid" ? "var(--bg-raised)" : "transparent",
-                  borderColor:
-                    view === "grid"
-                      ? "var(--accent-gold)"
-                      : "var(--border-default)",
-                }}
-              >
-                ▦
-              </button>
-              <button
-                className="btn btn-icon"
-                onClick={() => setView("list")}
-                title="列表视图"
-                style={{
-                  fontSize: 12,
-                  background:
-                    view === "list" ? "var(--bg-raised)" : "transparent",
-                  borderColor:
-                    view === "list"
-                      ? "var(--accent-gold)"
-                      : "var(--border-default)",
-                }}
-              >
-                ☰
-              </button>
+              {GROUP_VIEWS.map((v) => {
+                const active = getCardGroupView(view).id === v.id;
+                return (
+                  <button
+                    key={v.id}
+                    className="btn btn-icon"
+                    onClick={() => setView(v.id)}
+                    title={v.label}
+                    style={{
+                      fontSize: 12,
+                      background: active ? "var(--bg-raised)" : "transparent",
+                      borderColor: active
+                        ? "var(--accent-gold)"
+                        : "var(--border-default)",
+                    }}
+                  >
+                    {v.icon}
+                  </button>
+                );
+              })}
             </div>
 
             {!picking && (

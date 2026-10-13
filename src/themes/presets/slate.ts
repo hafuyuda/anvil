@@ -1,9 +1,8 @@
-import type { BuiltinTheme } from "./types";
+import type { ThemeDef } from "../types";
 
-export const slate: BuiltinTheme = {
+const def: ThemeDef = {
   id: "builtin:slate",
   name: "Slate",
-  description: "中性冷色。深蓝灰底，钢青强调。",
   variables: {
     "--bg-app": "#161a1f",
     "--bg-panel": "#1f252d",
@@ -58,3 +57,5 @@ export const slate: BuiltinTheme = {
     "--chat-panel-bg": "#161a1f",
   },
 };
+
+export default def;
