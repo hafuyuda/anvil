@@ -3,15 +3,20 @@ import type { ParsedScript, ScriptFrontmatter, ScriptLine } from "./types";
 /**
  * 解析 Markdown 剧本。
  *
- * 语法：
+ * 语法（10 种行）：
  *   > 文本              → narration
  *   **说话人**（表情）：文本 → say
  *   *文本*              → action
  *   @bg 路径            → bg
  *   @bgm 文件           → bgm
  *   @sfx 文件           → sfx
+ *   -> 场景名           → jump
+ *   {表达式: 文本} / {表达式} → condition
+ *   ~ 变量 操作符 值    → assign（操作符：= += -=）
+ *   <>（单独一行）      → glue
  *
  * 空行分隔，frontmatter 用 --- 包围。
+ * 不认识的语法：当 narration 处理，不丢数据。
  */
 export function parseScript(source: string): ParsedScript {
   const lines = source.split(/\r?\n/);
@@ -49,6 +54,21 @@ export function parseScript(source: string): ParsedScript {
     const line = raw.trim();
 
     if (line === "") {
+      i++;
+      continue;
+    }
+
+    // <> glue
+    if (line === "<>") {
+      scriptLines.push({ type: "glue" });
+      i++;
+      continue;
+    }
+
+    // -> jump
+    const jump = line.match(/^->\s*(.+)$/);
+    if (jump) {
+      scriptLines.push({ type: "jump", target: jump[1].trim() });
       i++;
       continue;
     }
@@ -93,6 +113,29 @@ export function parseScript(source: string): ParsedScript {
       continue;
     }
 
+    // {expr: text} / {expr} condition
+    if (line.startsWith("{") && line.endsWith("}")) {
+      const cond = parseConditionBody(line.slice(1, -1));
+      if (cond) {
+        scriptLines.push({ type: "condition", expr: cond.expr, text: cond.text });
+        i++;
+        continue;
+      }
+    }
+
+    // ~ assign
+    const assign = line.match(/^~\s*(\S+?)\s*(\+=|-=|=)\s*(.+)$/);
+    if (assign) {
+      scriptLines.push({
+        type: "assign",
+        key: assign[1],
+        op: assign[2] as "=" | "+=" | "-=",
+        value: assign[3].trim(),
+      });
+      i++;
+      continue;
+    }
+
     // *action*
     const action = line.match(/^\*(.+)\*$/);
     if (action) {
@@ -107,6 +150,29 @@ export function parseScript(source: string): ParsedScript {
   }
 
   return { frontmatter, lines: scriptLines };
+}
+
+/**
+ * 条件行内部分割：找第一个不在双引号内的冒号，
+ * 前半是表达式，后半是显示文本（可空）。
+ */
+function parseConditionBody(inner: string): {
+  expr: string;
+  text: string;
+} | null {
+  let inStr = false;
+  for (let j = 0; j < inner.length; j++) {
+    const ch = inner[j];
+    if (ch === '"') {
+      inStr = !inStr;
+    } else if (ch === ":" && !inStr) {
+      const expr = inner.slice(0, j).trim();
+      if (!expr) return null;
+      return { expr, text: inner.slice(j + 1).trim() };
+    }
+  }
+  const expr = inner.trim();
+  return expr ? { expr, text: "" } : null;
 }
 
 function stripQuotes(s: string): string {

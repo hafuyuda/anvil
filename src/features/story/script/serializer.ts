@@ -1,7 +1,7 @@
 import type { ParsedScript, ScriptLine } from "./types";
 
 /**
- * 序列化为 Markdown 剧本。
+ * 序列化为 Markdown 剧本（10 种行）。
  */
 export function serializeScript(script: ParsedScript): string {
   const out: string[] = [];
@@ -47,5 +47,13 @@ function serializeLine(line: ScriptLine): string {
       return `@bgm ${line.file}`;
     case "sfx":
       return `@sfx ${line.file}`;
+    case "jump":
+      return `-> ${line.target}`;
+    case "condition":
+      return line.text ? `{${line.expr}: ${line.text}}` : `{${line.expr}}`;
+    case "assign":
+      return `~ ${line.key} ${line.op} ${line.value}`;
+    case "glue":
+      return `<>`;
   }
 }

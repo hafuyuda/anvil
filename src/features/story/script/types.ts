@@ -9,7 +9,11 @@ export type ScriptLine =
   | { type: "action"; text: string }
   | { type: "bg"; image: string }
   | { type: "bgm"; file: string }
-  | { type: "sfx"; file: string };
+  | { type: "sfx"; file: string }
+  | { type: "jump"; target: string }
+  | { type: "condition"; expr: string; text: string }
+  | { type: "assign"; key: string; op: "=" | "+=" | "-="; value: string }
+  | { type: "glue" };
 
 export interface ScriptFrontmatter {
   bg?: string;
