@@ -13,11 +13,6 @@ pub fn open_project(
 ) -> Result<(), String> {
     use tauri::Manager;
 
-    // 先关闭旧项目的 scope
-    if let Some(old) = state.project.lock().unwrap().as_ref() {
-        let _ = app.asset_protocol_scope().forbid_directory(&old.root, true);
-    }
-
     let p = Project::open(&path).map_err(|e| e.to_string())?;
 
     // 允许新项目目录访问
@@ -31,11 +26,6 @@ pub fn open_project(
 
 #[tauri::command]
 pub fn close_project(app: tauri::AppHandle, state: State<AppState>) -> Result<(), String> {
-    use tauri::Manager;
-
-    if let Some(p) = state.project.lock().unwrap().as_ref() {
-        let _ = app.asset_protocol_scope().forbid_directory(&p.root, true);
-    }
     *state.project.lock().unwrap() = None;
     Ok(())
 }
