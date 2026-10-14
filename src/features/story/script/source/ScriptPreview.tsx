@@ -140,5 +140,52 @@ function PreviewLine({ line }: { line: ParsedScript["lines"][number] }) {
           </span>
         </div>
       );
+    case "jump":
+      return (
+        <div style={{ ...rowStyle, borderLeftColor: "var(--accent-gold)" }}>
+          <span style={labelStyle}>跳转</span>
+          <span style={{ color: "var(--fg-primary)" }}>→ {line.target}</span>
+        </div>
+      );
+    case "condition":
+      return (
+        <div style={{ ...rowStyle, borderLeftColor: "var(--warning)" }}>
+          <span style={labelStyle}>条件</span>
+          <span
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: 11,
+              color: "var(--fg-secondary)",
+            }}
+          >
+            {line.expr}
+          </span>
+          {line.text && (
+            <span style={{ color: "var(--fg-muted)" }}>：{line.text}</span>
+          )}
+        </div>
+      );
+    case "assign":
+      return (
+        <div style={{ ...rowStyle, borderLeftColor: "var(--accent-flame)" }}>
+          <span style={labelStyle}>赋值</span>
+          <span
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: 11,
+              color: "var(--fg-secondary)",
+            }}
+          >
+            {line.key} {line.op} {line.value}
+          </span>
+        </div>
+      );
+    case "glue":
+      return (
+        <div style={rowStyle}>
+          <span style={labelStyle}>粘合</span>
+          <span style={{ color: "var(--fg-muted)" }}>⧉ 与上一行拼接</span>
+        </div>
+      );
   }
 }

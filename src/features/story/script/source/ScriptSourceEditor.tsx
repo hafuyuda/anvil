@@ -32,7 +32,8 @@ export function ScriptSourceEditor({ content, onChange }: Props) {
         }}
       >
         {"> 旁白"} · {"**角色**（表情）：对白"} · {"*动作*"} · {"@bg 路径"} ·{" "}
-        {"@bgm 文件"}
+        {"@bgm 文件"} · {"@sfx 文件"} · {"-> 场景名"} · {"{条件: 文本}"} ·{" "}
+        {"~ 变量 = 值"} · {"<>"}
         <div style={{ color: "var(--fg-muted)", fontSize: 10 }}>
           顶部 frontmatter 可写：
           <span style={{ color: "var(--fg-secondary)" }}>

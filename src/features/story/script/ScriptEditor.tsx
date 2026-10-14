@@ -6,11 +6,15 @@ import { ScriptStructuredEditor } from "./structured/ScriptStructuredEditor";
 interface Props {
   cardId: string;
   cardName: string;
+  /** 剧情全部场景（jump 下拉用） */
+  scenes: { id: string; name: string }[];
+  /** 剧情变量名（assign 下拉用） */
+  variables: string[];
 }
 
 type Mode = "structured" | "source";
 
-export function ScriptEditor({ cardId, cardName }: Props) {
+export function ScriptEditor({ cardId, cardName, scenes, variables }: Props) {
   const [content, setContent] = useState("");
   const [loaded, setLoaded] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -139,7 +143,12 @@ export function ScriptEditor({ cardId, cardName }: Props) {
       </div>
 
       {mode === "structured" && (
-        <ScriptStructuredEditor content={content} onChange={handleChange} />
+        <ScriptStructuredEditor
+          content={content}
+          onChange={handleChange}
+          scenes={scenes}
+          variables={variables}
+        />
       )}
       {mode === "source" && (
         <ScriptSourceEditor content={content} onChange={handleChange} />

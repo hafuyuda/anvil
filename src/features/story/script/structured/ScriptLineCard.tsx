@@ -9,6 +9,10 @@ const TYPE_LABELS: { value: ScriptLine["type"]; label: string }[] = [
   { value: "bg", label: "背景" },
   { value: "bgm", label: "音乐" },
   { value: "sfx", label: "音效" },
+  { value: "jump", label: "跳转" },
+  { value: "condition", label: "条件" },
+  { value: "assign", label: "赋值" },
+  { value: "glue", label: "粘合" },
 ];
 
 interface Props {
@@ -16,6 +20,10 @@ interface Props {
   handleProps: Record<string, unknown>;
   isDragging?: boolean;
   autoFocus?: boolean;
+  /** 剧情全部场景（jump 下拉用） */
+  scenes: { id: string; name: string }[];
+  /** 剧情变量名（assign 下拉用） */
+  variables: string[];
   onChange: (next: ScriptLine) => void;
   onDelete: () => void;
   onEnter: () => void;
@@ -26,15 +34,24 @@ export function ScriptLineCard({
   handleProps,
   isDragging,
   autoFocus,
+  scenes,
+  variables,
   onChange,
   onDelete,
   onEnter,
 }: Props) {
   const primaryRef = useRef<HTMLInputElement | null>(null);
+  const selectRef = useRef<HTMLSelectElement | null>(null);
 
   useEffect(() => {
     if (autoFocus && primaryRef.current) {
       primaryRef.current.focus();
+    }
+  }, [autoFocus]);
+
+  useEffect(() => {
+    if (autoFocus && selectRef.current) {
+      selectRef.current.focus();
     }
   }, [autoFocus]);
 
@@ -67,6 +84,18 @@ export function ScriptLineCard({
         return;
       case "sfx":
         onChange({ type: "sfx", file: "" });
+        return;
+      case "jump":
+        onChange({ type: "jump", target: "" });
+        return;
+      case "condition":
+        onChange({ type: "condition", expr: "", text: "" });
+        return;
+      case "assign":
+        onChange({ type: "assign", key: "", op: "=", value: "" });
+        return;
+      case "glue":
+        onChange({ type: "glue" });
         return;
     }
   }
@@ -207,6 +236,116 @@ export function ScriptLineCard({
               onChange={(v) => onChange({ ...line, file: v ?? "" })}
               placeholder="— 无音效 —"
             />
+          </div>
+        )}
+
+        {line.type === "jump" && (
+          <select
+            ref={selectRef}
+            className="select"
+            value={line.target}
+            onChange={(e) => onChange({ ...line, target: e.target.value })}
+            onKeyDown={handleKeyDown}
+            style={{ flex: 1, fontSize: 12 }}
+          >
+            <option value="">— 选择场景 —</option>
+            {scenes.map((s) => (
+              <option key={s.id} value={s.name}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        )}
+
+        {line.type === "condition" && (
+          <>
+            <input
+              ref={primaryRef}
+              className="input"
+              value={line.expr}
+              onChange={(e) => onChange({ ...line, expr: e.target.value })}
+              onKeyDown={handleKeyDown}
+              placeholder="表达式，如 gold >= 5"
+              style={{
+                width: 160,
+                flexShrink: 0,
+                fontSize: 11,
+                fontFamily: "var(--font-mono)",
+              }}
+            />
+            <input
+              className="input"
+              value={line.text}
+              onChange={(e) => onChange({ ...line, text: e.target.value })}
+              onKeyDown={handleKeyDown}
+              placeholder="满足时显示的文本"
+              style={{ flex: 1, fontSize: 12 }}
+            />
+          </>
+        )}
+
+        {line.type === "assign" && (
+          <>
+            {variables.length > 0 ? (
+              <select
+                ref={selectRef}
+                className="select"
+                value={line.key}
+                onChange={(e) => onChange({ ...line, key: e.target.value })}
+                onKeyDown={handleKeyDown}
+                style={{ width: 110, flexShrink: 0, fontSize: 12 }}
+              >
+                <option value="">— 变量 —</option>
+                {variables.map((v) => (
+                  <option key={v} value={v}>
+                    {v}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                ref={primaryRef}
+                className="input"
+                value={line.key}
+                onChange={(e) => onChange({ ...line, key: e.target.value })}
+                onKeyDown={handleKeyDown}
+                placeholder="变量名"
+                style={{ width: 110, flexShrink: 0, fontSize: 12 }}
+              />
+            )}
+            <select
+              className="select"
+              value={line.op}
+              onChange={(e) =>
+                onChange({ ...line, op: e.target.value as "=" | "+=" | "-=" })
+              }
+              style={{ width: 64, flexShrink: 0, fontSize: 12 }}
+            >
+              <option value="=">=</option>
+              <option value="+=">+=</option>
+              <option value="-=">-=</option>
+            </select>
+            <input
+              className="input"
+              value={line.value}
+              onChange={(e) => onChange({ ...line, value: e.target.value })}
+              onKeyDown={handleKeyDown}
+              placeholder="值（数字 / 字符串 / true）"
+              style={{ flex: 1, fontSize: 12 }}
+            />
+          </>
+        )}
+
+        {line.type === "glue" && (
+          <div
+            style={{
+              flex: 1,
+              fontSize: 12,
+              color: "var(--fg-muted)",
+              padding: "4px 0",
+            }}
+          >
+            下一行文本与本行拼接显示
           </div>
         )}
       </div>

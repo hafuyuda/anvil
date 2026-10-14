@@ -25,9 +25,18 @@ import type { ScriptFrontmatter, ScriptLine } from "../types";
 interface Props {
   content: string;
   onChange: (c: string) => void;
+  /** 剧情全部场景（jump 下拉用） */
+  scenes: { id: string; name: string }[];
+  /** 剧情变量名（assign 下拉用） */
+  variables: string[];
 }
 
-export function ScriptStructuredEditor({ content, onChange }: Props) {
+export function ScriptStructuredEditor({
+  content,
+  onChange,
+  scenes,
+  variables,
+}: Props) {
   const parsed = useMemo(() => parseScript(content), [content]);
   const [focusIdx, setFocusIdx] = useState<number | null>(null);
 
@@ -77,16 +86,34 @@ export function ScriptStructuredEditor({ content, onChange }: Props) {
   function handleEnter(idx: number) {
     const current = parsed.lines[idx];
     let newLine: ScriptLine;
-    if (current.type === "say") {
-      newLine = { type: "say", speaker: current.speaker, text: "" };
-    } else if (current.type === "bg") {
-      newLine = { type: "bg", image: "" };
-    } else if (current.type === "bgm") {
-      newLine = { type: "bgm", file: "" };
-    } else if (current.type === "sfx") {
-      newLine = { type: "sfx", file: "" };
-    } else {
-      newLine = { type: current.type, text: "" } as ScriptLine;
+    switch (current.type) {
+      case "say":
+        newLine = { type: "say", speaker: current.speaker, text: "" };
+        break;
+      case "bg":
+        newLine = { type: "bg", image: "" };
+        break;
+      case "bgm":
+        newLine = { type: "bgm", file: "" };
+        break;
+      case "sfx":
+        newLine = { type: "sfx", file: "" };
+        break;
+      case "jump":
+        newLine = { type: "jump", target: "" };
+        break;
+      case "condition":
+        newLine = { type: "condition", expr: "", text: "" };
+        break;
+      case "assign":
+        newLine = { type: "assign", key: "", op: "=", value: "" };
+        break;
+      case "glue":
+        newLine = { type: "glue" };
+        break;
+      default:
+        newLine = { type: current.type, text: "" };
+        break;
     }
     const lines = [
       ...parsed.lines.slice(0, idx + 1),
@@ -157,6 +184,8 @@ export function ScriptStructuredEditor({ content, onChange }: Props) {
                 id={String(i)}
                 line={line}
                 autoFocus={focusIdx === i}
+                scenes={scenes}
+                variables={variables}
                 onChange={(next) => handleLineChange(i, next)}
                 onDelete={() => handleDelete(i)}
                 onEnter={() => handleEnter(i)}
@@ -181,6 +210,8 @@ function SortableLineRow({
   id,
   line,
   autoFocus,
+  scenes,
+  variables,
   onChange,
   onDelete,
   onEnter,
@@ -188,6 +219,8 @@ function SortableLineRow({
   id: string;
   line: ScriptLine;
   autoFocus: boolean;
+  scenes: { id: string; name: string }[];
+  variables: string[];
   onChange: (next: ScriptLine) => void;
   onDelete: () => void;
   onEnter: () => void;
@@ -216,6 +249,8 @@ function SortableLineRow({
         handleProps={{ ...attributes, ...listeners }}
         isDragging={isDragging}
         autoFocus={autoFocus}
+        scenes={scenes}
+        variables={variables}
         onChange={onChange}
         onDelete={onDelete}
         onEnter={onEnter}

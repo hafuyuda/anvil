@@ -225,6 +225,8 @@ export function ScenarioEditor({ scenario }: Props) {
           key={selectedScene.id}
           cardId={selectedScene.id}
           cardName={selectedScene.name}
+          scenes={sceneCards.map((c) => ({ id: c.id, name: c.name }))}
+          variables={scenario.variables.map((v) => v.key)}
         />
       ) : (
         <div
