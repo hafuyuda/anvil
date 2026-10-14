@@ -5,6 +5,7 @@ import { Modal } from "../../components/ui/Modal";
 import { newId } from "../../lib/id";
 import { nowMs } from "../../lib/time";
 import { toast } from "../../lib/toast";
+import { confirmDialog } from "../../lib/confirm";
 import { runWithError } from "../../lib/runWithError";
 
 interface Props {
@@ -26,12 +27,30 @@ export function AddToGroupDialog({ cardIds, onClose, onDone }: Props) {
     setBusy(true);
     try {
       const existing = new Set(group.card_ids);
-      const toAdd = cardIds.filter((id) => !existing.has(id));
+      const dupCount = cardIds.filter((id) => existing.has(id)).length;
+
+      let toAdd: string[];
+      if (dupCount === 0) {
+        toAdd = cardIds;
+      } else {
+        const proceed = await confirmDialog({
+          title: "已有重复",
+          message:
+            `「${group.name}」里已有其中 ${dupCount} 张。\n\n` +
+            `· 点「全部加入」：重复的卡变多份\n` +
+            `· 点「只加新卡」：跳过已存在的`,
+          confirmLabel: "全部加入",
+          cancelLabel: "只加新卡",
+        });
+        toAdd = proceed ? cardIds : cardIds.filter((id) => !existing.has(id));
+      }
+
       if (toAdd.length === 0) {
         toast.info(`这批卡已全部在「${group.name}」里了。`);
         onClose();
         return;
       }
+
       const next: CardGroup = {
         ...group,
         card_ids: [...group.card_ids, ...toAdd],
@@ -229,7 +248,7 @@ export function AddToGroupDialog({ cardIds, onClose, onDone }: Props) {
                           <>
                             {" · "}
                             <span style={{ color: "var(--warning)" }}>
-                              {dupCount} 张已在该组
+                              {dupCount} 张已在组里
                             </span>
                           </>
                         )}
@@ -246,7 +265,7 @@ export function AddToGroupDialog({ cardIds, onClose, onDone }: Props) {
                         flexShrink: 0,
                       }}
                     >
-                      {newCount > 0 ? `+${newCount}` : "已满"}
+                      {newCount > 0 ? `+${newCount}` : "全部已存在"}
                     </span>
                   </li>
                 );

@@ -7,7 +7,7 @@ interface Props {
   typeById: Map<string, CardType>;
   view: string;
   onReorder: (next: string[]) => void;
-  onRemove: (id: string) => void;
+  onRemoveOne: (cardId: string) => void;
 }
 
 export function CardGroupCards({
@@ -16,7 +16,7 @@ export function CardGroupCards({
   typeById,
   view,
   onReorder,
-  onRemove,
+  onRemoveOne,
 }: Props) {
   if (cardIds.length === 0) {
     return (
@@ -44,7 +44,7 @@ export function CardGroupCards({
       cardById={cardById}
       typeById={typeById}
       onReorder={onReorder}
-      onRemove={onRemove}
+      onRemoveOne={onRemoveOne}
     />
   );
 }

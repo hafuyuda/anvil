@@ -3,14 +3,14 @@ import type { Card, CardType } from "../../../core/ipc";
 
 /** 卡组视图组件的渲染输入。两种视图 props 完全一致。 */
 export interface CardGroupViewProps {
-  /** 卡组内的卡 ID 列表（有序） */
+  /** 卡组内的卡 ID 列表（有序，允许重复） */
   cardIds: string[];
   cardById: Map<string, Card>;
   typeById: Map<string, CardType>;
   /** 拖拽排序回调 */
   onReorder: (next: string[]) => void;
-  /** 移除单张卡 */
-  onRemove: (id: string) => void;
+  /** 移除一份（count - 1），count 归零时整项消失 */
+  onRemoveOne: (cardId: string) => void;
 }
 
 /**

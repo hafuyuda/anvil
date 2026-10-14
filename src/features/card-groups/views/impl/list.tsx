@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import {
   DndContext,
   KeyboardSensor,
@@ -17,14 +18,18 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import type { Card, CardType } from "../../../../core/ipc";
 import type { CardGroupViewDef, CardGroupViewProps } from "../types";
+import { aggregate, reorderByUnique } from "../../aggregate";
 
 function ListView({
   cardIds,
   cardById,
   typeById,
   onReorder,
-  onRemove,
+  onRemoveOne,
 }: CardGroupViewProps) {
+  const entries = useMemo(() => aggregate(cardIds), [cardIds]);
+  const uniqueIds = useMemo(() => entries.map((e) => e.cardId), [entries]);
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, {
@@ -35,10 +40,10 @@ function ListView({
   function handleDragEnd(e: DragEndEvent) {
     const { active, over } = e;
     if (!over || active.id === over.id) return;
-    const oldIdx = cardIds.indexOf(active.id as string);
-    const newIdx = cardIds.indexOf(over.id as string);
+    const oldIdx = uniqueIds.indexOf(active.id as string);
+    const newIdx = uniqueIds.indexOf(over.id as string);
     if (oldIdx < 0 || newIdx < 0) return;
-    onReorder(arrayMove(cardIds, oldIdx, newIdx));
+    onReorder(reorderByUnique(cardIds, arrayMove(uniqueIds, oldIdx, newIdx)));
   }
 
   return (
@@ -47,7 +52,7 @@ function ListView({
       collisionDetection={closestCenter}
       onDragEnd={handleDragEnd}
     >
-      <SortableContext items={cardIds} strategy={verticalListSortingStrategy}>
+      <SortableContext items={uniqueIds} strategy={verticalListSortingStrategy}>
         <ul
           style={{
             listStyle: "none",
@@ -59,18 +64,19 @@ function ListView({
             overflow: "hidden",
           }}
         >
-          {cardIds.map((id, i) => {
-            const card = cardById.get(id);
+          {entries.map((e, i) => {
+            const card = cardById.get(e.cardId);
             const type = card ? typeById.get(card.type_id) : null;
             return (
               <SortableListRow
-                key={id}
-                id={id}
+                key={e.cardId}
+                id={e.cardId}
                 index={i}
-                isLast={i === cardIds.length - 1}
+                count={e.count}
+                isLast={i === entries.length - 1}
                 card={card ?? null}
                 type={type ?? null}
-                onRemove={onRemove}
+                onRemoveOne={onRemoveOne}
               />
             );
           })}
@@ -83,17 +89,19 @@ function ListView({
 function SortableListRow({
   id,
   index,
+  count,
   isLast,
   card,
   type,
-  onRemove,
+  onRemoveOne,
 }: {
   id: string;
   index: number;
+  count: number;
   isLast: boolean;
   card: Card | null;
   type: CardType | null;
-  onRemove: (id: string) => void;
+  onRemoveOne: (id: string) => void;
 }) {
   const {
     attributes,
@@ -162,6 +170,19 @@ function SortableListRow({
       >
         {card?.name ?? `（已删除 ${id.slice(0, 8)}）`}
       </span>
+      {count > 1 && (
+        <span
+          style={{
+            color: "var(--accent-gold)",
+            fontFamily: "var(--font-mono)",
+            fontSize: 11,
+            fontWeight: 600,
+            flexShrink: 0,
+          }}
+        >
+          × {count}
+        </span>
+      )}
       {type && (
         <span style={{ color: "var(--fg-muted)", fontSize: 11, flexShrink: 0 }}>
           {type.name}
@@ -169,8 +190,8 @@ function SortableListRow({
       )}
       <button
         className="btn btn-ghost"
-        onClick={() => onRemove(id)}
-        title="移除"
+        onClick={() => onRemoveOne(id)}
+        title="移除一份"
         style={{
           fontSize: 12,
           padding: "1px 6px",

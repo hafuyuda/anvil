@@ -5,9 +5,9 @@ interface Props {
   setPickQuery: (q: string) => void;
   candidateCards: Card[];
   typeById: Map<string, CardType>;
-  picked: Set<string>;
+  picked: Map<string, number>;
   totalCards: number;
-  onToggle: (id: string) => void;
+  onSetCount: (id: string, count: number) => void;
   onCancel: () => void;
   onConfirm: () => void;
 }
@@ -19,10 +19,12 @@ export function CardGroupPicker({
   typeById,
   picked,
   totalCards,
-  onToggle,
+  onSetCount,
   onCancel,
   onConfirm,
 }: Props) {
+  const totalCount = Array.from(picked.values()).reduce((a, b) => a + b, 0);
+
   return (
     <div
       style={{
@@ -66,26 +68,19 @@ export function CardGroupPicker({
         )}
         {candidateCards.map((c) => {
           const t = typeById.get(c.type_id);
-          const checked = picked.has(c.id);
+          const count = picked.get(c.id) ?? 0;
           return (
-            <label
+            <div
               key={c.id}
               style={{
                 display: "flex",
                 alignItems: "center",
                 gap: 8,
                 padding: "5px 10px",
-                cursor: "pointer",
                 fontSize: 12,
-                background: checked ? "var(--bg-raised)" : "transparent",
+                background: count > 0 ? "var(--bg-raised)" : "transparent",
               }}
             >
-              <input
-                type="checkbox"
-                checked={checked}
-                onChange={() => onToggle(c.id)}
-                style={{ accentColor: "var(--accent-gold)" }}
-              />
               <span
                 style={{
                   flex: 1,
@@ -109,7 +104,41 @@ export function CardGroupPicker({
                   {t.name}
                 </span>
               )}
-            </label>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 2,
+                  flexShrink: 0,
+                }}
+              >
+                <button
+                  className="btn btn-icon"
+                  onClick={() => onSetCount(c.id, count - 1)}
+                  disabled={count === 0}
+                  style={{ padding: "0 6px", fontSize: 12 }}
+                >
+                  −
+                </button>
+                <span
+                  style={{
+                    minWidth: 20,
+                    textAlign: "center",
+                    fontFamily: "var(--font-mono)",
+                    color: count > 0 ? "var(--accent-gold)" : "var(--fg-muted)",
+                  }}
+                >
+                  {count}
+                </span>
+                <button
+                  className="btn btn-icon"
+                  onClick={() => onSetCount(c.id, count + 1)}
+                  style={{ padding: "0 6px", fontSize: 12 }}
+                >
+                  +
+                </button>
+              </div>
+            </div>
           );
         })}
       </div>
@@ -127,10 +156,10 @@ export function CardGroupPicker({
         <button
           className="btn btn-primary"
           onClick={onConfirm}
-          disabled={picked.size === 0}
+          disabled={totalCount === 0}
           style={{ fontSize: 12 }}
         >
-          添加 {picked.size > 0 ? `(${picked.size})` : ""}
+          添加 {totalCount > 0 ? `(${totalCount})` : ""}
         </button>
       </div>
     </div>

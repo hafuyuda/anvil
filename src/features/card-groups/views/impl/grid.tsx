@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import {
   DndContext,
   KeyboardSensor,
@@ -18,14 +19,18 @@ import { CSS } from "@dnd-kit/utilities";
 import type { Card, CardType } from "../../../../core/ipc";
 import { CardGrid, GridCard } from "../../../../components/card/CardGrid";
 import type { CardGroupViewDef, CardGroupViewProps } from "../types";
+import { aggregate, reorderByUnique } from "../../aggregate";
 
 function GridView({
   cardIds,
   cardById,
   typeById,
   onReorder,
-  onRemove,
+  onRemoveOne,
 }: CardGroupViewProps) {
+  const entries = useMemo(() => aggregate(cardIds), [cardIds]);
+  const uniqueIds = useMemo(() => entries.map((e) => e.cardId), [entries]);
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, {
@@ -36,10 +41,10 @@ function GridView({
   function handleDragEnd(e: DragEndEvent) {
     const { active, over } = e;
     if (!over || active.id === over.id) return;
-    const oldIdx = cardIds.indexOf(active.id as string);
-    const newIdx = cardIds.indexOf(over.id as string);
+    const oldIdx = uniqueIds.indexOf(active.id as string);
+    const newIdx = uniqueIds.indexOf(over.id as string);
     if (oldIdx < 0 || newIdx < 0) return;
-    onReorder(arrayMove(cardIds, oldIdx, newIdx));
+    onReorder(reorderByUnique(cardIds, arrayMove(uniqueIds, oldIdx, newIdx)));
   }
 
   return (
@@ -48,18 +53,19 @@ function GridView({
       collisionDetection={closestCenter}
       onDragEnd={handleDragEnd}
     >
-      <SortableContext items={cardIds} strategy={rectSortingStrategy}>
+      <SortableContext items={uniqueIds} strategy={rectSortingStrategy}>
         <CardGrid>
-          {cardIds.map((id) => {
-            const card = cardById.get(id) ?? null;
+          {entries.map((e) => {
+            const card = cardById.get(e.cardId) ?? null;
             const type = card ? (typeById.get(card.type_id) ?? null) : null;
             return (
               <SortableGridCard
-                key={id}
-                id={id}
+                key={e.cardId}
+                id={e.cardId}
+                count={e.count}
                 card={card}
                 type={type}
-                onRemove={onRemove}
+                onRemoveOne={onRemoveOne}
               />
             );
           })}
@@ -71,14 +77,16 @@ function GridView({
 
 function SortableGridCard({
   id,
+  count,
   card,
   type,
-  onRemove,
+  onRemoveOne,
 }: {
   id: string;
+  count: number;
   card: Card | null;
   type: CardType | null;
-  onRemove: (id: string) => void;
+  onRemoveOne: (id: string) => void;
 }) {
   const {
     attributes,
@@ -104,24 +112,50 @@ function SortableGridCard({
         touchAction: "none",
       }}
       overlay={
-        <button
-          className="btn btn-icon"
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            e.stopPropagation();
-            onRemove(id);
-          }}
-          title="移除"
+        <div
           style={{
-            padding: "2px 6px",
-            fontSize: 12,
-            background: "rgba(0,0,0,0.55)",
-            border: "1px solid rgba(255,255,255,0.3)",
-            color: "#fff",
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+            pointerEvents: "none",
           }}
         >
-          ×
-        </button>
+          {count > 1 && (
+            <span
+              style={{
+                padding: "2px 6px",
+                borderRadius: "var(--radius-sm)",
+                background: "rgba(0,0,0,0.7)",
+                border: "1px solid var(--accent-gold)",
+                color: "var(--accent-gold)",
+                fontSize: 11,
+                fontWeight: 600,
+                fontFamily: "var(--font-mono)",
+              }}
+            >
+              × {count}
+            </span>
+          )}
+          <button
+            className="btn btn-icon"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemoveOne(id);
+            }}
+            title="移除一份"
+            style={{
+              padding: "2px 6px",
+              fontSize: 12,
+              pointerEvents: "auto",
+              background: "rgba(0,0,0,0.55)",
+              border: "1px solid rgba(255,255,255,0.3)",
+              color: "#fff",
+            }}
+          >
+            ×
+          </button>
+        </div>
       }
     />
   );

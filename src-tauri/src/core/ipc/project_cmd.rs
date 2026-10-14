@@ -25,7 +25,7 @@ pub fn open_project(
 }
 
 #[tauri::command]
-pub fn close_project(app: tauri::AppHandle, state: State<AppState>) -> Result<(), String> {
+pub fn close_project(state: State<AppState>) -> Result<(), String> {
     *state.project.lock().unwrap() = None;
     Ok(())
 }

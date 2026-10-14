@@ -4,7 +4,6 @@ import { useDeleteUndo } from "../../hooks/useDeleteUndo";
 import { nowMs } from "../../lib/time";
 import { newId, makeUndoId } from "../../lib/id";
 import { gridPosition, shuffle } from "./tokenPlacement";
-import { usePileActions } from "./usePileActions";
 import { toast } from "../../lib/toast";
 import { runWithError } from "../../lib/runWithError";
 
@@ -24,31 +23,48 @@ interface Args {
 /**
  * 检查新 token 是否超出棋盘边界，超出则返回扩充后的新宽高。
  * 返回 null 表示无需扩充。
+ *
+ * 修复：原来 maxX / maxY 以 currentW / currentH 为初值，导致
+ * newW 恒 >= currentW + 100，每次添加都撑大棋盘。
+ * 现在改为算 token 的真实边界，棋盘尺寸只增不减。
  */
 function computeBoardExpansion(
   tokens: Token[],
   currentW: number,
   currentH: number,
 ): { width: number; height: number } | null {
-  let maxX = currentW;
-  let maxY = currentH;
+  let realMaxX = 0;
+  let realMaxY = 0;
   for (const t of tokens) {
     const w = t.w ?? 140;
     const h = t.h ?? 205;
-    maxX = Math.max(maxX, t.x + w);
-    maxY = Math.max(maxY, t.y + h);
+    realMaxX = Math.max(realMaxX, t.x + w);
+    realMaxY = Math.max(realMaxY, t.y + h);
   }
-  // 加两格留白（按默认 token 尺寸的网格：180×240）
-  const newW = Math.ceil((maxX + 180) / 100) * 100;
-  const newH = Math.ceil((maxY + 240) / 100) * 100;
+  // 在 token 边界外预留一格，按 100px 取整；下界为当前棋盘尺寸
+  const newW = Math.max(currentW, Math.ceil((realMaxX + 180) / 100) * 100);
+  const newH = Math.max(currentH, Math.ceil((realMaxY + 240) / 100) * 100);
   if (newW === currentW && newH === currentH) return null;
   return { width: newW, height: newH };
 }
 
 /**
+ * 已有 token 的最大 layer + 1。
+ *
+ * 修复：原来直接用 tokens.length 分配 layer，
+ * 删除后添加会产生重复值（如 layers = [0,1,3,4]，再加一个还是 4）。
+ */
+function nextLayerBase(tokens: Token[]): number {
+  return tokens.reduce((m, t) => Math.max(m, t.layer), -1) + 1;
+}
+
+/**
  * BoardEditor 的业务逻辑集合：
- * 持久化、卡片添加、卡组导入、卡盒创建、卡盒操作、批量删除。
+ * 持久化、卡片添加、卡组导入、卡盒创建、批量删除。
  * 不含任何 UI 状态。
+ *
+ * 卡盒抽牌 / 洗牌 / 重置由 BoardEditor 直接调用 usePileActions
+ * （那里带了 bounds，用于抽牌时的边界判断），本 hook 不重复创建。
  */
 export function useBoardActions({ board, upsertBoard, pushUndo }: Args) {
   const cards = useProjectStore((s) => s.cards) ?? [];
@@ -87,10 +103,11 @@ export function useBoardActions({ board, upsertBoard, pushUndo }: Args) {
   async function addCardsToBoard(cardIds: string[]) {
     if (cardIds.length === 0) return;
     const existing = board.tokens ?? [];
-    const startIdx = existing.length;
+    const layerBase = nextLayerBase(existing);
+    const posBase = existing.length;
 
     const newTokens: Token[] = cardIds.map((cardId, i) => {
-      const pos = gridPosition(startIdx + i);
+      const pos = gridPosition(posBase + i);
       return {
         id: newId(),
         card_id: cardId,
@@ -101,7 +118,7 @@ export function useBoardActions({ board, upsertBoard, pushUndo }: Args) {
         w: 140,
         h: 205,
         rotation: 0,
-        layer: startIdx + i,
+        layer: layerBase + i,
         visible: true,
         face_down: false,
         pile: null,
@@ -134,8 +151,7 @@ export function useBoardActions({ board, upsertBoard, pushUndo }: Args) {
 
   async function addPlaceholder() {
     const tokens = board.tokens ?? [];
-    const count = tokens.length;
-    const pos = gridPosition(count);
+    const pos = gridPosition(tokens.length);
 
     const newToken: Token = {
       id: newId(),
@@ -147,7 +163,7 @@ export function useBoardActions({ board, upsertBoard, pushUndo }: Args) {
       w: 140,
       h: 205,
       rotation: 0,
-      layer: count,
+      layer: nextLayerBase(tokens),
       visible: true,
       face_down: false,
       pile: null,
@@ -171,10 +187,11 @@ export function useBoardActions({ board, upsertBoard, pushUndo }: Args) {
 
     const ordered = shuffleOn ? shuffle(valid) : valid;
     const existing = board.tokens ?? [];
-    const startIdx = existing.length;
+    const layerBase = nextLayerBase(existing);
+    const posBase = existing.length;
 
     const newTokens: Token[] = ordered.map((cardId, i) => {
-      const pos = gridPosition(startIdx + i);
+      const pos = gridPosition(posBase + i);
       return {
         id: newId(),
         card_id: cardId,
@@ -185,7 +202,7 @@ export function useBoardActions({ board, upsertBoard, pushUndo }: Args) {
         w: 140,
         h: 205,
         rotation: 0,
-        layer: startIdx + i,
+        layer: layerBase + i,
         visible: true,
         face_down: false,
         pile: null,
@@ -232,7 +249,7 @@ export function useBoardActions({ board, upsertBoard, pushUndo }: Args) {
       w: 140,
       h: 205,
       rotation: 0,
-      layer: existing.length,
+      layer: nextLayerBase(existing),
       visible: true,
       face_down: false,
       pile: {
@@ -263,13 +280,6 @@ export function useBoardActions({ board, upsertBoard, pushUndo }: Args) {
       upsertBoard(next);
     }, "创建卡盒失败");
   }
-
-  const { drawFromPile, shufflePile, resetPile } = usePileActions({
-    tokens: board.tokens ?? [],
-    applyTokens: async (next, label) => {
-      await savePatch({ tokens: next }, label);
-    },
-  });
 
   async function deleteSelectedTokens(ids: string[]) {
     if (ids.length === 0) return;
@@ -305,9 +315,6 @@ export function useBoardActions({ board, upsertBoard, pushUndo }: Args) {
     addPlaceholder,
     importFromGroup,
     addPile,
-    drawFromPile,
-    shufflePile,
-    resetPile,
     deleteSelectedTokens,
   };
 }

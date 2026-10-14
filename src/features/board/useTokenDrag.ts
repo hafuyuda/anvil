@@ -94,7 +94,7 @@ export function useTokenDrag({
     const z = zoomRef.current;
     return { x: px / z, y: py / z };
   }
-
+  
   function onTokenPointerDown(e: React.PointerEvent, t: Token) {
     if (e.button !== 0) return;
     e.stopPropagation();
@@ -103,16 +103,26 @@ export function useTokenDrag({
     if (!pt) return;
 
     const isMulti = e.ctrlKey || e.metaKey || e.shiftKey;
+
+    let dragIds: string[];
+
     if (isMulti) {
+      const wasSelected = selectedTokenIds.includes(t.id);
       toggleTokenSelection(t.id);
-      return;
+      if (wasSelected) {
+        // Ctrl+点已选中 → 取消选中，不进入拖拽
+        return;
+      }
+      // 加选：拖拽集合 = 原选中 + 当前（state 异步，手动并集）
+      dragIds = [...selectedTokenIds, t.id];
+    } else {
+      if (!selectedTokenIds.includes(t.id)) {
+        selectToken(t.id);
+        dragIds = [t.id];
+      } else {
+        dragIds = selectedTokenIds;
+      }
     }
-
-    if (!selectedTokenIds.includes(t.id)) {
-      selectToken(t.id);
-    }
-
-    const dragIds = selectedTokenIds.includes(t.id) ? selectedTokenIds : [t.id];
 
     const initialPositions: Record<string, { x: number; y: number }> = {};
     for (const tid of dragIds) {
