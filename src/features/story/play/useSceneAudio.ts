@@ -10,13 +10,12 @@ import {
  * 视觉小说运行时音频控制。
  *
  * - bgm：跨行保持，只有 currentBgm 变化时才切换。循环播放。
- * - sfx：lineIndex 或 sceneId 变化时触发当前行的 sfx 列表。
+ * - sfx：sfxList 变化时把列表里的音效全部播一遍。
  *
  * 组件卸载时停止所有音频。
  */
 export function useSceneAudio(
   sceneId: string | null,
-  lineIndex: number,
   bgm: string | null,
   sfxList: string[],
 ) {
@@ -77,7 +76,7 @@ export function useSceneAudio(
     };
   }, [bgm]);
 
-  // sfx 触发：lineIndex 或 sceneId 变化时，把当前行的 sfx 全部播一遍
+  // sfx 触发：sfxList 变化时，把列表里的音效全部播一遍
   useEffect(() => {
     if (sfxList.length === 0) return;
     let cancelled = false;
@@ -94,7 +93,7 @@ export function useSceneAudio(
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sceneId, lineIndex]);
+  }, [sceneId, sfxList]);
 }
 
 function fadeIn(audio: HTMLAudioElement, ms: number) {

@@ -1,9 +1,4 @@
-import type {
-  Card,
-  Relation,
-  RelationKind,
-  Scenario,
-} from "../../../../core/ipc";
+import type { Card, Scenario } from "../../../../core/ipc";
 import type { ScriptLine } from "../../script/types";
 import { VNStageBackground } from "./VNStageBackground";
 import { VNStageChoice } from "./VNStageChoice";
@@ -20,11 +15,9 @@ interface Props {
   atEnd: boolean;
   onAdvanceLine: () => void;
 
-  outgoing: Relation[];
-  edgeStates: Record<string, { ok: boolean; error?: string }>;
+  jumps: { target: string }[];
+  onChoose: (target: string) => void;
   cards: Card[];
-  relationKinds: RelationKind[];
-  onAdvance: (relationId: string, toId: string) => void;
 
   fallbackCard: Card | null;
   scenario: Scenario;
@@ -40,11 +33,9 @@ export function VNStage({
   currentBg,
   atEnd,
   onAdvanceLine,
-  outgoing,
-  edgeStates,
+  jumps,
+  onChoose,
   cards,
-  relationKinds,
-  onAdvance,
   fallbackCard,
   scenario,
   isEnding,
@@ -67,6 +58,11 @@ export function VNStage({
       </div>
     );
   }
+
+  // 有选项（停在 jump 列表）或走到底（结局 / 无选项）时显示选择面板
+  const showChoices = jumps.length > 0 || atEnd;
+  // 仅停在可显示行、无选项时点击推进
+  const advanceable = hasScript && Boolean(currentLine) && !showChoices;
 
   return (
     <div
@@ -113,23 +109,17 @@ export function VNStage({
         {hasScript && currentLine ? (
           <>
             <div
-              onClick={atEnd ? undefined : onAdvanceLine}
+              onClick={advanceable ? onAdvanceLine : undefined}
               style={{
                 flex: 1,
-                cursor: atEnd ? "default" : "pointer",
+                cursor: advanceable ? "pointer" : "default",
               }}
             />
 
-            {atEnd ? (
+            {showChoices ? (
               <>
-                {isEnding && <VNStageEnding name={endingName} />}
-                <VNStageChoice
-                  outgoing={outgoing}
-                  edgeStates={edgeStates}
-                  cards={cards}
-                  relationKinds={relationKinds}
-                  onAdvance={onAdvance}
-                />
+                {atEnd && isEnding && <VNStageEnding name={endingName} />}
+                <VNStageChoice jumps={jumps} onChoose={onChoose} />
               </>
             ) : (
               <VNStageDialogue line={currentLine} onAdvance={onAdvanceLine} />
@@ -139,11 +129,8 @@ export function VNStage({
           <VNStageFallback
             card={fallbackCard}
             scenario={scenario}
-            outgoing={outgoing}
-            edgeStates={edgeStates}
-            cards={cards}
-            relationKinds={relationKinds}
-            onAdvance={onAdvance}
+            jumps={jumps}
+            onChoose={onChoose}
           />
         )}
       </div>

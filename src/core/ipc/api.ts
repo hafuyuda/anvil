@@ -91,13 +91,6 @@ export const ipc = {
   upsertScenario: (scenario: Scenario) =>
     invoke<void>("upsert_scenario", { scenario }),
   deleteScenario: (id: string) => invoke<void>("delete_scenario", { id }),
-  validateCondition: (scenario: Scenario, expr: string) =>
-    invoke<void>("validate_condition", { scenario, expr }),
-  evalCondition: (
-    scenario: Scenario,
-    expr: string,
-    overrides: Record<string, unknown>,
-  ) => invoke<boolean>("eval_condition", { scenario, expr, overrides }),
 
   // ── 棋盘 ──
   listBoards: () => invoke<Board[]>("list_boards"),

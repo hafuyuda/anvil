@@ -12,17 +12,14 @@ interface Props {
 
 export function PlayView({ scenario }: Props) {
   const cards = useProjectStore((s) => s.cards) ?? [];
-  const relations = useProjectStore((s) => s.relations) ?? [];
-  const relationKinds = useProjectStore((s) => s.relationKinds) ?? [];
 
   const {
     values,
     setValue,
     currentId,
     history,
-    edgeStates,
-    outgoing,
-    advance,
+    jumps,
+    chooseJump,
     back,
     reset,
     resetVars,
@@ -30,16 +27,15 @@ export function PlayView({ scenario }: Props) {
     advanceLine,
     atEnd,
     hasScript,
-    lineIndex,
     currentLine,
     currentBg,
     currentBgm,
     currentSfx,
     isEnding,
     endingName,
-  } = usePlayState(scenario, relations);
+  } = usePlayState(scenario);
 
-  useSceneAudio(currentId, lineIndex, currentBgm, currentSfx);
+  useSceneAudio(currentId, currentBgm, currentSfx);
 
   const [showVariables, setShowVariables] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
@@ -78,11 +74,9 @@ export function PlayView({ scenario }: Props) {
         currentBg={currentBg}
         atEnd={atEnd}
         onAdvanceLine={advanceLine}
-        outgoing={outgoing}
-        edgeStates={edgeStates}
+        jumps={jumps}
+        onChoose={chooseJump}
         cards={cards}
-        relationKinds={relationKinds}
-        onAdvance={advance}
         fallbackCard={currentCard}
         scenario={scenario}
         isEnding={isEnding}
@@ -155,7 +149,7 @@ export function PlayView({ scenario }: Props) {
             values={values}
             onChangeValue={setValue}
             onResetVars={resetVars}
-            history={history}
+            history={history.map((h) => h.sceneId)}
             cards={cards}
           />
         </div>
@@ -201,8 +195,8 @@ export function PlayView({ scenario }: Props) {
               fontSize: 12,
             }}
           >
-            {history.map((id, i) => {
-              const c = cards.find((x) => x.id === id);
+            {history.map((h, i) => {
+              const c = cards.find((x) => x.id === h.sceneId);
               return (
                 <li
                   key={i}
@@ -211,7 +205,7 @@ export function PlayView({ scenario }: Props) {
                     padding: "2px 0",
                   }}
                 >
-                  {c?.name ?? id.slice(0, 8)}
+                  {c?.name ?? h.sceneId.slice(0, 8)}
                 </li>
               );
             })}

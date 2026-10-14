@@ -1,8 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
-import { ipc, type Relation, type Scenario } from "../../../core/ipc";
-import { applyEffects, parseEffects } from "../effects";
+import { useEffect, useRef, useState } from "react";
+import { useProjectStore } from "../../../stores/projectStore";
+import { ipc, type Scenario, type VariableDef } from "../../../core/ipc";
+import { toast } from "../../../lib/toast";
+import { applyEffects, type AppliedEffect, type ParsedEffect } from "../effects";
+import { evalCondition } from "../script/eval";
 import { parseScript } from "../script/parser";
-import type { ParsedScript, ScriptLine } from "../script/types";
+import type {
+  ParsedScript,
+  ScriptFrontmatter,
+  ScriptLine,
+} from "../script/types";
 
 export interface LastRoll {
   key: string;
@@ -11,150 +18,80 @@ export interface LastRoll {
   detail: number[];
 }
 
-export function usePlayState(scenario: Scenario, relations: Relation[]) {
-  const [values, setValues] = useState<Record<string, unknown>>(() => {
-    const init: Record<string, unknown> = {};
-    for (const v of scenario.variables) {
-      init[v.key] = v.default ?? null;
-    }
-    return init;
-  });
+/** 运行时状态（§4.1）。glue 是内部粘合标记：下一文本行与前一行拼接。 */
+export interface RuntimeState {
+  sceneId: string | null;
+  pc: number;
+  values: Record<string, unknown>;
+  displayLine: ScriptLine | null;
+  jumps: { target: string }[];
+  bg: string | null;
+  bgm: string | null;
+  glue: boolean;
+}
 
-  const [currentId, setCurrentId] = useState<string | null>(
-    scenario.entry_node ?? scenario.node_ids[0] ?? null,
-  );
-  const [history, setHistory] = useState<string[]>([]);
-  const [edgeStates, setEdgeStates] = useState<
-    Record<string, { ok: boolean; error?: string }>
-  >({});
-  const [lastRolls, setLastRolls] = useState<LastRoll[]>([]);
+/** back() 用的快照：状态 + 当前显示（bg / bgm / sfx 不回放，不入快照）。 */
+interface HistoryEntry {
+  sceneId: string;
+  pc: number;
+  values: Record<string, unknown>;
+  displayLine: ScriptLine | null;
+  jumps: { target: string }[];
+  glue: boolean;
+}
 
-  // ── 剧本状态 ──
+/** 循环保护：单次推进最多扫描的步数。 */
+const MAX_STEPS = 1000;
+
+interface StepResult {
+  state: RuntimeState;
+  sfx: string[];
+  rolls: AppliedEffect[];
+  error: string | null;
+}
+
+export function usePlayState(scenario: Scenario) {
+  const cards = useProjectStore((s) => s.cards) ?? [];
+
+  const [rt, setRt] = useState<RuntimeState>(() => initialRt(scenario));
+  const rtRef = useRef(rt);
+  function updateRt(next: RuntimeState) {
+    rtRef.current = next;
+    setRt(next);
+  }
+
   const [script, setScript] = useState<ParsedScript | null>(null);
   const [scriptLoading, setScriptLoading] = useState(false);
-  const [lineIndex, setLineIndex] = useState(0);
-  const [effectiveLines, setEffectiveLines] = useState<ScriptLine[]>([]);
-  const [bgAt, setBgAt] = useState<(string | null)[]>([]);
-  const [bgmAt, setBgmAt] = useState<(string | null)[]>([]);
-  const [sfxAt, setSfxAt] = useState<string[][]>([]);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [lastRolls, setLastRolls] = useState<LastRoll[]>([]);
+  const [sfx, setSfx] = useState<string[]>([]);
 
-  const nodeIds = useMemo(
-    () => new Set(scenario.node_ids),
-    [scenario.node_ids],
-  );
+  // 场景切换后待执行的入场动作：fresh = 从头进入；restore = 回退恢复快照
+  const entryRef = useRef<"fresh" | "restore" | null>("fresh");
+  const restoreRef = useRef<HistoryEntry | null>(null);
 
-  const outgoing = useMemo(
-    () =>
-      relations.filter(
-        (r) =>
-          r.from === currentId &&
-          nodeIds.has(r.to) &&
-          r.meta?.scenario_id === scenario.id,
-      ),
-    [relations, currentId, nodeIds, scenario.id],
-  );
-
-  // 每次变量或关系变化，重新评估所有边的条件
+  // 加载当前场景的剧本，加载完成后执行入场动作
   useEffect(() => {
-    let cancelled = false;
-    async function run() {
-      const states: Record<string, { ok: boolean; error?: string }> = {};
-      const allEdges = relations.filter(
-        (r) =>
-          nodeIds.has(r.from) &&
-          nodeIds.has(r.to) &&
-          r.meta?.scenario_id === scenario.id,
-      );
-      for (const r of allEdges) {
-        const expr =
-          typeof r.meta?.condition === "string" ? r.meta.condition : "";
-        if (!expr.trim()) {
-          states[r.id] = { ok: true };
-          continue;
-        }
-        try {
-          const ok = await ipc.evalCondition(scenario, expr, values);
-          states[r.id] = { ok };
-        } catch (e) {
-          states[r.id] = { ok: false, error: String(e) };
-        }
-      }
-      if (!cancelled) setEdgeStates(states);
-    }
-    run();
-    return () => {
-      cancelled = true;
-    };
-  }, [relations, nodeIds, values, scenario]);
-
-  // 加载当前场景的剧本
-  useEffect(() => {
-    if (!currentId) {
+    const sceneId = rt.sceneId;
+    if (!sceneId) {
       setScript(null);
-      setEffectiveLines([]);
-      setBgAt([]);
-      setLineIndex(0);
       return;
     }
     let cancelled = false;
     setScriptLoading(true);
     ipc
-      .loadScript(currentId)
+      .loadScript(sceneId)
       .then((content) => {
         if (cancelled) return;
-
-        if (!content || content.trim() === "") {
-          setScript(null);
-          setEffectiveLines([]);
-          setBgAt([]);
-          setBgmAt([]);
-          setSfxAt([]);
-        } else {
-          const parsed = parseScript(content);
-          setScript(parsed);
-
-          // 预处理：抽离 bg / bgm / sfx 指令行，
-          // 计算每个「可渲染行」对应的背景、当前 bgm、以及之前触发的 sfx
-          const eff: ScriptLine[] = [];
-          const bgs: (string | null)[] = [];
-          const bgms: (string | null)[] = [];
-          const sfxs: string[][] = [];
-
-          let currentBg: string | null = parsed.frontmatter.bg ?? null;
-          let currentBgm: string | null = parsed.frontmatter.bgm ?? null;
-          let pendingSfx: string[] = [];
-
-          for (const line of parsed.lines) {
-            if (line.type === "bg") {
-              currentBg = line.image;
-            } else if (line.type === "bgm") {
-              currentBgm = line.file;
-            } else if (line.type === "sfx") {
-              pendingSfx.push(line.file);
-            } else {
-              eff.push(line);
-              bgs.push(currentBg);
-              bgms.push(currentBgm);
-              sfxs.push(pendingSfx);
-              pendingSfx = [];
-            }
-          }
-
-          setEffectiveLines(eff);
-          setBgAt(bgs);
-          setBgmAt(bgms);
-          setSfxAt(sfxs);
-        }
-        setLineIndex(0);
+        const parsed =
+          content && content.trim() !== "" ? parseScript(content) : null;
+        setScript(parsed);
+        enterScene(sceneId, parsed);
       })
       .catch(() => {
         if (!cancelled) {
           setScript(null);
-          setEffectiveLines([]);
-          setBgAt([]);
-          setBgmAt([]);
-          setSfxAt([]);
-          setLineIndex(0);
+          enterScene(sceneId, null);
         }
       })
       .finally(() => {
@@ -163,136 +100,329 @@ export function usePlayState(scenario: Scenario, relations: Relation[]) {
     return () => {
       cancelled = true;
     };
-  }, [currentId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rt.sceneId]);
 
-  function setValue(key: string, val: unknown) {
-    setValues((s) => ({ ...s, [key]: val }));
-  }
+  function enterScene(sceneId: string, parsed: ParsedScript | null) {
+    const mode = entryRef.current ?? "fresh";
+    entryRef.current = null;
 
-  function resetVars() {
-    const init: Record<string, unknown> = {};
-    for (const v of scenario.variables) {
-      init[v.key] = v.default ?? null;
-    }
-    setValues(init);
-  }
-
-  function advance(relationId: string, toId: string) {
-    if (!currentId) return;
-
-    const relation = relations.find((r) => r.id === relationId);
-    if (relation) {
-      const effects = parseEffects(relation.meta?.effects);
-      if (effects.length > 0) {
-        const result = applyEffects(values, effects, scenario.variables);
-        setValues(result.values);
-        if (result.errors.length > 0) {
-          console.warn("效果执行警告:", result.errors);
-        }
-
-        const rolls = result.applied.filter((a) => a.isRoll);
-        if (rolls.length > 0) {
-          setLastRolls(
-            rolls.map((a) => ({
-              key: a.key,
-              raw: a.raw,
-              resolved: a.resolved,
-              detail: a.rollDetail ?? [],
-            })),
-          );
-        } else {
-          setLastRolls([]);
-        }
-      } else {
-        setLastRolls([]);
+    if (mode === "restore") {
+      const snap = restoreRef.current;
+      restoreRef.current = null;
+      if (snap) {
+        // 回退：恢复快照，不重放副作用（bg / bgm 保持当前值）
+        updateRt({ ...snap, bg: rtRef.current.bg, bgm: rtRef.current.bgm });
+        return;
       }
     }
 
-    setHistory((h) => [...h, currentId]);
-    setCurrentId(toId);
-    setLineIndex(0);
+    // 全新进入：frontmatter 决定初始 bg / bgm，pc 归零，立即推进一次
+    runStep(freshEntry(sceneId, parsed, rtRef.current.values), parsed);
   }
 
-  function back() {
-    setHistory((h) => {
-      if (h.length === 0) return h;
-      const prev = h[h.length - 1];
-      setCurrentId(prev);
-      setLineIndex(0);
-      return h.slice(0, -1);
+  function runStep(state: RuntimeState, parsed: ParsedScript | null) {
+    if (!parsed) {
+      updateRt(state);
+      setSfx([]);
+      return;
+    }
+    const result = step(state, parsed, scenario.variables);
+    updateRt(result.state);
+    setSfx(result.sfx);
+    setLastRolls(
+      result.rolls.map((a) => ({
+        key: a.key,
+        raw: a.raw,
+        resolved: a.resolved,
+        detail: a.rollDetail ?? [],
+      })),
+    );
+    if (result.error) toast.error(result.error);
+  }
+
+  // ── 推进 ──
+  function advanceLine() {
+    const cur = rtRef.current;
+    if (!script || script.lines.length === 0) return;
+    if (cur.jumps.length > 0) return; // 等待选择
+    if (cur.pc >= script.lines.length) return; // atEnd
+    runStep({ ...cur, pc: cur.pc + 1 }, script);
+  }
+
+  // ── 选择跳转：场景名 → card.id ──
+  function chooseJump(target: string) {
+    const cur = rtRef.current;
+    const card = cards.find((c) => c.name === target);
+    if (!card || !scenario.node_ids.includes(card.id)) {
+      toast.error(`找不到场景：${target}`);
+      return; // 停在当前场景
+    }
+    pushHistory(cur);
+
+    if (card.id === cur.sceneId && script) {
+      // 同场景跳转：重新入场
+      runStep(
+        freshEntry(card.id, script, cur.values),
+        script,
+      );
+      return;
+    }
+    entryRef.current = "fresh";
+    updateRt({
+      ...cur,
+      sceneId: card.id,
+      pc: 0,
+      displayLine: null,
+      jumps: [],
+      glue: false,
     });
+  }
+
+  // ── 回退 ──
+  function back() {
+    if (history.length === 0) return;
+    const cur = rtRef.current;
+    const snap = history[history.length - 1];
+    setHistory((h) => h.slice(0, -1));
+
+    if (snap.sceneId === cur.sceneId) {
+      // 同场景：直接恢复快照
+      updateRt({ ...snap, bg: cur.bg, bgm: cur.bgm });
+      return;
+    }
+    restoreRef.current = snap;
+    entryRef.current = "restore";
+    updateRt({ ...cur, sceneId: snap.sceneId, jumps: [] });
   }
 
   function reset() {
     setHistory([]);
-    setCurrentId(scenario.entry_node ?? scenario.node_ids[0] ?? null);
-    setLineIndex(0);
-    const init: Record<string, unknown> = {};
-    for (const v of scenario.variables) {
-      init[v.key] = v.default ?? null;
+    setLastRolls([]);
+    const sceneId = scenario.entry_node ?? scenario.node_ids[0] ?? null;
+    if (!sceneId) {
+      updateRt(initialRt(scenario));
+      setSfx([]);
+      return;
     }
-    setValues(init);
-  }
-
-  function advanceLine() {
-    if (effectiveLines.length === 0) return;
-    if (lineIndex < effectiveLines.length - 1) {
-      setLineIndex((i) => i + 1);
+    if (sceneId === rtRef.current.sceneId && script) {
+      runStep(freshEntry(sceneId, script, initValues(scenario)), script);
+      return;
     }
+    entryRef.current = "fresh";
+    updateRt({
+      ...rtRef.current,
+      sceneId,
+      pc: 0,
+      values: initValues(scenario),
+      displayLine: null,
+      jumps: [],
+      glue: false,
+    });
   }
 
-  function jumpToEnd() {
-    if (effectiveLines.length === 0) return;
-    setLineIndex(effectiveLines.length - 1);
+  function setValue(key: string, val: unknown) {
+    updateRt({
+      ...rtRef.current,
+      values: { ...rtRef.current.values, [key]: val },
+    });
   }
 
-  const atEnd =
-    effectiveLines.length === 0 || lineIndex >= effectiveLines.length - 1;
-  const hasScript = effectiveLines.length > 0;
+  function resetVars() {
+    updateRt({ ...rtRef.current, values: initValues(scenario) });
+  }
 
-  const currentLine: ScriptLine | null =
-    effectiveLines.length > 0
-      ? effectiveLines[Math.min(lineIndex, effectiveLines.length - 1)]
-      : null;
+  function pushHistory(state: RuntimeState) {
+    if (!state.sceneId) return;
+    const snap: HistoryEntry = {
+      sceneId: state.sceneId,
+      pc: state.pc,
+      values: state.values,
+      displayLine: state.displayLine,
+      jumps: state.jumps,
+      glue: state.glue,
+    };
+    setHistory((h) => [...h, snap]);
+  }
 
-  const currentBg: string | null =
-    bgAt.length > 0 ? bgAt[Math.min(lineIndex, bgAt.length - 1)] : null;
-
-  const currentBgm: string | null =
-    bgmAt.length > 0 ? bgmAt[Math.min(lineIndex, bgmAt.length - 1)] : null;
-
-  const currentSfx: string[] =
-    sfxAt.length > 0 ? sfxAt[Math.min(lineIndex, sfxAt.length - 1)] : [];
-
-  const isEnding = Boolean(script?.frontmatter.is_ending);
-  const endingName = script?.frontmatter.ending_name ?? null;
+  const lines = script?.lines ?? [];
+  const atEnd = rt.sceneId !== null && lines.length > 0 && rt.pc >= lines.length;
+  const hasScript = lines.length > 0;
 
   return {
-    values,
+    values: rt.values,
     setValue,
-    currentId,
+    currentId: rt.sceneId,
     history,
-    edgeStates,
     lastRolls,
-    outgoing,
-    advance,
+    jumps: rt.jumps,
+    chooseJump,
     back,
     reset,
     resetVars,
     // 剧本
     script,
     scriptLoading,
-    lineIndex,
     advanceLine,
-    jumpToEnd,
     atEnd,
     hasScript,
-    currentLine,
-    currentBg,
-    currentBgm,
-    currentSfx,
-    effectiveLineCount: effectiveLines.length,
-    isEnding,
-    endingName,
+    currentLine: rt.displayLine,
+    currentBg: rt.bg,
+    currentBgm: rt.bgm,
+    currentSfx: sfx,
+    isEnding: Boolean(script?.frontmatter.is_ending),
+    endingName: script?.frontmatter.ending_name ?? null,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────
+// 纯函数部分
+// ─────────────────────────────────────────────────────────────
+
+function initValues(scenario: Scenario): Record<string, unknown> {
+  const init: Record<string, unknown> = {};
+  for (const v of scenario.variables) {
+    init[v.key] = v.default ?? null;
+  }
+  return init;
+}
+
+function initialRt(scenario: Scenario): RuntimeState {
+  return {
+    sceneId: scenario.entry_node ?? scenario.node_ids[0] ?? null,
+    pc: 0,
+    values: initValues(scenario),
+    displayLine: null,
+    jumps: [],
+    bg: null,
+    bgm: null,
+    glue: false,
+  };
+}
+
+function freshEntry(
+  sceneId: string,
+  parsed: ParsedScript | null,
+  values: Record<string, unknown>,
+): RuntimeState {
+  const fm: ScriptFrontmatter = parsed?.frontmatter ?? {};
+  return {
+    sceneId,
+    pc: 0,
+    values,
+    displayLine: null,
+    jumps: [],
+    bg: fm.bg ?? null,
+    bgm: fm.bgm ?? null,
+    glue: false,
+  };
+}
+
+/** 从 pc 起扫描剧本：执行指令行，停在可显示行或 jump 列表。 */
+function step(
+  state: RuntimeState,
+  script: ParsedScript,
+  variables: VariableDef[],
+): StepResult {
+  let { pc, values, displayLine, glue } = state;
+  let bg = state.bg;
+  let bgm = state.bgm;
+  const sfx: string[] = [];
+  const rolls: AppliedEffect[] = [];
+  const jumps: { target: string }[] = [];
+  const lines = script.lines;
+
+  let stopped = false;
+
+  for (let i = 0; i < MAX_STEPS && !stopped; i++) {
+    const line: ScriptLine | undefined = lines[pc];
+    if (!line) break; // 越界 → atEnd
+
+    switch (line.type) {
+      case "assign": {
+        const result = applyEffects(values, [toEffect(line)], variables);
+        values = result.values;
+        if (result.errors.length > 0) {
+          console.warn("赋值执行警告:", result.errors);
+        }
+        rolls.push(...result.applied.filter((a) => a.isRoll));
+        pc++;
+        break;
+      }
+      case "condition": {
+        if (evalCondition(line.expr, values)) {
+          displayLine = mergeGlue(glue, displayLine, line);
+          glue = false;
+          stopped = true;
+        } else {
+          pc++;
+        }
+        break;
+      }
+      case "glue":
+        glue = true;
+        pc++;
+        break;
+      case "bg":
+        bg = line.image;
+        pc++;
+        break;
+      case "bgm":
+        bgm = line.file;
+        pc++;
+        break;
+      case "sfx":
+        sfx.push(line.file);
+        pc++;
+        break;
+      case "jump": {
+        // 收集连续的 jump 行为选项
+        while (lines[pc]?.type === "jump") {
+          jumps.push({ target: (lines[pc] as Extract<ScriptLine, { type: "jump" }>).target });
+          pc++;
+        }
+        stopped = true;
+        break;
+      }
+      default:
+        // narration / say / action：停止，显示
+        displayLine = mergeGlue(glue, displayLine, line);
+        glue = false;
+        stopped = true;
+        break;
+    }
+  }
+
+  // 扫描步数用尽仍未停止 → 循环保护触发
+  const error =
+    !stopped && lines[pc] ? `剧本推进超过 ${MAX_STEPS} 步，已停止` : null;
+
+  return {
+    state: { ...state, pc, values, displayLine, jumps, bg, bgm, glue },
+    sfx,
+    rolls,
+    error,
+  };
+}
+
+/** 粘合：新文本行拼接到前一行显示。 */
+function mergeGlue(
+  glue: boolean,
+  prev: ScriptLine | null,
+  line: ScriptLine,
+): ScriptLine {
+  if (glue && prev && "text" in prev && "text" in line) {
+    return { ...prev, text: `${prev.text}\n${line.text}` };
+  }
+  return line;
+}
+
+/** 赋值行复用 effects 管道执行（骰子 / 类型转换语义一致）。 */
+function toEffect(line: Extract<ScriptLine, { type: "assign" }>): ParsedEffect {
+  return {
+    key: line.key,
+    op: line.op,
+    rawValue: line.value,
+    raw: `${line.key} ${line.op} ${line.value}`,
   };
 }

@@ -1,22 +1,16 @@
-import type { Card, Relation, RelationKind, Scenario } from "../../../../core/ipc";
+import type { Card, Scenario } from "../../../../core/ipc";
 import { VNStageChoice } from "./VNStageChoice";
 
 export function VNStageFallback({
   card,
   scenario,
-  outgoing,
-  edgeStates,
-  cards,
-  relationKinds,
-  onAdvance,
+  jumps,
+  onChoose,
 }: {
   card: Card | null;
   scenario: Scenario;
-  outgoing: Relation[];
-  edgeStates: Record<string, { ok: boolean; error?: string }>;
-  cards: Card[];
-  relationKinds: RelationKind[];
-  onAdvance: (relationId: string, toId: string) => void;
+  jumps: { target: string }[];
+  onChoose: (target: string) => void;
 }) {
   if (!card) return null;
 
@@ -85,13 +79,7 @@ export function VNStageFallback({
         该场景还没有剧本。去「剧本」tab 写内容，这里会显示视觉小说演出。
       </div>
 
-      <VNStageChoice
-        outgoing={outgoing}
-        edgeStates={edgeStates}
-        cards={cards}
-        relationKinds={relationKinds}
-        onAdvance={onAdvance}
-      />
+      <VNStageChoice jumps={jumps} onChoose={onChoose} />
     </div>
   );
 }

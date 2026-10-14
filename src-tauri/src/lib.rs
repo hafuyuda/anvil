@@ -70,8 +70,6 @@ pub fn run() {
             list_scenarios,
             upsert_scenario,
             delete_scenario,
-            validate_condition,
-            eval_condition,
             // boards
             list_boards,
             upsert_board,
