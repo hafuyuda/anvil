@@ -2,8 +2,6 @@ import { useEffect, useState } from "react";
 import { save as saveDialog } from "@tauri-apps/plugin-dialog";
 import { ipc, type Card, type Scenario } from "../../../core/ipc";
 import { useProjectStore } from "../../../stores/projectStore";
-import { useDraft } from "../../../hooks/useDraft";
-import { nowMs } from "../../../lib/time";
 import { ScriptEditor } from "../script/ScriptEditor";
 import { PlayView } from "../play/PlayView";
 import { exportScenarioMarkdown } from "./exportMarkdown";
@@ -15,35 +13,13 @@ interface Props {
 }
 
 export function ScenarioEditor({ scenario }: Props) {
-  const upsertScenario = useProjectStore((s) => s.upsertScenario);
   const cards = useProjectStore((s) => s.cards) ?? [];
   const cardTypes = useProjectStore((s) => s.cardTypes) ?? [];
   const relations = useProjectStore((s) => s.relations) ?? [];
   const setCurrentScenario = useProjectStore((s) => s.setCurrentScenario);
+  const currentSceneId = useProjectStore((s) => s.currentSceneId);
   const setCurrentScene = useProjectStore((s) => s.setCurrentScene);
 
-  const { draft, dirty } = useDraft(
-    scenario,
-    async (d): Promise<void | boolean> => {
-      if (!d.name.trim()) return false;
-      const keys = d.variables.map((v) => v.key);
-      const dup = keys.find((k, i) => keys.indexOf(k) !== i);
-      if (dup) return false;
-      const next: Scenario = { ...d, updated_at: nowMs() };
-      await ipc.upsertScenario(next);
-      upsertScenario(next);
-    },
-    {
-      undoLabel: "编辑剧情",
-      onDraftChange: (d) => {
-        upsertScenario({ ...d, updated_at: nowMs() });
-      },
-    },
-  );
-
-  const [selectedSceneId, setSelectedSceneId] = useState<string | null>(
-    scenario.entry_node ?? scenario.node_ids[0] ?? null,
-  );
   const [playOpen, setPlayOpen] = useState(false);
   const [exportingMd, setExportingMd] = useState(false);
   const [exportingHtml, setExportingHtml] = useState(false);
@@ -52,27 +28,25 @@ export function ScenarioEditor({ scenario }: Props) {
     .map((id) => cards.find((c) => c.id === id))
     .filter((c): c is Card => Boolean(c));
 
-  const selectedScene = selectedSceneId
-    ? (cards.find((c) => c.id === selectedSceneId) ?? null)
+  const selectedScene = currentSceneId
+    ? (cards.find((c) => c.id === currentSceneId) ?? null)
     : null;
 
-  // 场景列表变化时，确保当前场景仍有效
+  // 当前场景合法性：不在本剧情的节点列表里则重置到 entry / 第一个节点
   useEffect(() => {
-    setSelectedSceneId((prev) => {
-      if (prev && scenario.node_ids.includes(prev)) return prev;
-      return scenario.entry_node ?? scenario.node_ids[0] ?? null;
-    });
-  }, [scenario.node_ids, scenario.entry_node]);
+    const valid = currentSceneId && scenario.node_ids.includes(currentSceneId);
+    if (valid) return;
+    setCurrentScene(scenario.entry_node ?? scenario.node_ids[0] ?? null);
+  }, [scenario.node_ids, scenario.entry_node, currentSceneId, setCurrentScene]);
 
-  // 通知 store
+  // 通知 store 当前剧情；卸载时同时清理场景
   useEffect(() => {
     setCurrentScenario(scenario.id);
-    return () => setCurrentScenario(null);
-  }, [scenario.id, setCurrentScenario]);
-
-  useEffect(() => {
-    setCurrentScene(selectedSceneId);
-  }, [selectedSceneId, setCurrentScene]);
+    return () => {
+      setCurrentScenario(null);
+      setCurrentScene(null);
+    };
+  }, [scenario.id, setCurrentScenario, setCurrentScene]);
 
   // 播放模式 Esc 关闭
   useEffect(() => {
@@ -90,13 +64,13 @@ export function ScenarioEditor({ scenario }: Props) {
     try {
       await runWithError(async () => {
         const md = await exportScenarioMarkdown({
-          scenario: draft,
+          scenario,
           cards,
           cardTypes,
           relations,
         });
         const output = await saveDialog({
-          defaultPath: `${draft.name || "未命名"}-剧本.md`,
+          defaultPath: `${scenario.name || "未命名"}-剧本.md`,
           filters: [{ name: "Markdown", extensions: ["md"] }],
           title: "导出 Markdown 剧本",
         });
@@ -115,7 +89,7 @@ export function ScenarioEditor({ scenario }: Props) {
     try {
       await runWithError(async () => {
         const output = await saveDialog({
-          defaultPath: `${draft.name || "未命名"}.html`,
+          defaultPath: `${scenario.name || "未命名"}.html`,
           filters: [{ name: "HTML", extensions: ["html"] }],
           title: "导出 HTML 阅读器",
         });
@@ -161,16 +135,7 @@ export function ScenarioEditor({ scenario }: Props) {
             whiteSpace: "nowrap",
           }}
         >
-          {draft.name}
-        </span>
-        <span
-          style={{
-            fontSize: 11,
-            color: dirty ? "var(--warning)" : "var(--fg-muted)",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {dirty ? "保存中…" : "已保存"}
+          {scenario.name}
         </span>
 
         <div style={{ flex: 1 }} />
@@ -227,11 +192,11 @@ export function ScenarioEditor({ scenario }: Props) {
           </span>
         )}
         {sceneCards.map((c) => {
-          const active = c.id === selectedSceneId;
+          const active = c.id === currentSceneId;
           return (
             <button
               key={c.id}
-              onClick={() => setSelectedSceneId(c.id)}
+              onClick={() => setCurrentScene(c.id)}
               style={{
                 padding: "4px 12px",
                 border: "none",
@@ -305,7 +270,7 @@ export function ScenarioEditor({ scenario }: Props) {
                 color: "var(--fg-muted)",
               }}
             >
-              预览 · {draft.name}
+              预览 · {scenario.name}
             </span>
             <div style={{ flex: 1 }} />
             <button
