@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import type { Card } from "../../../core/ipc";
-import { loadAsset } from "../../../lib/assetCache";
-import type { ScriptLine } from "../script/types";
+import type { Card } from "../../../../core/ipc";
+import { loadAsset } from "../../../../lib/assetCache";
+import type { ScriptLine } from "../../script/types";
 
 export function VNStagePortrait({
   line,

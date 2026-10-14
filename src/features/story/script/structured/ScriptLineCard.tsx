@@ -1,12 +1,13 @@
 import { useEffect, useRef } from "react";
-import type { ScriptLine } from "./types";
-import { AudioSelect } from "../../../components/field/AudioSelect";
+import type { ScriptLine } from "../types";
+import { AudioSelect } from "../../../../components/field/AudioSelect";
 
 const TYPE_LABELS: { value: ScriptLine["type"]; label: string }[] = [
   { value: "narration", label: "旁白" },
   { value: "say", label: "对白" },
   { value: "action", label: "动作" },
   { value: "bg", label: "背景" },
+  { value: "bgm", label: "音乐" },
   { value: "sfx", label: "音效" },
 ];
 
@@ -60,6 +61,9 @@ export function ScriptLineCard({
         return;
       case "bg":
         onChange({ type: "bg", image: "" });
+        return;
+      case "bgm":
+        onChange({ type: "bgm", file: "" });
         return;
       case "sfx":
         onChange({ type: "sfx", file: "" });
@@ -184,6 +188,16 @@ export function ScriptLineCard({
               fontFamily: "var(--font-mono)",
             }}
           />
+        )}
+
+        {line.type === "bgm" && (
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <AudioSelect
+              value={line.file || null}
+              onChange={(v) => onChange({ ...line, file: v ?? "" })}
+              placeholder="— 无音乐 —"
+            />
+          </div>
         )}
 
         {line.type === "sfx" && (

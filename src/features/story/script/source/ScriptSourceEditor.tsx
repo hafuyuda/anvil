@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { parseScript } from "./parser";
+import { parseScript } from "../parser";
 import { ScriptPreview } from "./ScriptPreview";
 
 interface Props {

@@ -1,4 +1,4 @@
-import type { Card, Relation, RelationKind, Scenario } from "../../../core/ipc";
+import type { Card, Relation, RelationKind, Scenario } from "../../../../core/ipc";
 import { VNStageChoice } from "./VNStageChoice";
 
 export function VNStageFallback({

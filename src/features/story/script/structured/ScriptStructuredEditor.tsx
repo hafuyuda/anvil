@@ -16,11 +16,11 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { parseScript } from "./parser";
-import { serializeScript } from "./serializer";
+import { parseScript } from "../parser";
+import { serializeScript } from "../serializer";
 import { ScriptSceneSettings } from "./ScriptSceneSettings";
 import { ScriptLineCard } from "./ScriptLineCard";
-import type { ScriptFrontmatter, ScriptLine } from "./types";
+import type { ScriptFrontmatter, ScriptLine } from "../types";
 
 interface Props {
   content: string;
@@ -81,6 +81,8 @@ export function ScriptStructuredEditor({ content, onChange }: Props) {
       newLine = { type: "say", speaker: current.speaker, text: "" };
     } else if (current.type === "bg") {
       newLine = { type: "bg", image: "" };
+    } else if (current.type === "bgm") {
+      newLine = { type: "bgm", file: "" };
     } else if (current.type === "sfx") {
       newLine = { type: "sfx", file: "" };
     } else {

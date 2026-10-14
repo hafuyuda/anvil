@@ -1,4 +1,4 @@
-import type { Card, Scenario } from "../../../core/ipc";
+import type { Card, Scenario } from "../../../../core/ipc";
 import { VariableRow } from "./VariableRow";
 
 interface Props {

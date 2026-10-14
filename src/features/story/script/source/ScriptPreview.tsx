@@ -1,4 +1,4 @@
-import type { ParsedScript } from "./types";
+import type { ParsedScript } from "../types";
 
 interface Props {
   script: ParsedScript;

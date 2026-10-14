@@ -1,10 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  ipc,
-  type Card,
-  type Relation,
-  type Scenario,
-} from "../../../core/ipc";
+import { ipc, type Relation, type Scenario } from "../../../core/ipc";
 import { applyEffects, parseEffects } from "../effects";
 import { parseScript } from "../script/parser";
 import type { ParsedScript, ScriptLine } from "../script/types";
@@ -16,11 +11,7 @@ export interface LastRoll {
   detail: number[];
 }
 
-export function usePlayState(
-  scenario: Scenario,
-  _cards: Card[],
-  relations: Relation[],
-) {
+export function usePlayState(scenario: Scenario, relations: Relation[]) {
   const [values, setValues] = useState<Record<string, unknown>>(() => {
     const init: Record<string, unknown> = {};
     for (const v of scenario.variables) {

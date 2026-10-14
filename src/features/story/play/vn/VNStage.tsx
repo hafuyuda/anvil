@@ -1,5 +1,10 @@
-import type { Card, Relation, RelationKind, Scenario } from "../../../core/ipc";
-import type { ScriptLine } from "../script/types";
+import type {
+  Card,
+  Relation,
+  RelationKind,
+  Scenario,
+} from "../../../../core/ipc";
+import type { ScriptLine } from "../../script/types";
 import { VNStageBackground } from "./VNStageBackground";
 import { VNStageChoice } from "./VNStageChoice";
 import { VNStageDialogue } from "./VNStageDialogue";

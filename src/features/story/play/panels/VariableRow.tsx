@@ -1,4 +1,4 @@
-import type { VariableDef } from "../../../core/ipc";
+import type { VariableDef } from "../../../../core/ipc";
 
 interface Props {
   def: VariableDef;

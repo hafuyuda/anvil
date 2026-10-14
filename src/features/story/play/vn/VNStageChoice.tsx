@@ -1,5 +1,5 @@
-import type { Card, Relation, RelationKind } from "../../../core/ipc";
-import { parseEffects } from "../effects";
+import type { Card, Relation, RelationKind } from "../../../../core/ipc";
+import { parseEffects } from "../../effects";
 
 export function VNStageChoice({
   outgoing,

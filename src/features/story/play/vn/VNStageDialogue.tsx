@@ -1,6 +1,6 @@
-import { useAppSettings } from "../../../hooks/useAppSettings";
-import type { ScriptLine } from "../script/types";
-import { useTypewriter } from "./useTypewriter";
+import { useAppSettings } from "../../../../hooks/useAppSettings";
+import type { ScriptLine } from "../../script/types";
+import { useTypewriter } from "../useTypewriter";
 
 export function VNStageDialogue({
   line,
@@ -10,7 +10,14 @@ export function VNStageDialogue({
   onAdvance: () => void;
 }) {
   // 防御：指令行不该出现在这里
-  if (line.type === "bg" || line.type === "bgm" || line.type === "sfx") {
+  if (
+    line.type === "bg" ||
+    line.type === "bgm" ||
+    line.type === "sfx" ||
+    line.type === "jump" ||
+    line.type === "assign" ||
+    line.type === "glue"
+  ) {
     return null;
   }
 

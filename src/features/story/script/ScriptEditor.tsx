@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { ipc } from "../../../core/ipc";
-import { ScriptSourceEditor } from "./ScriptSourceEditor";
-import { ScriptStructuredEditor } from "./ScriptStructuredEditor";
+import { ScriptSourceEditor } from "./source/ScriptSourceEditor";
+import { ScriptStructuredEditor } from "./structured/ScriptStructuredEditor";
 
 interface Props {
   cardId: string;
