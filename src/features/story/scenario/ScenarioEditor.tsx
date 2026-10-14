@@ -15,7 +15,6 @@ interface Props {
 export function ScenarioEditor({ scenario }: Props) {
   const cards = useProjectStore((s) => s.cards) ?? [];
   const cardTypes = useProjectStore((s) => s.cardTypes) ?? [];
-  const relations = useProjectStore((s) => s.relations) ?? [];
   const setCurrentScenario = useProjectStore((s) => s.setCurrentScenario);
   const currentSceneId = useProjectStore((s) => s.currentSceneId);
   const setCurrentScene = useProjectStore((s) => s.setCurrentScene);
@@ -67,7 +66,6 @@ export function ScenarioEditor({ scenario }: Props) {
           scenario,
           cards,
           cardTypes,
-          relations,
         });
         const output = await saveDialog({
           defaultPath: `${scenario.name || "未命名"}-剧本.md`,

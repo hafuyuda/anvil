@@ -1,6 +1,5 @@
 use super::project::Project;
 use crate::core::model::card_type::{CardType, FieldType};
-use crate::core::model::relation::Relation;
 use crate::core::model::scenario::{Scenario, VariableDef};
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -12,7 +11,6 @@ struct ExportData {
     entry: Option<String>,
     variables: Vec<VariableDef>,
     nodes: BTreeMap<String, ExportNode>,
-    edges: Vec<ExportEdge>,
     assets: BTreeMap<String, String>,
 }
 
@@ -22,16 +20,6 @@ struct ExportNode {
     type_name: String,
     values: serde_json::Value,
     script_md: Option<String>,
-}
-
-#[derive(Serialize)]
-struct ExportEdge {
-    from: String,
-    to: String,
-    kind: String,
-    label: Option<String>,
-    condition: String,
-    effects: Vec<String>,
 }
 
 impl Project {
@@ -47,9 +35,8 @@ impl Project {
             .ok_or_else(|| anyhow::anyhow!("找不到剧情：{scenario_id}"))?;
 
         let card_types = self.load_card_types()?;
-        let all_relations = self.list_all_relations()?;
 
-        let data = self.collect_export_data(scenario, &card_types, &all_relations)?;
+        let data = self.collect_export_data(scenario, &card_types)?;
         let html = render_html(&data)?;
 
         std::fs::write(output_path, html)?;
@@ -60,13 +47,9 @@ impl Project {
         &self,
         scenario: &Scenario,
         card_types: &[CardType],
-        all_relations: &[Relation],
     ) -> anyhow::Result<ExportData> {
         let mut nodes = BTreeMap::new();
         let mut assets: BTreeMap<String, String> = BTreeMap::new();
-
-        let node_id_set: std::collections::HashSet<String> =
-            scenario.node_ids.iter().cloned().collect();
 
         for node_id in &scenario.node_ids {
             let card = match self.load_card(node_id) {
@@ -121,48 +104,12 @@ impl Project {
             );
         }
 
-        let edges: Vec<ExportEdge> = all_relations
-            .iter()
-            .filter(|r| {
-                r.meta.get("scenario_id").and_then(|v| v.as_str()) == Some(&scenario.id)
-                    && node_id_set.contains(&r.from)
-                    && node_id_set.contains(&r.to)
-            })
-            .map(|r| {
-                let condition = r
-                    .meta
-                    .get("condition")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("")
-                    .to_string();
-                let effects = r
-                    .meta
-                    .get("effects")
-                    .and_then(|v| v.as_array())
-                    .map(|arr| {
-                        arr.iter()
-                            .filter_map(|x| x.as_str().map(|s| s.to_string()))
-                            .collect::<Vec<_>>()
-                    })
-                    .unwrap_or_default();
-                ExportEdge {
-                    from: r.from.clone(),
-                    to: r.to.clone(),
-                    kind: r.kind.clone(),
-                    label: r.label.clone(),
-                    condition,
-                    effects,
-                }
-            })
-            .collect();
-
         Ok(ExportData {
             title: scenario.name.clone(),
             description: scenario.description.clone(),
             entry: scenario.entry_node.clone(),
             variables: scenario.variables.clone(),
             nodes,
-            edges,
             assets,
         })
     }
@@ -256,6 +203,14 @@ const HTML_TEMPLATE: &str = r##"<!DOCTYPE html>
     color: var(--fg-muted); padding: 4px 8px;
     background: var(--panel); border-radius: 4px; display: inline-block;
   }
+  .line.condition { font-family: ui-monospace, monospace; font-size: 13px; color: var(--fg-dim); }
+  .line.condition .cexpr { color: var(--accent); }
+  .line.assign {
+    font-family: ui-monospace, monospace; font-size: 12px;
+    color: var(--fg-muted); padding: 4px 8px;
+    background: var(--panel); border-radius: 4px; display: inline-block;
+  }
+  .line.assign .cexpr { color: var(--accent); }
   .hint {
     position: fixed; right: 24px; bottom: 24px;
     font-size: 12px; color: var(--fg-muted);
@@ -276,10 +231,6 @@ const HTML_TEMPLATE: &str = r##"<!DOCTYPE html>
   }
   .choice:disabled { opacity: 0.4; cursor: not-allowed; }
   .choice .target { float: right; font-size: 12px; color: var(--fg-muted); }
-  .choice .effects {
-    display: block; font-family: ui-monospace, monospace;
-    font-size: 11px; color: var(--fg-muted); margin-top: 4px;
-  }
   #ending {
     margin-top: 48px; padding: 32px 24px;
     background: linear-gradient(135deg, #3d3427 0%, #2a231a 100%);
@@ -526,6 +477,15 @@ function parseScript(md) {
     const line = lines[i].trim();
     i++;
     if (!line) continue;
+    if (line === "<>") {
+      out.push({ type: "glue" });
+      continue;
+    }
+    const jump = line.match(/^->\s*(.+)$/);
+    if (jump) {
+      out.push({ type: "jump", target: jump[1].trim() });
+      continue;
+    }
     const at = line.match(/^@(bg|bgm|sfx)\s+(.+)$/);
     if (at) {
       if (at[1] === "bg") out.push({ type: "bg", image: at[2].trim() });
@@ -544,6 +504,28 @@ function parseScript(md) {
         portrait: say[2] ? say[2].trim() : null,
         text: say[3] || ""
       });
+      continue;
+    }
+    if (line.startsWith("{") && line.endsWith("}")) {
+      const inner = line.slice(1, -1);
+      // 找第一个不在双引号内的冒号
+      let split = -1;
+      let inStr = false;
+      for (let j = 0; j < inner.length; j++) {
+        const ch = inner[j];
+        if (ch === '"') inStr = !inStr;
+        else if (ch === ":" && !inStr) { split = j; break; }
+      }
+      const expr = (split >= 0 ? inner.slice(0, split) : inner).trim();
+      const text = split >= 0 ? inner.slice(split + 1).trim() : "";
+      if (expr) {
+        out.push({ type: "condition", expr, text });
+        continue;
+      }
+    }
+    const assign = line.match(/^~\s*(\S+?)\s*(\+=|-=|=)\s*(.+)$/);
+    if (assign) {
+      out.push({ type: "assign", key: assign[1], op: assign[2], value: assign[3].trim() });
       continue;
     }
     const action = line.match(/^\*(.+)\*$/);
@@ -567,6 +549,8 @@ const state = {
   endingName: null,
   phase: "line",
   typewriter: null,
+  glue: false,
+  lastTextEl: null,
 };
 
 let titleEl, descEl, sceneHost, choicesEl, endingHost, hintEl;
@@ -638,7 +622,42 @@ function createLineEl(line) {
     div.textContent = prefix + line.file;
     return { el: div, textEl: null };
   }
+  if (line.type === "condition") {
+    const ex = document.createElement("span");
+    ex.className = "cexpr";
+    ex.textContent = "{" + line.expr + "}";
+    div.appendChild(ex);
+    if (line.text) {
+      const sep = document.createElement("span");
+      sep.textContent = " ";
+      div.appendChild(sep);
+    }
+    const t = document.createElement("span");
+    div.appendChild(t);
+    return { el: div, textEl: t };
+  }
+  if (line.type === "assign") {
+    const ex = document.createElement("span");
+    ex.className = "cexpr";
+    ex.textContent = line.key + " " + line.op + " " + line.value;
+    div.insertBefore(ex, null);
+    return { el: div, textEl: null };
+  }
   return { el: div, textEl: div };
+}
+
+/* ============ 打字机（含粘合追加） ============ */
+function displayText(line, textEl) {
+  const text = line.text || "";
+  if (state.glue && state.lastTextEl) {
+    // 粘合：追加到上一个文本元素
+    state.lastTextEl.textContent += (state.lastTextEl.textContent ? "\n" : "") + text;
+    state.glue = false;
+    return;
+  }
+  state.glue = false;
+  state.lastTextEl = textEl;
+  startTypewriter(text, textEl);
 }
 
 /* ============ 流程 ============ */
@@ -649,6 +668,8 @@ function startScene(sceneId) {
   state.isEnding = false;
   state.endingName = null;
   state.phase = "line";
+  state.glue = false;
+  state.lastTextEl = null;
   if (state.typewriter) state.typewriter.skip();
   choicesEl.innerHTML = "";
   endingHost.innerHTML = "";
@@ -686,8 +707,16 @@ function startScene(sceneId) {
   showNextLine();
 }
 
+/* ============ 流程（stepper） ============ */
+const MAX_STEPS = 1000;
+
 function showNextLine() {
+  let steps = 0;
   while (state.lineIdx < state.lines.length) {
+    if (++steps > MAX_STEPS) {
+      sceneHost.appendChild(el("div", "empty", "（剧本推进超过 " + MAX_STEPS + " 步，已停止）"));
+      return;
+    }
     const line = state.lines[state.lineIdx];
     if (line.type === "bg") {
       state.currentBg = line.image;
@@ -701,20 +730,47 @@ function showNextLine() {
       state.lineIdx++;
       continue;
     }
-    break;
-  }
-
-  if (state.lineIdx >= state.lines.length) {
-    if (state.isEnding) showEnding();
-    else showChoices();
+    if (line.type === "assign") {
+      applyEffect(line.key + " " + line.op + " " + line.value, state.vars);
+      state.lineIdx++;
+      continue;
+    }
+    if (line.type === "condition") {
+      if (tryEval(line.expr, state.vars)) {
+        const { el: lineEl, textEl } = createLineEl(line);
+        sceneHost.appendChild(lineEl);
+        lineEl.scrollIntoView({ behavior: "smooth", block: "end" });
+        displayText(line, textEl);
+        return; // 停在条件行
+      }
+      state.lineIdx++;
+      continue;
+    }
+    if (line.type === "glue") {
+      state.glue = true;
+      state.lineIdx++;
+      continue;
+    }
+    if (line.type === "jump") {
+      const jumps = [];
+      while (state.lineIdx < state.lines.length && state.lines[state.lineIdx].type === "jump") {
+        jumps.push(state.lines[state.lineIdx]);
+        state.lineIdx++;
+      }
+      showChoices(jumps);
+      return;
+    }
+    // narration / say / action：停止，显示
+    const { el: lineEl, textEl } = createLineEl(line);
+    sceneHost.appendChild(lineEl);
+    lineEl.scrollIntoView({ behavior: "smooth", block: "end" });
+    displayText(line, textEl);
     return;
   }
 
-  const line = state.lines[state.lineIdx];
-  const { el: lineEl, textEl } = createLineEl(line);
-  sceneHost.appendChild(lineEl);
-  lineEl.scrollIntoView({ behavior: "smooth", block: "end" });
-  if (textEl) startTypewriter(line.text || "", textEl);
+  // 走到底
+  if (state.isEnding) showEnding();
+  else showChoices([]);
 }
 
 function advance() {
@@ -724,34 +780,30 @@ function advance() {
   showNextLine();
 }
 
-function showChoices() {
+function showChoices(jumps) {
   state.phase = "choices";
-  const edges = DATA.edges.filter((e) => e.from === state.sceneId);
-  if (edges.length === 0) { showEnding(); return; }
+  if (jumps.length === 0) { showEnding(); return; }
   choicesEl.innerHTML = "";
-  for (const edge of edges) {
-    const ok = tryEval(edge.condition, state.vars);
+  // 场景名 → 节点 id
+  const byName = {};
+  for (const id of Object.keys(DATA.nodes)) byName[DATA.nodes[id].name] = id;
+  const seen = new Set();
+  for (const j of jumps) {
+    if (seen.has(j.target)) continue;
+    seen.add(j.target);
+    const toId = byName[j.target];
     const btn = document.createElement("button");
     btn.className = "choice";
-    btn.disabled = !ok;
-    const label = edge.label || edge.kind;
-    const targetName = DATA.nodes[edge.to] ? DATA.nodes[edge.to].name : edge.to.slice(0, 8);
-    btn.textContent = label;
+    btn.disabled = !toId;
+    btn.textContent = j.target;
     const tgt = document.createElement("span");
     tgt.className = "target";
-    tgt.textContent = "→ " + targetName;
+    tgt.textContent = toId ? "→ " + DATA.nodes[toId].name : "（找不到场景）";
     btn.appendChild(tgt);
-    if (edge.effects.length > 0) {
-      const eff = document.createElement("span");
-      eff.className = "effects";
-      eff.textContent = "效果：" + edge.effects.join(" · ");
-      btn.appendChild(eff);
-    }
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
-      if (!ok) return;
-      for (const ef of edge.effects) applyEffect(ef, state.vars);
-      startScene(edge.to);
+      if (!toId) return;
+      startScene(toId);
     });
     choicesEl.appendChild(btn);
   }

@@ -1,67 +1,30 @@
-import {
-  ipc,
-  type Card,
-  type CardType,
-  type Relation,
-  type Scenario,
-} from "../../../core/ipc";
+import { ipc, type Card, type CardType, type Scenario } from "../../../core/ipc";
+import { parseScript } from "../script/parser";
 
 interface Args {
   scenario: Scenario;
   cards: Card[];
   cardTypes: CardType[];
-  relations: Relation[];
 }
 
 /**
  * 从剧情生成 Markdown 剧本。
- * DFS 定顺序，扁平输出。所有场景按访问顺序编号，分支只列出「去哪」。
+ * 场景按入口优先的节点顺序输出；分支来自各场景剧本的 jump 行。
  */
 export async function exportScenarioMarkdown({
   scenario,
   cards,
   cardTypes,
-  relations,
 }: Args): Promise<string> {
   const cardMap = new Map(cards.map((c) => [c.id, c]));
   const typeMap = new Map(cardTypes.map((t) => [t.id, t]));
-  const nodeIdSet = new Set(scenario.node_ids);
 
-  // 只保留本剧情的边
-  const scenarioEdges = relations.filter(
-    (r) =>
-      r.meta?.scenario_id === scenario.id &&
-      nodeIdSet.has(r.from) &&
-      nodeIdSet.has(r.to),
-  );
-
-  // 按 from 分组
-  const outgoingByFrom = new Map<string, Relation[]>();
-  for (const e of scenarioEdges) {
-    const list = outgoingByFrom.get(e.from) ?? [];
-    list.push(e);
-    outgoingByFrom.set(e.from, list);
-  }
-
-  // DFS 定顺序
-  const order: string[] = [];
-  const visited = new Set<string>();
-
-  function dfs(id: string) {
-    if (visited.has(id)) return;
-    visited.add(id);
-    order.push(id);
-    const outgoing = outgoingByFrom.get(id) ?? [];
-    for (const e of outgoing) {
-      dfs(e.to);
-    }
-  }
-
+  // 顺序：入口优先，其余按 node_ids
   const entry = scenario.entry_node ?? scenario.node_ids[0];
-  if (entry) dfs(entry);
-  // 不可达节点追加在末尾
+  const order: string[] = [];
+  if (entry && scenario.node_ids.includes(entry)) order.push(entry);
   for (const id of scenario.node_ids) {
-    if (!visited.has(id)) dfs(id);
+    if (!order.includes(id)) order.push(id);
   }
 
   // 每个节点的顺序号
@@ -82,6 +45,13 @@ export async function exportScenarioMarkdown({
       }
     }),
   );
+
+  // 场景名 → 节点 id（jump 目标解析用）
+  const nodeByName = new Map<string, string>();
+  for (const id of order) {
+    const card = cardMap.get(id);
+    if (card) nodeByName.set(card.name, id);
+  }
 
   const out: string[] = [];
 
@@ -161,34 +131,26 @@ export async function exportScenarioMarkdown({
       }
     }
 
-    // 分支
-    const outgoing = outgoingByFrom.get(id) ?? [];
-    if (outgoing.length > 0) {
-      out.push(`**分支**（${outgoing.length}）`);
+    // 分支：扫剧本 jump 行
+    const jumps = script
+      ? parseScript(script).lines.filter((l) => l.type === "jump")
+      : [];
+    if (jumps.length > 0) {
+      out.push(`**分支**（${jumps.length}）`);
       out.push("");
-      for (const e of outgoing) {
-        const targetCard = cardMap.get(e.to);
-        const targetName = targetCard?.name ?? e.to.slice(0, 8);
-        const targetNum = orderMap.get(e.to) ?? 0;
-        const label = e.label ?? "";
-        const condition =
-          typeof e.meta?.condition === "string" ? e.meta.condition.trim() : "";
-        const effects = Array.isArray(e.meta?.effects)
-          ? (e.meta.effects as unknown[]).map(String)
-          : [];
-
-        const head = label ? `[${label}]` : "";
-        const condStr = condition ? `[条件：${condition}]` : "[无条件]";
+      const seen = new Set<string>();
+      for (const j of jumps) {
+        if (j.type !== "jump" || seen.has(j.target)) continue;
+        seen.add(j.target);
+        const targetId = nodeByName.get(j.target);
+        const targetNum = targetId ? (orderMap.get(targetId) ?? 0) : 0;
         const target =
-          targetNum > 0 ? `场景 ${targetNum}：${targetName}` : targetName;
-        out.push(`- ${head} ${condStr} → ${target}`);
-        for (const eff of effects) {
-          out.push(`  · \`${eff}\``);
-        }
+          targetNum > 0 ? `场景 ${targetNum}：${j.target}` : `${j.target}（未知场景）`;
+        out.push(`- → ${target}`);
       }
       out.push("");
     } else if (card.values?.is_ending !== true) {
-      // 无出边且非结局
+      // 无分支且非结局
       out.push("*（无后续分支）*");
       out.push("");
     }
