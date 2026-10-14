@@ -132,7 +132,6 @@ export function CardFrameMTG({
         <CardImage
           path={image}
           crop={content.crop}
-          extend={content.extend}
           height={spec.imageHeight}
           borderRadius={2}
           border={`1px solid ${accentSoft}`}

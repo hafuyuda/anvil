@@ -1,7 +1,7 @@
-import { ipc } from "../core/ipc";
-import { toast } from "../lib/toast";
-import { runWithError } from "../lib/runWithError";
-import { useProjectStore } from "../stores/projectStore";
+import { ipc } from "../ipc";
+import { toast } from "../../lib/toast";
+import { runWithError } from "../../lib/runWithError";
+import { useProjectStore } from "../../stores/projectStore";
 
 /**
  * 添加内置预设到当前项目。

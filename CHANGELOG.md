@@ -3,6 +3,14 @@
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 格式，
 版本号遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## [Unreleased]
+
+### 变更
+
+- 删除出框（extend）功能。`Card.image_extend_override` 与
+  `CardFrameConfig.image_extend` 字段从代码中移除；旧项目文件里的
+  对应 key 由 serde 静默忽略，下次保存时自动清除。不需要迁移。
+  
 ## [0.3.0] - 2026-10-13
 
 ### 新增

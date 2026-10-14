@@ -258,9 +258,6 @@ impl Project {
                             if local_cfg.image_crop.is_none() {
                                 local_cfg.image_crop = remote_cfg.image_crop.clone();
                             }
-                            if local_cfg.image_extend.is_none() {
-                                local_cfg.image_extend = remote_cfg.image_extend.clone();
-                            }
                         }
                     }
                     imported_types += 1;

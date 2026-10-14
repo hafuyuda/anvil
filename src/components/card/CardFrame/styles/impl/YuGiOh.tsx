@@ -133,7 +133,6 @@ export function CardFrameYuGiOh({
         <CardImage
           path={image}
           crop={content.crop}
-          extend={content.extend}
           height={spec.imageHeight}
           borderRadius={spec.borderRadius - 3}
           border={`1px solid ${accentStrong}`}

@@ -1,33 +1,30 @@
 import type { CSSProperties, ReactNode } from "react";
-import type { CropRect, ImageExtend } from "../../../../core/ipc";
+import type { CropRect } from "../../../../core/ipc";
 import { useAssetUrl } from "../../../../hooks/useAssetUrl";
 
 interface Props {
   path: string | null | undefined;
   crop?: CropRect | null;
-  extend?: ImageExtend | null;
   /** 图像区固定高度（像素） */
   height?: number;
   /** 图像区圆角 */
   borderRadius: number;
-  /** 图像区边框（CSS border 值）。出框时自动隐藏 */
+  /** 图像区边框（CSS border 值） */
   border?: string;
   /** 图像区背景 */
   background?: string;
   /** 无图时渲染的内容 */
   fallback: ReactNode;
-  /** 铺满父容器（absolute inset:0），忽略 height 和 extend */
+  /** 铺满父容器（absolute inset:0），忽略 height */
   fullBleed?: boolean;
 }
 
 /**
- * 卡牌图像区。支持裁剪（crop）和出框（extend）。
- * 出框通过内层绝对定位容器向外扩张实现，外容器保持原始占位。
+ * 卡牌图像区。支持裁剪（crop）。
  */
 export function CardImage({
   path,
   crop,
-  extend,
   height,
   borderRadius,
   border,
@@ -50,42 +47,11 @@ export function CardImage({
         {url ? (
           <CropImage url={url} crop={crop} />
         ) : (
-          <div
-            style={{
-              width: "100%",
-              height: "100%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            {fallback}
-          </div>
+          <div style={FALLBACK_STYLE}>{fallback}</div>
         )}
       </div>
     );
   }
-
-  const isExtending =
-    !!extend &&
-    (extend.top > 0 ||
-      extend.bottom > 0 ||
-      extend.left > 0 ||
-      extend.right > 0);
-
-  // 内层容器：绝对定位，四方向根据 extend 向外扩张。
-  // 百分比相对图像区自身尺寸：
-  //   top/bottom → 图像区高度
-  //   left/right → 图像区宽度
-  const innerStyle: CSSProperties = {
-    position: "absolute",
-    top: isExtending ? `-${extend!.top * 100}%` : 0,
-    bottom: isExtending ? `-${extend!.bottom * 100}%` : 0,
-    left: isExtending ? `-${extend!.left * 100}%` : 0,
-    right: isExtending ? `-${extend!.right * 100}%` : 0,
-    borderRadius: isExtending ? borderRadius : 0,
-    overflow: "hidden",
-  };
 
   return (
     <div
@@ -93,37 +59,33 @@ export function CardImage({
         height,
         flexShrink: 0,
         borderRadius,
-        // 出框时允许溢出，不出框时隐藏圆角外的内容
-        overflow: isExtending ? "visible" : "hidden",
-        border: isExtending ? "none" : border,
-        background: isExtending ? "transparent" : background,
+        overflow: "hidden",
+        border,
+        background,
         position: "relative",
-        zIndex: isExtending ? 10 : undefined,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
       }}
     >
-      <div style={innerStyle}>
+      <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
         {url ? (
           <CropImage url={url} crop={crop} />
         ) : (
-          <div
-            style={{
-              width: "100%",
-              height: "100%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            {fallback}
-          </div>
+          <div style={FALLBACK_STYLE}>{fallback}</div>
         )}
       </div>
     </div>
   );
 }
+
+const FALLBACK_STYLE: CSSProperties = {
+  width: "100%",
+  height: "100%",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+};
 
 /**
  * 应用裁剪的图片。

@@ -6,7 +6,6 @@ import { RelationsPanel } from "./RelationsPanel";
 import { nowMs } from "../../../lib/time";
 import { useDeleteUndo } from "../../../hooks/useDeleteUndo";
 import { CropEditor } from "../card-type/CropEditor";
-import { ImageExtendRow } from "../card-type/ImageExtendRow";
 import { confirmDialog } from "../../../lib/confirm";
 import { runWithError } from "../../../lib/runWithError";
 
@@ -88,8 +87,7 @@ export function CardEditor({ card, cardType }: Props) {
     return null;
   })();
 
-  const hasOverride =
-    draft.image_crop_override != null || draft.image_extend_override != null;
+  const hasOverride = draft.image_crop_override != null;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -246,31 +244,12 @@ export function CardEditor({ card, cardType }: Props) {
             />
           </div>
 
-          <div>
-            <div
-              style={{
-                fontSize: 12,
-                color: "var(--fg-muted)",
-                marginBottom: 6,
-              }}
-            >
-              出框覆盖
-            </div>
-            <ImageExtendRow
-              value={draft.image_extend_override ?? null}
-              onChange={(v) =>
-                update({ image_extend_override: v, updated_at: nowMs() })
-              }
-            />
-          </div>
-
           {hasOverride && (
             <button
               className="btn btn-danger"
               onClick={() =>
                 update({
                   image_crop_override: null,
-                  image_extend_override: null,
                   updated_at: nowMs(),
                 })
               }

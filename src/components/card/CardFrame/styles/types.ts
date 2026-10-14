@@ -11,7 +11,7 @@ import type { CardContent, CardFeatures } from "../mapping";
  * 闪卡特性（foil / foilVariant）不进风格组件，由 `CardFrame`
  * 外层统一包 `FoilOverlay`。
  */
-export type StyleContent = CardContent & Pick<CardFeatures, "crop" | "extend">;
+export type StyleContent = CardContent & Pick<CardFeatures, "crop" >;
 
 export interface CardStyleProps {
   cardType: CardType;

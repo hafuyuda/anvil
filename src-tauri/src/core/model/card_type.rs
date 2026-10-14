@@ -17,20 +17,6 @@ pub struct CropRect {
     pub h: f64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct ImageExtend {
-    /// 0–1，相对图像区高度的比例。0 = 不扩展
-    #[serde(default)]
-    pub top: f64,
-    #[serde(default)]
-    pub bottom: f64,
-    /// 0–1，相对图像区宽度的比例
-    #[serde(default)]
-    pub left: f64,
-    #[serde(default)]
-    pub right: f64,
-}
-
 /// 卡框槽位绑定：把卡框的某个槽位，绑定到卡牌的某个（些）字段。
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct SlotBinding {
@@ -60,8 +46,6 @@ pub struct CardFrameConfig {
     pub foil_style: Option<String>,
     #[serde(default)]
     pub image_crop: Option<CropRect>,
-    #[serde(default)]
-    pub image_extend: Option<ImageExtend>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

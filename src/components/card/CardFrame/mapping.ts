@@ -1,4 +1,4 @@
-import type { Card, CardType, CropRect, ImageExtend } from "../../../core/ipc";
+import type { Card, CardType, CropRect } from "../../../core/ipc";
 import { hasFoilStyle } from "./primitives/foil-styles/registry";
 
 /**
@@ -27,7 +27,6 @@ export interface CardContent {
  */
 export interface CardFeatures {
   crop: CropRect | null;
-  extend: ImageExtend | null;
   foil: boolean;
   foilVariant: string;
 }
@@ -298,9 +297,8 @@ function findImageField(card: Card, cardType: CardType): string | undefined {
 export function resolveFeatures(card: Card, cardType: CardType): CardFeatures {
   const cfg = cardType.card_frame;
 
-  // 裁剪 / 出框：卡级 override 优先，类型级 fallback
+  // 裁剪：卡级 override 优先，类型级 fallback
   const crop = card.image_crop_override ?? cfg?.image_crop ?? null;
-  const extend = card.image_extend_override ?? cfg?.image_extend ?? null;
 
   // 闪卡：foil_field 指向的字段值命中 foil_values
   let foil = false;
@@ -312,7 +310,7 @@ export function resolveFeatures(card: Card, cardType: CardType): CardFeatures {
   const foilVariant =
     cfg?.foil_style && hasFoilStyle(cfg.foil_style) ? cfg.foil_style : "gold";
 
-  return { crop, extend, foil, foilVariant };
+  return { crop, foil, foilVariant };
 }
 
 /**

@@ -1,4 +1,4 @@
-use crate::core::model::card_type::{CropRect, ImageExtend};
+use crate::core::model::card_type::{CropRect};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -14,7 +14,6 @@ pub struct Card {
     #[serde(default)]
     pub image_crop_override: Option<CropRect>,
     #[serde(default)]
-    pub image_extend_override: Option<ImageExtend>,
     pub created_at: i64,
     pub updated_at: i64,
 }

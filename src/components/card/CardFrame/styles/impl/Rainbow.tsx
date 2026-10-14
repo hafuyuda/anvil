@@ -132,7 +132,6 @@ export function CardFrameRainbow({
         <CardImage
           path={image}
           crop={content.crop}
-          extend={content.extend}
           height={spec.imageHeight}
           borderRadius={spec.borderRadius - 3}
           border={`2px solid ${borderSoft}`}

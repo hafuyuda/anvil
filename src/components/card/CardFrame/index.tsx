@@ -65,7 +65,6 @@ export function CardFrame({
   const renderContent: StyleContent = {
     ...content,
     crop: features.crop,
-    extend: features.extend,
   };
 
   function renderStyle() {

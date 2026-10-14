@@ -160,9 +160,6 @@
   --card-back-rune-text: #f0e6ff;
   --card-back-rune-shadow: 0 2px 8px rgba(40, 16, 80, 0.5);
 
-  /* 卡牌图像出框单位：相对图像区高度的比例 */
-  --card-image-extend-unit: 40%;
-
   /* 对话气泡（派生自主题，随主题变化） */
   --chat-panel-bg: var(--bg-panel);
   --chat-bubble-bg: var(--bg-surface);

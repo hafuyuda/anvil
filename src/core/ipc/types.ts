@@ -9,7 +9,6 @@ export interface Card {
   name: string;
   values: Record<string, unknown>;
   image_crop_override?: CropRect | null;
-  image_extend_override?: ImageExtend | null;
   created_at: number;
   updated_at: number;
 }
@@ -47,15 +46,6 @@ export interface CropRect {
   h: number;
 }
 
-export interface ImageExtend {
-  /** 0–1，相对图像区高度的比例 */
-  top: number;
-  bottom: number;
-  /** 0–1，相对图像区宽度的比例 */
-  left: number;
-  right: number;
-}
-
 export interface SlotBinding {
   /** 单字段映射：card.values[source] */
   source?: string | null;
@@ -71,7 +61,6 @@ export interface CardFrameConfig {
   foil_field?: string | null;
   foil_values: string[];
   image_crop?: CropRect | null;
-  image_extend?: ImageExtend | null;
   foil_style?: string | null;
 }
 

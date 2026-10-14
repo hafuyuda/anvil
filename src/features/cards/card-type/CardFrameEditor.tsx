@@ -16,7 +16,6 @@ import { useProjectStore } from "../../../stores/projectStore";
 import { AccentColorRow } from "./AccentColorRow";
 import { CropEditor } from "./CropEditor";
 import { FoilTriggerRow } from "./FoilTriggerRow";
-import { ImageExtendRow } from "./ImageExtendRow";
 import {
   FieldSelect,
   LabeledInput,
@@ -328,12 +327,6 @@ export function CardFrameEditor({
           imagePath={sampleImagePath}
         />
       </div>
-
-      {/* 图像出框 */}
-      <ImageExtendRow
-        value={cfg.image_extend ?? null}
-        onChange={(v) => set("image_extend", v)}
-      />
 
       {/* 闪卡触发 */}
       <FoilTriggerRow

@@ -128,7 +128,6 @@ export function CardFrameGeneric({
         <CardImage
           path={image}
           crop={content.crop}
-          extend={content.extend}
           height={spec.imageHeight}
           borderRadius={3}
           border={`1px solid ${accentSoft}`}

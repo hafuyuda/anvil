@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Modal } from "../../components/ui/Modal";
 import { ipc } from "../../core/ipc";
 import type { PresetInfo } from "../../core/ipc/types";
-import { useAddPreset } from "../../hooks/useAddPreset";
+import { useAddPreset } from "../../core/actions/useAddPreset";
 
 interface Props {
   onClose: () => void;
