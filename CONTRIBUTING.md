@@ -136,12 +136,10 @@ src-tauri/src/
 │   │   ├── relations.rs
 │   │   ├── scenarios.rs
 │   │   ├── scripts.rs
-│   │   ├── seed.rs         # 从内置 pack 解压示例世界（空项目）
 │   │   ├── preset.rs       # 内置预设注册表 + 非空项目追加导入
 │   │   ├── sessions.rs
 │   │   └── theme.rs
 │   ├── index/          # SQLite 索引 + FTS
-│   ├── eval/           # 条件求值
 │   └── ipc/            # Tauri 命令
 └── lib.rs
 
@@ -162,22 +160,11 @@ src/
 │   ├── useExportPack.ts · useImportPack.ts · useKeyboard.ts
 │   └── useOpenProject.ts
 ├── components/
-│   ├── CardFrame/      # 卡牌渲染
-│   │   ├── index.tsx · types.ts · mapping.ts
-│   │   ├── primitives/
-│   │   │   ├── CardShell.tsx · CardInner.tsx
-│   │   │   ├── CardImage.tsx · CardBack.tsx · FoilOverlay.tsx
-│   │   └── styles/
-│   │       ├── YuGiOh.tsx · Generic.tsx · Minimal.tsx
-│   │       └── MTG.tsx · Pokemon.tsx
-│   ├── CardGrid/       # 卡片网格（共享）
-│   ├── Modal.tsx · Toolbar.tsx · PickerDialog.tsx
-│   ├── ToastHost.tsx · ConfirmHost.tsx · CommandPalette.tsx
-│   ├── HoverPreview.tsx · AudioSelect.tsx · ImageField.tsx · RefField.tsx
-│   ├── SectionLabel.tsx · EmptyState.tsx · LabeledBlock.tsx
-│   ├── Toggle.tsx · SaveInput.tsx · TypeMultiSelect.tsx
-│   ├── EntityListLayout.tsx · ScaledCardFrame.tsx · FieldInput.tsx
-│   └── ...
+│   ├── ui/             # 纯 UI 原子（Modal / Toggle / SectionLabel / EmptyState / Toolbar / SaveInput / LabeledBlock）
+│   ├── card/           # 卡牌领域（CardFrame / CardGrid / HoverPreview / ScaledCardFrame）
+│   ├── field/          # 字段编辑（FieldInput / ImageField / RefField / AudioSelect / TypeMultiSelect）
+│   ├── overlay/        # 顶层浮层（ToastHost / ConfirmHost / CommandPalette / PickerDialog / CardPickerGridDialog）
+│   └── layout/         # 通用布局（EntityListLayout）
 ├── shell/              # 五段布局
 │   ├── AppShell.tsx · TopBar.tsx · LeftNav.tsx
 │   ├── Workspace.tsx · Inspector.tsx · StatusBar.tsx
@@ -190,8 +177,12 @@ src/
 │   ├── story/
 │   │   ├── scenario/   # 剧情设计 + 导出
 │   │   │   └── inspector/   # 检查器内容
-│   │   ├── play/       # 视觉小说运行 + 音频
-│   │   ├── script/     # 剧本解析 / 编辑 / 序列化
+│   │   ├── play/
+│   │   │   ├── vn/     # VNStage 系列
+│   │   │   └── panels/ # 变量面板
+│   │   ├── script/
+│   │   │   ├── structured/  # 结构编辑
+│   │   │   └── source/      # 源码 + 预览
 │   │   └── effects.ts
 │   ├── board/
 │   ├── session/
@@ -284,7 +275,7 @@ src/
 
 10. **图片 + 音频统一走 asset protocol。** 前端 `lib/assetCache.ts` 缓存 `relative → asset URL`；Rust `asset_abs_path` 返回绝对路径；前端 `convertFileSrc(abs)` 转 URL。**前端不用 base64。** `read_image_data_url` 只给 HTML 导出内嵌用。
 
-11. **asset scope 动态管理。** `open_project` → `allow_directory` 项目根；`close_project` → `forbid_directory`。前端关闭项目时 `clearAssetCache()`。
+11. **asset scope 动态管理。** `open_project` → `allow_directory` 项目根。**不做 `forbid_directory`**——Tauri 2 的 deny 列表只增不减，调用会让同一路径在「关闭项目 → 重开」后永久被拒。前端关闭项目时 `clearAssetCache()`。
 
 12. **前端不裸调 `invoke`。** 统一走 `core/ipc/api.ts`。Rust snake_case → 前端 camelCase，Tauri 2 自动转换。
 
@@ -390,7 +381,7 @@ src/
 
 ### Rust 侧
 
-41. **每个领域一个文件。** `src-tauri/src/core/store/` 下 16 个文件。
+41. **每个领域一个文件。** `src-tauri/src/core/store/` 每领域一个文件（cards / relations / scenarios / …）。
 
 42. **Rust HTML / CSS / JS 嵌在 raw string 里时用 `r##"..."##`**（双 #），因为代码里会出现 `"#xxx`。
 
@@ -440,7 +431,6 @@ color: "var(--fg-muted)", fontSize: 12
 
 ### 历史遗留
 
-- `features/story/scenario/ScenarioSettingsTab.tsx` 与 `features/story/scenario/inspector/ScenarioGlobalSettings.tsx` 功能重叠。前者未被 `ScenarioInspector` 使用，改到时清理。
 - `src/index.css` 末尾的 `.graph-handle` 样式是节点图遗留，可清理。
 - `lib/saveRegistry.ts` 的 `flushAll` 只在 `useKeyboard` 里调（`Ctrl+S`），其他位置没有调用。改到时核实需求。
 
@@ -492,14 +482,14 @@ pnpm prettier --write src/
 
 提交 PR 前请手动验证：
 
-1. 打开项目 → 载入示例世界 → 数据完整；再打开非空项目 → 项目菜单「添加预设…」→ 选「铁砧堡」→ 内容追加且无 id 冲突、同名实体带 `(2)` 后缀
+1. 新建项目 → 弹「添加示例内容？」→ 添加铁砧堡 → 数据完整；再打开非空项目 → 项目菜单「添加预设…」→ 选「铁砧堡」→ 内容追加且无 id 冲突、同名实体带 `(2)` 后缀
 2. 卡片墙 → 搜索、筛选、多选、批量操作、排序
-3. 类型 → 字段编辑、拖拽排序、卡框映射、闪卡触发（含风格切换）、裁剪、出框、卡背、类型复制
+3. 类型 → 字段编辑、拖拽排序、卡框映射、闪卡触发（含风格切换）、裁剪、卡背、类型复制
 4. 关系 → 面板显示方向、反向名、悬浮预览
-5. 剧情 → 场景 tab、剧本（结构 + 源码双视图）、检查器（场景 / 剧情两 tab）、分支添加、运行全屏、条件、效果、骰子
+5. 剧情 → 场景 tab、剧本（结构 + 源码双视图）、检查器（剧情设置 / 变量 / 节点）、`->` 跳转、`{}` 条件、`~` 赋值、`<>` 粘合、运行全屏、回退、循环保护
 6. 剧情 → 导出 Markdown / HTML
 7. 棋盘 → 拖拽、缩放、旋转、背景、网格形状、卡盒抽牌、翻牌、占位、关系线、边界扩充、批量加卡
-8. 卡组 → 新建、加卡、卡片/列表视图切换、拖拽排序、导入棋盘、加卡盒
+8. 卡组 → 新建（空白 / 按类型生成）、加卡（含同一张卡多份）、按类型填充（追加 / 替换）、卡片/列表视图切换（× N 角标）、拖拽排序、导入棋盘、加卡盒
 9. 跑团 → 对话、掷骰、消息编辑、事件日志、会话内卡盒
 10. 音乐 → 导入、播放、暂停、进度、音量、循环、引用计数、删除警告
 11. MiniPlayer → 右下常驻、跨模块持续、切设置仍播放
@@ -590,6 +580,12 @@ CSS 动画如果用 `background-position` / `mixBlendMode`，会落到主线程�
 ### 模块顺序乱掉
 
 `lib/moduleOrder.ts` 读写时会过滤已不存在的模块、把新增模块追加到末尾。如果 `localStorage` 里的 `anvil.leftNavOrder` 完全乱掉，可以通过「设置 → 高级 → 恢复默认设置」重置（会一并重置 `appSettings`），或在命令面板执行「重置模块排序」。
+
+### 关闭项目后重开，图片 / 音频不显示
+
+`forbid_directory` 在 Tauri 2 里只往 deny 列表追加，不会从 allow 移除。
+`close_project` 调用一次就把项目路径永久钉死在 deny 里，直到 app 重启。
+**修复做法：只 `allow_directory`，不 `forbid_directory`。**
 
 ---
 

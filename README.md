@@ -17,8 +17,7 @@ Anvil 把世界观搭建、分支故事、棋盘推演、跑团记录统一在�
 - **棋盘推演** — HTML 层渲染，支持拖拽、缩放、旋转、背景图、网格形状切换（方格 / 点阵 / 横线 / 竖线）、卡盒抽牌、翻牌、占位 Token、世界观关系线叠加。Token 用同一套卡框渲染。
 - **跑团对话** — 舞台 + 对话流 + 角色面板。消息写入 JSONL，可回放、可编辑、可删除。会话内支持卡盒抽牌。
 - **音乐播放** — 全局音频播放器，右下角迷你播放器常驻，跨模块、跨设置持续播放。独立「音乐」模块管理项目音频。
-- **卡组管理** — 有序的卡 ID 集合。卡片视图 / 列表视图切换，支持拖拽排序。一键铺开到棋盘（自动扩充边界），或作为卡盒抽牌。
-- **TCG 卡牌渲染** — 五种卡框风格（游戏王 / 通用 / 极简 / 万智牌 / 宝可梦），ATK / DEF / HP / 等级标签可自定义。支持图像裁剪、出框、闪卡（金箔 / 银箔）、卡背、棋盘 Token 翻牌。
+- **TCG 卡牌渲染** — 六种卡框风格（游戏王 / 通用 / 极简 / 万智牌 / 宝可梦 / 彩虹），ATK / DEF / HP / 等级标签可自定义。支持图像裁剪、闪卡（金箔 / 银箔 / 全息彩虹）、卡背、棋盘 Token 翻牌。
 - **本地优先** — 项目是一个文件夹，文本真相源，可用 git 管理。SQLite 只是可删除、可重建的索引。
 - **资源包** — 导出 / 导入 / 合并 `.anvilpack`，类型映射、只导类型、选择性导入。
 - **项目级主题** — 所有颜色走 CSS 变量，可切换、可自定义、可导出。
@@ -107,13 +106,13 @@ pnpm tauri build
 anvil/
 ├── src-tauri/
 │   ├── assets/
-│   │   └── example_world.anvilpack   # 内置示例世界（编译嵌入）
+│   │   └── presets/
+│   │       └── anvil_castle.anvilpack  # 内置预设（编译嵌入）
 │   └── src/
 │       ├── core/
 │       │   ├── model/          # Card / CardType / Relation / Scenario / Board / Session / CardGroup
-│       │   ├── store/          # 文本文件读写 + 索引 + 资源包
+│       │   ├── store/          # 文本文件读写 + 索引 + 资源包 + 预设导入
 │       │   ├── index/          # SQLite 索引 + FTS
-│       │   ├── eval/           # 条件求值
 │       │   └── ipc/            # Tauri 命令（按领域拆分）
 │       └── lib.rs
 ├── src/
@@ -168,22 +167,22 @@ anvil/
 **卡牌渲染分层**：
 
 ```text
-components/CardFrame/
+components/card/CardFrame/
 ├── index.tsx              分派器
 ├── types.ts               类型 + SIZE_MAP + 预设
 ├── mapping.ts             mapContent + resolveFeatures
 ├── primitives/            基础构件
 │   ├── CardShell.tsx      外层容器（选中态、尺寸、过渡）
 │   ├── CardInner.tsx      内层容器
-│   ├── CardImage.tsx      图像区（裁剪 / 出框）
+│   ├── CardImage.tsx      图像区（裁剪）
 │   ├── CardBack.tsx       卡背
-│   └── FoilOverlay.tsx    闪卡覆盖层
-└── styles/                风格实现
-    ├── YuGiOh.tsx
-    ├── Generic.tsx
-    ├── Minimal.tsx
-    ├── MTG.tsx
-    └── Pokemon.tsx
+│   ├── FoilOverlay.tsx    闪卡覆盖层
+│   ├── back-styles/       卡背风格（注册表）
+│   │   └── impl/          anvil · rune
+│   └── foil-styles/       闪卡风格（注册表）
+│       └── impl/          gold · silver · rainbow
+└── styles/                卡框风格（注册表）
+    └── impl/              YuGiOh · Generic · Minimal · MTG · Pokemon · Rainbow
 ```
 
 ---
@@ -246,7 +245,6 @@ MyWorld.anvil/
 - **不做 VTT 级别的自动化。** 骰子、测距、光照属于虚拟桌面，不是创作工具。
 - **不做账号系统。** 本地文件，无云同步。
 - **不做 Web 服务端。** 桌面应用，无后端。
-- **不做 TCG 卡组（对战用）。** 卡组是引用集合，不是牌组策略。
 - **不做视觉小说的完整演出引擎。** HTML 导出支持文本 / 背景 / 点击推进 / 选择 / 条件，不含立绘渲染、动画、转场、音频播放、存档、打包 EXE。想要完整演出，请把剧本导入 Ren'Py 或 Godot。
 
 ---
@@ -289,4 +287,4 @@ MyWorld.anvil/
 
 **早期开发中。** 核心功能已可用，但 API 和数据格式仍可能变化。欢迎试用和反馈。
 
-当前版本 `0.2.0`（2026-10-09）。下一版本 `0.3.0` 正在开发，主要变化：音频播放器 + 音乐模块、无边框标题栏、LeftNav 可拖拽排序、TopBar 极简化、设置面板重构、剧情模块改造、银箔闪卡、卡框渲染分层、资源管理搜索、卡组卡片视图。
+当前版本 `0.2.0`（2026-10-09）。下一版本 `0.3.0` 正在开发，主要变化：音频播放器 + 音乐模块、无边框标题栏、LeftNav 可拖拽排序、TopBar 极简化、设置面板重构、剧情模块改造（内联逻辑剧本）、银箔闪卡、卡框渲染分层、资源管理搜索、卡组卡片视图、卡组多份引用 + 按类型生成。

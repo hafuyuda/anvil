@@ -57,14 +57,15 @@ Anvil 是一个以**卡牌为核心**的世界观创作与跑团工具。它把�
 
 ### 3.3 四大功能的统一
 
-| 功能     | 数据来源                            | 主要视图                 | 运行时          |
-| -------- | ----------------------------------- | ------------------------ | --------------- |
-| 世界观   | Card + Relation                     | 卡片墙                   | 无              |
+| 功能     | 数据来源                        | 主要视图                 | 运行时          |
+| -------- | ------------------------------- | ------------------------ | --------------- |
+| 世界观   | Card + Relation                 | 卡片墙                   | 无              |
 | 分支故事 | Card + Scenario（内联逻辑剧本） | 场景 tab + 剧本编辑器    | 条件求值 + 赋值 |
-| 棋盘     | Card + Token + Board                | HTML 画布                | 坐标与状态      |
-| 跑团     | Card + Session + Token              | 舞台 + 对话流 + 角色列表 | 事件日志        |
+| 棋盘     | Card + Token + Board            | HTML 画布                | 坐标与状态      |
+| 跑团     | Card + Session + Token          | 舞台 + 对话流 + 角色列表 | 事件日志        |
 
 **CardGroup** 是辅助索引，服务于「管理一组卡」和「批量铺开」，不属于四大功能之一。
+`card_ids` 是有序多重集，同一张卡可以出现多次（对应棋盘上摆 N 个 token）。
 
 **CardPile** 是 Token 的变体，在棋盘上以堆叠形式存在，支持抽牌与洗牌。
 
@@ -153,13 +154,6 @@ pub struct CropRect {
     pub h: f64,
 }
 
-pub struct ImageExtend {
-    pub top: f64,
-    pub bottom: f64,
-    pub left: f64,
-    pub right: f64,
-}
-
 pub struct CardFrameConfig {
     #[serde(default)]
     pub style: Option<String>,
@@ -174,8 +168,6 @@ pub struct CardFrameConfig {
     pub foil_style: Option<String>,
     #[serde(default)]
     pub image_crop: Option<CropRect>,
-    #[serde(default)]
-    pub image_extend: Option<ImageExtend>,
 }
 ```
 
@@ -194,7 +186,7 @@ Ref { target_types } · Image · Url · Json
 - `card_frame` 为空时走启发式映射
 - `*_label` 为空时用默认（ATK / DEF / HP / 星号）
 - `style` 为空时走默认（yugioh）
-- `image_crop` / `image_extend` 为空时不做裁剪、不出框
+- `image_crop` 为空时不做裁剪
 - `foil_field` / `foil_values` 为空时不触发闪卡
 - `foil_style` 为空时走默认（gold）
 
@@ -207,7 +199,6 @@ pub struct Card {
     pub name: String,
     pub values: BTreeMap<String, Value>,
     pub image_crop_override: Option<CropRect>,
-    pub image_extend_override: Option<ImageExtend>,
     pub created_at: i64,
     pub updated_at: i64,
 }
@@ -372,7 +363,7 @@ pub struct Theme {
 }
 ```
 
-`CURRENT_SCHEMA_VERSION = "0.1"`。`Manifest::new()` 的默认版本是 `"0.1.0"`，与应用版本（`0.2.0`）独立。
+`CURRENT_SCHEMA_VERSION = "0.1"`。`Manifest::new()` 的默认版本是 `"0.1.0"`，与应用版本（`0.3.0`）独立。
 
 ### 4.7 卡组
 
@@ -381,6 +372,7 @@ pub struct CardGroup {
     pub id: String,
     pub name: String,
     pub description: Option<String>,
+    /// 有序多重集：同一张卡可重复出现，代表多份引用
     pub card_ids: Vec<CardId>,
     pub created_at: i64,
     pub updated_at: i64,
@@ -390,9 +382,12 @@ pub struct CardGroup {
 约束：
 
 - 卡组只是引用，删卡组不影响卡
-- 删卡时同步从所有卡组里移除该卡 ID
-- 卡组的 `card_ids` 顺序就是棋盘导入时的铺开顺序
-- 不做快照、不做类型区分
+- `card_ids` 是有序多重集：同一张卡可重复出现，代表多份
+- 删卡时同步从所有卡组里移除该卡的所有副本
+- 卡组的 `card_ids` 顺序就是棋盘导入 / 铺开 / 抽牌的顺序（重复项依次处理）
+- 「按类型生成」：新建卡组时可选择，或对已有卡组「按类型填充」（追加 / 替换），
+  按卡名排序
+- 不做快照
 
 ---
 
@@ -452,7 +447,8 @@ MyWorld.anvil/
 
 音频同样走 asset protocol。
 
-- `open_project` 动态 `allow_directory` 项目根，`close_project` 时 `forbid_directory`
+- `open_project` 动态 `allow_directory` 项目根
+- **不做 `forbid_directory`**：Tauri 2 的 deny 列表只增不减，调用会让同一路径在「关闭项目 → 重开」后永久被拒
 - `asset_abs_path` IPC 返回绝对路径，前端 `convertFileSrc` 转成 `asset://` URL
 - WebView 直接从磁盘读，不经过 IPC
 - 支持格式：mp3 / ogg / wav / m4a
@@ -488,7 +484,6 @@ MyWorld.anvil/
 | 后端       | Rust                      |
 | 持久化     | 文本文件 + SQLite 索引    |
 | 全文检索   | SQLite FTS5（trigram）    |
-| 表达式求值 | evalexpr                  |
 | 资源包     | zip + walkdir             |
 | 无边框窗口 | tauri-plugin-frame        |
 | 文件对话框 | tauri-plugin-dialog       |
@@ -524,11 +519,9 @@ anvil/
 │       │   │   ├── relations.rs
 │       │   │   ├── scenarios.rs
 │       │   │   ├── scripts.rs
-│       │   │   ├── seed.rs         # 从内置 pack 解压示例世界
 │       │   │   ├── sessions.rs
 │       │   │   └── theme.rs
 │       │   ├── index/       # SQLite 索引 + FTS
-│       │   ├── eval/        # 条件求值
 │       │   └── ipc/         # Tauri 命令（按领域拆分）
 │       └── lib.rs
 ├── src/
@@ -566,12 +559,16 @@ anvil/
 │   │   ├── cards/           # ★ 共享核心
 │   │   │   ├── card/ · card-type/ · card-wall/ · relation/
 │   │   ├── card-groups/
-│   │   ├── story/
-│   │   │   ├── scenario/    # 剧情设计 + 导出
-│   │   │   │   └── inspector/   # 检查器内容
-│   │   │   ├── play/        # 视觉小说运行 + 音频
-│   │   │   ├── script/      # 剧本解析、编辑、序列化
-│   │   │   └── effects.ts
+│   ├── story/
+│   │   ├── scenario/    # 剧情设计 + 导出
+│   │   │   └── inspector/   # 检查器内容
+│   │   ├── play/
+│   │   │   ├── vn/      # VNStage 系列
+│   │   │   └── panels/  # 变量面板
+│   │   ├── script/
+│   │   │   ├── structured/  # 结构编辑
+│   │   │   └── source/      # 源码 + 预览
+│   │   └── effects.ts
 │   │   ├── board/           # 棋盘
 │   │   ├── session/         # 跑团
 │   │   │   └── chat/        # 对话流、掷骰、消息编辑
@@ -591,36 +588,28 @@ anvil/
 
 ---
 
-## 7. 条件求值与效果
+## 7. 剧情条件与赋值
 
-### 7.1 条件
+条件和赋值都是**剧本语言的行类型**，不写入数据模型：
 
-`Relation.meta.condition` 是字符串表达式，用 `evalexpr` 求值。
+- **条件行** `{表达式: 文本}`：表达式为真时显示文本，否则跳过；无冒号则只做门槛
+- **赋值行** `~ 变量 操作符 值`：操作符 `=` / `+=` / `-=`
+
+条件表达式由前端本地求值（`script/eval.ts`，递归下降，约 100 行），
+不走 IPC：
 
 ```text
 visited_anvil == true
 gold >= 100
 has_key && !door_locked
 race == "矮人"
+
+变量声明在 Scenario.variables（key / label / 类型 / 默认值）。
+
+骰子支持：赋值值支持 1d3 / 2d6+3 / 1d20-2。前端本地随机，
+执行时记录明细。骰子逻辑统一在 src/lib/dice.ts：rollDice 掷骰，
+validateDiceExpression 只校验不掷。
 ```
-
-### 7.2 效果
-
-`Relation.meta.effects` 是字符串数组：
-
-```text
-visited_tavern = true
-gold -= 5
-san -= 1d3
-```
-
-三种操作符：`=` / `+=` / `-=`。
-
-**骰子支持**：`1d3` / `2d6+3` / `1d20-2`。前端本地随机，执行时记录明细。
-
-**骰子逻辑统一在 `src/lib/dice.ts`**：`rollDice` 掷骰，`validateDiceExpression` 只校验不掷。
-
-**效果写入事件日志**：当有会话打开时，效果执行会写入 `effect.apply` 事件。
 
 ---
 
@@ -748,7 +737,7 @@ if (!r.ok) return;
 - 可折叠成 28px 竖条（点击展开）
 - 按 `activeModule` 决定内容：
   - `types` + 选中卡牌类型 → 卡框预览
-  - `story` → `ScenarioInspector`（场景 / 剧情双 tab）
+  - `story` → `ScenarioInspector`（剧情设置：描述 / 入口 / 节点 / 变量）
   - `player` → `PlayerInspector`
   - 其他：token > edge > card 优先级
 
@@ -788,11 +777,10 @@ if (!r.ok) return;
 
 **主区**：剧本编辑器。结构 / 源码双 tab。
 
-**检查器**（`ScenarioInspector`，随选中对象切换）：
+**检查器**（`ScenarioInspector`）：
 
-- **场景 tab**：当前场景名 + 分支列表（可增删改）
-- **剧情 tab**：描述 / 入口节点 / 允许关系类型 / 节点勾选 / 变量 / 导入关系
-- **点分支** → 切换到边编辑器（`EdgeEditorPanel`）
+- 描述 / 入口节点 / 节点勾选 / 变量
+- 选中边时切到 `EdgeEditorPanel`（世界观关系的备注 / 类型）
 
 ### 12.2 运行
 
@@ -883,7 +871,9 @@ if (!r.ok) return;
 ---
 
 ## 15. 卡牌渲染
+
 槽位由风格声明，SlotDef 决定编辑器配置项
+
 ### 15.1 目录结构
 
 ```
@@ -921,7 +911,7 @@ shouldFoil → 包一层 FoilOverlay（读 features）
 
 **`CardContent`**：title / subtitle / typeLine / level / atk / def / hp / body / image。纯内容，不涉及"该不该显示"。
 
-**`CardFeatures`**：crop / extend / foil / foilVariant。附加视觉处理，风格组件不关心。
+**`CardFeatures`**：crop / foil / foilVariant。附加视觉处理，风格组件不关心。
 
 ### 15.3 风格
 
@@ -946,7 +936,7 @@ shouldFoil → 包一层 FoilOverlay（读 features）
 - 固定像素高（small 84 / medium 116 / large 160）
 - 统一走 `CardImage`
 - **裁剪**：`image_crop` 类型级，`Card.image_crop_override` 卡级覆盖
-- **出框**：`image_extend` 四方向独立数值（0–2），最多撑满内层
+
 - 无图时显示类型色系首字
 
 ### 15.5 颜色
@@ -1148,14 +1138,15 @@ world.anvilpack (zip)
 
 内置预设是编译进二进制的 `.anvilpack`，存放在 `src-tauri/assets/presets/` 下，通过 `include_bytes!` 嵌入。
 
-有两条入口：
-
-- **载入示例世界**（`seed_example_world`）：要求项目为空（无类型、无卡片），把 `anvil_castle` 整个解压到当前项目根（跳过 `manifest.json`），重建索引。用于新手上手。
-- **添加预设…**（TopBar → 项目菜单）：把指定预设作为**副本**追加到当前已打开的项目。内容实体全部重新生成 UUID；与现有项目同名的实体加 `(2)` / `(3)`；卡类型与关系类型按**名字**复用（已有同名字的类型不再新建），其余内容（卡 / 关系 / 剧情 / 棋盘 / 会话 / 卡组 / 图片）一律新建。不修改目标项目的 manifest。
+唯一入口是「添加预设…」（TopBar → 项目菜单，新建项目时也会询问是否添加）：
+把指定预设作为**副本**追加到当前已打开的项目。内容实体全部重新生成 UUID；
+与现有项目同名的实体加 `(2)` / `(3)`；卡类型与关系类型按**名字**复用
+（已有同名字的类型不再新建），其余内容（卡 / 关系 / 剧情 / 棋盘 / 会话 /
+卡组 / 图片）一律新建。不修改目标项目的 manifest。
 
 预设注册表定义在 `src-tauri/src/core/store/preset.rs`，`PRESETS` 常量列出所有可用预设（id / label / description）。新增预设只需把 `.anvilpack` 放进 `assets/presets/` 并在 `PRESETS` 中登记一行。`anvil_castle`（铁砧堡）是首个预设，内容：6 个类型 / 30 张卡 / 5 个关系类型 + 22 条关系 / 3 个卡组 / 1 个剧情「失踪的学徒」+ 5 个场景完整剧本 / 2 个棋盘 / 1 个会话 / 4 张 SVG 背景图。覆盖 5 种卡框风格、闪卡、卡背、卡盒、翻牌、剧本结构化编辑器、音频选择器。
 
-导入顺序：类型 → 关系 → 剧情 → 卡组 → 棋盘 → 会话 → 图片。棋盘 token 的 pile（卡盒）里 `group_id` 映射到新建卡组 id，`remaining`/`initial` 里的卡 id 映射到新建卡 id，`total` 重算；会话的 `board_id` 置空（不绑定棋盘）。
+导入顺序：类型 → 关系 → 剧情 → 卡组 → 棋盘 → 会话 → 图片。棋盘 token 的 pile（卡盒）里 `group_id` 映射到新建卡组 id，`remaining`/`initial` 里的卡 id 映射到新建卡 id，`total` 重算；会话的 `board_id` 按映射指向新导入的棋盘（映射失败则置空）。
 
 ---
 
@@ -1297,7 +1288,7 @@ world.anvilpack (zip)
 
 **0.2.0 已发布**（2026-10-09）。
 
-**0.3.0 开发中** —— 音频播放器 + 音乐模块、无边框标题栏、LeftNav 可拖拽排序、TopBar 极简化、设置面板重构、剧情模块改造、银箔闪卡、卡框渲染分层、资源管理搜索、卡组卡片视图。
+**0.3.0 开发中** —— 音频播放器 + 音乐模块、无边框标题栏、LeftNav 可拖拽排序、TopBar 极简化、设置面板重构、剧情模块改造（内联逻辑剧本）、卡框渲染分层、资源管理搜索、卡组卡片视图、卡组多份引用 + 按类型生成。
 
 ---
 
@@ -1322,7 +1313,6 @@ world.anvilpack (zip)
 - [ ] `useEffect` 依赖数组隐患逐个核实
 - [ ] 单元测试（从 `lib/dice.ts` 和 `script/parser.ts` 开始）
 - [ ] CI 增强（加 `cargo check` + `cargo fmt --check` + `prettier --check`）
-- [ ] `ScenarioSettingsTab.tsx` 与 `inspector/ScenarioGlobalSettings.tsx` 功能重叠，清理其一
 - [ ] `index.css` 里 `.graph-handle` 残留样式清理
 
 **P3（长期）**
@@ -1343,7 +1333,6 @@ world.anvilpack (zip)
 - 不做 Web 服务端
 - 不做完全无 SQLite 的纯文件系统
 - 不做视觉小说的完整演出引擎（立绘渲染、动画、转场、音频导出、存档、打包 EXE）
-- 不做 TCG 卡组（对战用）
 
 ---
 
