@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import type { ScriptLine } from "../types";
 import { AudioSelect } from "../../../../components/field/AudioSelect";
+import { AutoGrowTextarea } from "../../../../components/field/AutoGrowTextarea";
 
 const TYPE_LABELS: { value: ScriptLine["type"]; label: string }[] = [
   { value: "narration", label: "旁白" },
@@ -146,12 +147,11 @@ export function ScriptLineCard({
 
       <div style={{ flex: 1, minWidth: 0, display: "flex", gap: 6 }}>
         {line.type === "narration" && (
-          <input
-            ref={primaryRef}
-            className="input"
+          <AutoGrowTextarea
             value={line.text}
-            onChange={(e) => onChange({ ...line, text: e.target.value })}
-            onKeyDown={handleKeyDown}
+            onChange={(v) => onChange({ ...line, text: v })}
+            onEnter={onEnter}
+            autoFocus={autoFocus}
             placeholder="旁白内容"
             style={{ fontSize: 12 }}
           />
@@ -181,11 +181,10 @@ export function ScriptLineCard({
               placeholder="表情"
               style={{ width: 80, flexShrink: 0, fontSize: 12 }}
             />
-            <input
-              className="input"
+            <AutoGrowTextarea
               value={line.text}
-              onChange={(e) => onChange({ ...line, text: e.target.value })}
-              onKeyDown={handleKeyDown}
+              onChange={(v) => onChange({ ...line, text: v })}
+              onEnter={onEnter}
               placeholder="对白内容"
               style={{ flex: 1, fontSize: 12 }}
             />
@@ -193,12 +192,11 @@ export function ScriptLineCard({
         )}
 
         {line.type === "action" && (
-          <input
-            ref={primaryRef}
-            className="input"
+          <AutoGrowTextarea
             value={line.text}
-            onChange={(e) => onChange({ ...line, text: e.target.value })}
-            onKeyDown={handleKeyDown}
+            onChange={(v) => onChange({ ...line, text: v })}
+            onEnter={onEnter}
+            autoFocus={autoFocus}
             placeholder="动作描述"
             style={{ fontSize: 12, fontStyle: "italic" }}
           />
@@ -273,11 +271,10 @@ export function ScriptLineCard({
                 fontFamily: "var(--font-mono)",
               }}
             />
-            <input
-              className="input"
+            <AutoGrowTextarea
               value={line.text}
-              onChange={(e) => onChange({ ...line, text: e.target.value })}
-              onKeyDown={handleKeyDown}
+              onChange={(v) => onChange({ ...line, text: v })}
+              onEnter={onEnter}
               placeholder="满足时显示的文本"
               style={{ flex: 1, fontSize: 12 }}
             />

@@ -75,8 +75,23 @@ export function ScriptStructuredEditor({
   }
 
   function handleLineChange(idx: number, next: ScriptLine) {
-    const lines = parsed.lines.map((l, i) => (i === idx ? next : l));
-    updateLines(lines);
+    const text =
+      "text" in next && typeof next.text === "string" ? next.text : null;
+    if (text && /[\r\n]/.test(text)) {
+      const parts = text.split(/\r?\n/);
+      const newLines: ScriptLine[] = parts.map((p) => ({
+        ...next,
+        text: p,
+      }));
+      const lines = [
+        ...parsed.lines.slice(0, idx),
+        ...newLines,
+        ...parsed.lines.slice(idx + 1),
+      ];
+      updateLines(lines);
+      return;
+    }
+    updateLines(parsed.lines.map((l, i) => (i === idx ? next : l)));
   }
 
   function handleDelete(idx: number) {
