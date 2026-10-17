@@ -48,8 +48,9 @@ impl Project {
     pub fn rebuild_index(&self) -> anyhow::Result<()> {
         let cards = self.load_all_cards()?;
         let relations = self.list_all_relations()?;
+        let scripts = self.collect_scripts()?;
         let mut conn = self.index.lock().unwrap();
-        crate::core::index::rebuild(&mut conn, &cards, &relations)?;
+        crate::core::index::rebuild(&mut conn, &cards, &relations, &scripts)?;
         Ok(())
     }
 
@@ -73,9 +74,10 @@ impl Project {
         let boards = self.load_boards()?;
         let sessions = self.load_sessions()?;
         let card_groups = self.load_card_groups()?;
+        let scripts = self.collect_scripts()?;
         {
             let mut conn = self.index.lock().unwrap();
-            crate::core::index::rebuild(&mut conn, &cards, &relations)?;
+            crate::core::index::rebuild(&mut conn, &cards, &relations, &scripts)?;
         }
         Ok((
             cards,

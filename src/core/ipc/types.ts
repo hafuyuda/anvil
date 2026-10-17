@@ -347,3 +347,8 @@ export interface AudioMeta {
   size: number;
   ref_count: number;
 }
+
+export interface ScriptHit {
+  card_id: string;
+  snippet: string;
+}

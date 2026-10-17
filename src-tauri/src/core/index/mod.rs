@@ -33,6 +33,12 @@ fn init_schema(conn: &Connection) -> anyhow::Result<()> {
 
         CREATE INDEX IF NOT EXISTS idx_cards_type ON cards(type_id);
 
+        CREATE VIRTUAL TABLE IF NOT EXISTS script_fts USING fts5(
+            card_id UNINDEXED,
+            content,
+            tokenize = 'trigram'
+        );
+
         CREATE TABLE IF NOT EXISTS relations (
             id         TEXT PRIMARY KEY,
             from_id    TEXT NOT NULL,
@@ -55,10 +61,12 @@ pub fn rebuild(
     conn: &mut Connection,
     cards: &[Card],
     relations: &[Relation],
+    scripts: &[(String, String)],
 ) -> anyhow::Result<()> {
     let tx = conn.transaction()?;
     tx.execute("DELETE FROM cards", [])?;
     tx.execute("DELETE FROM cards_fts", [])?;
+    tx.execute("DELETE FROM script_fts", [])?;
     tx.execute("DELETE FROM relations", [])?;
     {
         let mut ins_card = tx.prepare(
@@ -90,6 +98,13 @@ pub fn rebuild(
                 meta,
                 r.created_at
             ])?;
+        }
+    }
+    {
+        let mut ins_script =
+            tx.prepare("INSERT INTO script_fts (card_id, content) VALUES (?1, ?2)")?;
+        for (card_id, content) in scripts {
+            ins_script.execute(params![card_id, content])?;
         }
     }
     tx.commit()?;
@@ -180,6 +195,39 @@ pub fn search(conn: &Connection, query: &str, limit: usize) -> anyhow::Result<Ve
         ids.push(r?);
     }
     Ok(ids)
+}
+
+#[derive(serde::Serialize)]
+pub struct ScriptHit {
+    pub card_id: String,
+    pub snippet: String,
+}
+
+pub fn search_scripts(
+    conn: &Connection,
+    query: &str,
+    limit: usize,
+) -> anyhow::Result<Vec<ScriptHit>> {
+    let q = sanitize_fts_query(query);
+    if q.is_empty() {
+        return Ok(Vec::new());
+    }
+    let mut stmt = conn.prepare(
+        "SELECT card_id, snippet(script_fts, 1, '[[', ']]', '…', 20)
+         FROM script_fts WHERE script_fts MATCH ?1
+         ORDER BY rank LIMIT ?2",
+    )?;
+    let rows = stmt.query_map(params![q, limit as i64], |row| {
+        Ok(ScriptHit {
+            card_id: row.get(0)?,
+            snippet: row.get(1)?,
+        })
+    })?;
+    let mut out = Vec::new();
+    for r in rows {
+        out.push(r?);
+    }
+    Ok(out)
 }
 
 fn sanitize_fts_query(input: &str) -> String {

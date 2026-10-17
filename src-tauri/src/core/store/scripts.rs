@@ -28,10 +28,24 @@ impl Project {
             if path.exists() {
                 std::fs::remove_file(&path)?;
             }
+            let conn = self.index.lock().unwrap();
+            conn.execute(
+                "DELETE FROM script_fts WHERE card_id = ?1",
+                rusqlite::params![card_id],
+            )?;
             return Ok(());
         }
         std::fs::create_dir_all(self.scripts_dir())?;
         write_atomic(&path, content.as_bytes())?;
+        let conn = self.index.lock().unwrap();
+        conn.execute(
+            "DELETE FROM script_fts WHERE card_id = ?1",
+            rusqlite::params![card_id],
+        )?;
+        conn.execute(
+            "INSERT INTO script_fts (card_id, content) VALUES (?1, ?2)",
+            rusqlite::params![card_id, content],
+        )?;
         Ok(())
     }
 
@@ -40,7 +54,33 @@ impl Project {
         if path.exists() {
             std::fs::remove_file(&path)?;
         }
+        let conn = self.index.lock().unwrap();
+        conn.execute(
+            "DELETE FROM script_fts WHERE card_id = ?1",
+            rusqlite::params![card_id],
+        )?;
         Ok(())
+    }
+
+    /// 跨场景剧本全文搜索（FTS5 trigram）。
+    pub fn search_scripts(
+        &self,
+        query: &str,
+        limit: usize,
+    ) -> anyhow::Result<Vec<crate::core::index::ScriptHit>> {
+        let conn = self.index.lock().unwrap();
+        crate::core::index::search_scripts(&conn, query, limit)
+    }
+
+    /// 收集全部剧本内容，供索引全量重建使用。
+    pub fn collect_scripts(&self) -> anyhow::Result<Vec<(String, String)>> {
+        let mut out = Vec::new();
+        for card_id in self.list_script_card_ids()? {
+            if let Some(content) = self.load_script(&card_id)? {
+                out.push((card_id, content));
+            }
+        }
+        Ok(out)
     }
 
     /// 列出所有有剧本的场景卡 ID。

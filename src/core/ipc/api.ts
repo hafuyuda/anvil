@@ -18,6 +18,7 @@ import type {
   PresetInfo,
   ProjectStats,
   AudioMeta,
+  ScriptHit,
 } from "./types";
 
 export const ipc = {
@@ -144,6 +145,8 @@ export const ipc = {
     invoke<void>("save_script", { cardId, content }),
   deleteScript: (cardId: string) => invoke<void>("delete_script", { cardId }),
   listScriptCardIds: () => invoke<string[]>("list_script_card_ids"),
+  searchScripts: (query: string, limit?: number) =>
+    invoke<ScriptHit[]>("search_scripts", { query, limit }),
 
   saveTextFile: (path: string, content: string) =>
     invoke<void>("save_text_file", { path, content }),

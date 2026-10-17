@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { save as saveDialog } from "@tauri-apps/plugin-dialog";
-import { ipc, type Card, type Scenario } from "../../../core/ipc";
+import { ipc, type Card, type Scenario, type ScriptHit } from "../../../core/ipc";
 import { useProjectStore } from "../../../stores/projectStore";
 import { ScriptEditor } from "../script/ScriptEditor";
 import { PlayView } from "../play/PlayView";
@@ -10,6 +10,40 @@ import { runWithError } from "../../../lib/runWithError";
 
 interface Props {
   scenario: Scenario;
+}
+
+function SnippetText({ snippet }: { snippet: string }) {
+  const parts: React.ReactNode[] = [];
+  let rest = snippet;
+  let key = 0;
+  while (rest.length > 0) {
+    const start = rest.indexOf("[[");
+    if (start === -1) {
+      parts.push(rest);
+      break;
+    }
+    if (start > 0) parts.push(rest.slice(0, start));
+    const end = rest.indexOf("]]", start + 2);
+    if (end === -1) {
+      parts.push(rest.slice(start));
+      break;
+    }
+    parts.push(
+      <mark
+        key={key++}
+        style={{
+          background: "var(--accent-gold)",
+          color: "var(--bg-app)",
+          borderRadius: 2,
+          padding: "0 2px",
+        }}
+      >
+        {rest.slice(start + 2, end)}
+      </mark>,
+    );
+    rest = rest.slice(end + 2);
+  }
+  return <>{parts}</>;
 }
 
 export function ScenarioEditor({ scenario }: Props) {
@@ -22,6 +56,38 @@ export function ScenarioEditor({ scenario }: Props) {
   const [playOpen, setPlayOpen] = useState(false);
   const [exportingMd, setExportingMd] = useState(false);
   const [exportingHtml, setExportingHtml] = useState(false);
+
+  // 跨场景剧本搜索
+  const [q, setQ] = useState("");
+  const [hits, setHits] = useState<ScriptHit[] | null>(null);
+  const searchRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const text = q.trim();
+    if (text.length < 3) {
+      setHits(null);
+      return;
+    }
+    const h = setTimeout(async () => {
+      const r = await runWithError(() => ipc.searchScripts(text, 30), "搜索失败");
+      if (!r.ok) return;
+      const nodeSet = new Set(scenario.node_ids);
+      setHits(r.value.filter((x) => nodeSet.has(x.card_id)));
+    }, 300);
+    return () => clearTimeout(h);
+  }, [q, scenario.node_ids]);
+
+  // 点击外部关闭搜索下拉
+  useEffect(() => {
+    if (hits === null) return;
+    function onDown(e: MouseEvent) {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setHits(null);
+      }
+    }
+    window.addEventListener("mousedown", onDown);
+    return () => window.removeEventListener("mousedown", onDown);
+  }, [hits]);
 
   const sceneCards: Card[] = scenario.node_ids
     .map((id) => cards.find((c) => c.id === id))
@@ -137,6 +203,92 @@ export function ScenarioEditor({ scenario }: Props) {
         </span>
 
         <div style={{ flex: 1 }} />
+
+        <div ref={searchRef} style={{ position: "relative" }}>
+          <input
+            className="input"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="搜索剧本（≥3 字）"
+            style={{ width: 180, fontSize: 12, padding: "4px 8px" }}
+          />
+          {hits !== null && (
+            <div
+              style={{
+                position: "absolute",
+                top: "calc(100% + 4px)",
+                right: 0,
+                width: 320,
+                maxHeight: 320,
+                overflowY: "auto",
+                background: "var(--bg-panel)",
+                border: "1px solid var(--border-subtle)",
+                borderRadius: "var(--radius-md)",
+                boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
+                zIndex: 100,
+              }}
+            >
+              {hits.length === 0 && (
+                <div
+                  style={{
+                    padding: "8px 12px",
+                    fontSize: 12,
+                    color: "var(--fg-muted)",
+                  }}
+                >
+                  无匹配结果
+                </div>
+              )}
+              {hits.map((h) => (
+                <button
+                  key={h.card_id}
+                  onClick={() => {
+                    setCurrentScene(h.card_id);
+                    setQ("");
+                    setHits(null);
+                  }}
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    textAlign: "left",
+                    padding: "6px 12px",
+                    border: "none",
+                    background: "transparent",
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "var(--bg-raised)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "transparent";
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: "var(--fg-primary)",
+                    }}
+                  >
+                    {cards.find((c) => c.id === h.card_id)?.name ?? h.card_id}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      color: "var(--fg-secondary)",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    <SnippetText snippet={h.snippet} />
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
         <button
           className="btn btn-primary"

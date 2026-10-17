@@ -326,6 +326,20 @@ pub fn list_script_card_ids(state: State<AppState>) -> Result<Vec<String>, Strin
     p.list_script_card_ids().map_err(|e| e.to_string())
 }
 
+use crate::core::index::ScriptHit;
+
+#[tauri::command]
+pub fn search_scripts(
+    state: State<AppState>,
+    query: String,
+    limit: Option<usize>,
+) -> Result<Vec<ScriptHit>, String> {
+    let guard = state.project.lock().unwrap();
+    let p = guard.as_ref().ok_or("no project open")?;
+    p.search_scripts(&query, limit.unwrap_or(30))
+        .map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 pub fn save_text_file(path: String, content: String) -> Result<(), String> {
     std::fs::write(&path, content).map_err(|e| e.to_string())
