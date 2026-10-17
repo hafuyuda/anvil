@@ -151,7 +151,11 @@ export function ScriptEditor({ cardId, cardName, scenes, variables }: Props) {
         />
       )}
       {mode === "source" && (
-        <ScriptSourceEditor content={content} onChange={handleChange} />
+        <ScriptSourceEditor
+          content={content}
+          onChange={handleChange}
+          cardId={cardId}
+        />
       )}
     </div>
   );

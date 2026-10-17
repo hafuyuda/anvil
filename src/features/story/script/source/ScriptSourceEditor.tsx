@@ -1,13 +1,79 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
+import { EditorState } from "@codemirror/state";
+import {
+  EditorView,
+  keymap,
+  lineNumbers,
+  drawSelection,
+  highlightActiveLine,
+  highlightActiveLineGutter,
+  placeholder,
+} from "@codemirror/view";
+import { history, defaultKeymap, historyKeymap } from "@codemirror/commands";
 import { parseScript } from "../parser";
 import { ScriptPreview } from "./ScriptPreview";
+import { anvilTheme } from "./cm/theme";
 
 interface Props {
   content: string;
   onChange: (c: string) => void;
+  /** 用于跨挂载恢复光标（阶段 C 启用） */
+  cardId: string;
 }
 
 export function ScriptSourceEditor({ content, onChange }: Props) {
+  const hostRef = useRef<HTMLDivElement | null>(null);
+  const viewRef = useRef<EditorView | null>(null);
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
+  // 挂载一次
+  useEffect(() => {
+    if (!hostRef.current) return;
+    const extensions = [
+      lineNumbers(),
+      highlightActiveLineGutter(),
+      history(),
+      drawSelection(),
+      highlightActiveLine(),
+      EditorView.lineWrapping,
+      anvilTheme,
+      placeholder(
+        "> 炉火噼啪作响。\n\n**布洛克**（neutral）：坐吧，旅人。\n\n*格蕾塔从炉边跑过来。*",
+      ),
+      keymap.of([...defaultKeymap, ...historyKeymap]),
+      EditorView.updateListener.of((update) => {
+        if (update.docChanged) {
+          onChangeRef.current(update.state.doc.toString());
+        }
+      }),
+    ];
+    const view = new EditorView({
+      state: EditorState.create({
+        doc: content,
+        extensions,
+      }),
+      parent: hostRef.current,
+    });
+    viewRef.current = view;
+    return () => {
+      view.destroy();
+      viewRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 外部 content 变化时同步（避免自触发死循环）
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    const current = view.state.doc.toString();
+    if (current === content) return;
+    view.dispatch({
+      changes: { from: 0, to: current.length, insert: content },
+    });
+  }, [content]);
+
   const parsed = useMemo(() => parseScript(content), [content]);
 
   return (
@@ -51,25 +117,19 @@ export function ScriptSourceEditor({ content, onChange }: Props) {
       </div>
 
       <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
-        <textarea
-          value={content}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={`> 炉火噼啪作响。\n\n**布洛克**（neutral）：坐吧，旅人。\n\n*格蕾塔从炉边跑过来。*`}
+        <div
           style={{
             flex: 1,
             minWidth: 0,
-            padding: 12,
-            border: "none",
-            outline: "none",
-            resize: "none",
-            background: "var(--bg-app)",
-            color: "var(--fg-primary)",
-            fontSize: 13,
-            lineHeight: 1.7,
-            fontFamily: "var(--font-mono)",
-            boxSizing: "border-box",
+            display: "flex",
+            flexDirection: "column",
           }}
-        />
+        >
+          <div
+            ref={hostRef}
+            style={{ flex: 1, minHeight: 0, overflow: "hidden" }}
+          />
+        </div>
 
         <div
           style={{
