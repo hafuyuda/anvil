@@ -129,6 +129,7 @@ src-tauri/src/
 │   │   ├── boards.rs
 │   │   ├── cards.rs
 │   │   ├── card_groups.rs
+│   │   ├── docs.rs         # 卡牌附属文档（docs/<card_id>.md）
 │   │   ├── export_html.rs
 │   │   ├── manifest.rs
 │   │   ├── pack.rs
@@ -387,7 +388,7 @@ src/
 
 43. **`include_bytes!` 是编译期嵌入。** `example_world.anvilpack` 改了必须重新编译。
 
-44. **`Project::open` 创建 9 个目录**：`cards / types / relations/from / boards / scenarios / sessions / scripts / card_groups / .anvil`。`themes/` 和 `assets/images|audio/` 按需创建。
+44. **`Project::open` 创建 10 个目录**：`cards / types / relations/from / boards / scenarios / sessions / scripts / docs / card_groups / .anvil`。`themes/` 和 `assets/images|audio/` 按需创建。
 
 45. **索引重建判断只看 `cards / types / relations` 的 mtime**，`PRAGMA user_version == 0` 也触发重建。
 
@@ -483,7 +484,7 @@ pnpm prettier --write src/
 提交 PR 前请手动验证：
 
 1. 新建项目 → 弹「添加示例内容？」→ 添加铁砧堡 → 数据完整；再打开非空项目 → 项目菜单「添加预设…」→ 选「铁砧堡」→ 内容追加且无 id 冲突、同名实体带 `(2)` 后缀
-2. 卡片墙 → 搜索、筛选、多选、批量操作、排序
+2. 卡片墙 → 搜索、筛选、多选、批量操作、排序；卡编辑面板「文档」tab → 编辑 / 自动保存 / 内容可被卡片墙搜索命中
 3. 类型 → 字段编辑、拖拽排序、卡框映射、闪卡触发（含风格切换）、裁剪、卡背、类型复制
 4. 关系 → 面板显示方向、反向名、悬浮预览
 5. 剧情 → 场景 tab、剧本（结构 + 源码双视图）、检查器（剧情设置 / 变量 / 节点）、`->` 跳转、`{}` 条件、`~` 赋值、`<>` 粘合、运行全屏、回退、循环保护、源码补全（说话人 / 场景 / 变量 / 资源路径）、大纲 tab 点击定位、顶栏跨场景搜索

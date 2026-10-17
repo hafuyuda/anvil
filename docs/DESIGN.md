@@ -391,6 +391,24 @@ pub struct CardGroup {
 
 ---
 
+### 4.8 卡牌文档
+
+每张卡可附带一份 Markdown 长文（`docs/<card_id>.md`），与 `scripts/` 同构，
+一卡一文件，内容为空时删除文件。
+
+与剧本的区别：**文档不参与运行时**。它是卡牌的附属资料（设定、背景、备注），
+不进 `Card.values`，不进剧情引擎，不进 HTML 导出，也不在卡框里渲染。
+
+编辑入口在卡片编辑面板的「文档」tab（CodeMirror 6 源码编辑，自动保存）。
+
+搜索：卡牌墙搜索同时命中 `docs_fts`（FTS5 trigram，与 `cards_fts` 并列，
+`cards_fts` 命中排前，文档命中追加在后）。
+
+资源包：`docs/` 随 `.anvilpack` 导出 / 导入；合并时按导入成功的卡 id 复制
+（卡被跳过则其文档不合并）。删卡时同步清理文档文件与索引条目。
+
+---
+
 ## 5. 存储
 
 ### 5.1 文本真相源
@@ -413,6 +431,7 @@ MyWorld.anvil/
 │   ├── session.json
 │   └── events.jsonl
 ├── scripts/<card_uuid>.md
+├── docs/<card_uuid>.md
 ├── assets/
 │   ├── images/<文件名>.<ext>
 │   └── audio/<文件名>.<ext>
@@ -421,7 +440,7 @@ MyWorld.anvil/
 
 **目录创建时机**：
 
-- `Project::open` 创建 9 个目录：`cards / types / relations/from / boards / scenarios / sessions / scripts / card_groups / .anvil`
+- `Project::open` 创建 10 个目录：`cards / types / relations/from / boards / scenarios / sessions / scripts / docs / card_groups / .anvil`
 - `themes/` 首次保存主题时创建
 - `assets/images/` / `assets/audio/` 首次导入资源时创建
 
@@ -1080,6 +1099,8 @@ frontmatter（`---` 包围）可写：`bg` / `bgm` / `is_ending` / `ending_name`
 `save_script` / `delete_script` 增量维护，`rebuild_index` 全量重灌。
 剧情模块顶栏搜索，结果按当前剧情的 `node_ids` 过滤。
 中文短查询（< 3 字符）无效，与卡片搜索一致。
+
+卡牌墙搜索同时命中 `docs_fts`（卡牌文档，见 4.8），`cards_fts` 命中排前。
 
 ---
 

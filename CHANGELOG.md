@@ -32,6 +32,10 @@
   `Ctrl+B` / `Ctrl+I` / `Ctrl+Enter` 快捷键。
 - 源码编辑器右栏新增「大纲」tab：汇总跳转 / 条件 / 赋值行，点击定位。
 - 剧情模块支持跨场景剧本全文搜索（FTS5 trigram，`script_fts`）。
+- 卡牌附属文档：每张卡可写一份 Markdown 长文（`docs/<card_id>.md`），
+  卡片编辑面板「文档」tab 用 CodeMirror 编辑，自动保存。
+  文档内容并入卡牌搜索（`docs_fts`，FTS5 trigram），随 `.anvilpack`
+  导出 / 导入 / 合并，删卡时同步清理。
 
 ### 变更
 
