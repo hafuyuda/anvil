@@ -20,6 +20,7 @@ impl Project {
         std::fs::create_dir_all(root.join("sessions"))?;
         std::fs::create_dir_all(root.join(".anvil"))?;
         std::fs::create_dir_all(root.join("scripts"))?;
+        std::fs::create_dir_all(root.join("docs"))?;
         std::fs::create_dir_all(root.join("card_groups"))?;
 
         let db_path = root.join(".anvil").join("index.db");
@@ -49,8 +50,9 @@ impl Project {
         let cards = self.load_all_cards()?;
         let relations = self.list_all_relations()?;
         let scripts = self.collect_scripts()?;
+        let docs = self.collect_docs()?;
         let mut conn = self.index.lock().unwrap();
-        crate::core::index::rebuild(&mut conn, &cards, &relations, &scripts)?;
+        crate::core::index::rebuild(&mut conn, &cards, &relations, &scripts, &docs)?;
         Ok(())
     }
 
@@ -75,9 +77,10 @@ impl Project {
         let sessions = self.load_sessions()?;
         let card_groups = self.load_card_groups()?;
         let scripts = self.collect_scripts()?;
+        let docs = self.collect_docs()?;
         {
             let mut conn = self.index.lock().unwrap();
-            crate::core::index::rebuild(&mut conn, &cards, &relations, &scripts)?;
+            crate::core::index::rebuild(&mut conn, &cards, &relations, &scripts, &docs)?;
         }
         Ok((
             cards,

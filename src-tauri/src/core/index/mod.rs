@@ -39,6 +39,12 @@ fn init_schema(conn: &Connection) -> anyhow::Result<()> {
             tokenize = 'trigram'
         );
 
+        CREATE VIRTUAL TABLE IF NOT EXISTS docs_fts USING fts5(
+            card_id UNINDEXED,
+            content,
+            tokenize = 'trigram'
+        );
+
         CREATE TABLE IF NOT EXISTS relations (
             id         TEXT PRIMARY KEY,
             from_id    TEXT NOT NULL,
@@ -62,11 +68,13 @@ pub fn rebuild(
     cards: &[Card],
     relations: &[Relation],
     scripts: &[(String, String)],
+    docs: &[(String, String)],
 ) -> anyhow::Result<()> {
     let tx = conn.transaction()?;
     tx.execute("DELETE FROM cards", [])?;
     tx.execute("DELETE FROM cards_fts", [])?;
     tx.execute("DELETE FROM script_fts", [])?;
+    tx.execute("DELETE FROM docs_fts", [])?;
     tx.execute("DELETE FROM relations", [])?;
     {
         let mut ins_card = tx.prepare(
@@ -105,6 +113,13 @@ pub fn rebuild(
             tx.prepare("INSERT INTO script_fts (card_id, content) VALUES (?1, ?2)")?;
         for (card_id, content) in scripts {
             ins_script.execute(params![card_id, content])?;
+        }
+    }
+    {
+        let mut ins_doc =
+            tx.prepare("INSERT INTO docs_fts (card_id, content) VALUES (?1, ?2)")?;
+        for (card_id, content) in docs {
+            ins_doc.execute(params![card_id, content])?;
         }
     }
     tx.commit()?;
@@ -180,6 +195,43 @@ pub fn upsert_relation(conn: &Connection, relation: &Relation) -> anyhow::Result
 pub fn delete_relation(conn: &Connection, id: &str) -> anyhow::Result<()> {
     conn.execute("DELETE FROM relations WHERE id = ?1", params![id])?;
     Ok(())
+}
+
+pub fn upsert_doc(conn: &Connection, card_id: &str, content: &str) -> anyhow::Result<()> {
+    conn.execute(
+        "DELETE FROM docs_fts WHERE card_id = ?1",
+        params![card_id],
+    )?;
+    conn.execute(
+        "INSERT INTO docs_fts (card_id, content) VALUES (?1, ?2)",
+        params![card_id, content],
+    )?;
+    Ok(())
+}
+
+pub fn delete_doc(conn: &Connection, card_id: &str) -> anyhow::Result<()> {
+    conn.execute(
+        "DELETE FROM docs_fts WHERE card_id = ?1",
+        params![card_id],
+    )?;
+    Ok(())
+}
+
+/// 文档全文搜索（FTS5 trigram），只返回卡牌 id 列表。
+pub fn search_docs(conn: &Connection, query: &str, limit: usize) -> anyhow::Result<Vec<String>> {
+    let q = sanitize_fts_query(query);
+    if q.is_empty() {
+        return Ok(Vec::new());
+    }
+    let mut stmt = conn.prepare(
+        "SELECT card_id FROM docs_fts WHERE docs_fts MATCH ?1 ORDER BY rank LIMIT ?2",
+    )?;
+    let rows = stmt.query_map(params![q, limit as i64], |row| row.get::<_, String>(0))?;
+    let mut ids = Vec::new();
+    for r in rows {
+        ids.push(r?);
+    }
+    Ok(ids)
 }
 
 pub fn search(conn: &Connection, query: &str, limit: usize) -> anyhow::Result<Vec<String>> {
