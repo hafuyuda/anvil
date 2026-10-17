@@ -163,6 +163,8 @@ export function ScriptEditor({ cardId, cardName, scenes, variables }: Props) {
           content={content}
           onChange={handleChange}
           cardId={cardId}
+          scenes={scenes.map((s) => s.name)}
+          variables={variables}
         />
       )}
     </div>
