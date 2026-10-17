@@ -10,10 +10,12 @@ import {
   placeholder,
 } from "@codemirror/view";
 import { history, defaultKeymap, historyKeymap } from "@codemirror/commands";
+import { search, searchKeymap } from "@codemirror/search";
 import { parseScript } from "../parser";
 import { ScriptPreview } from "./ScriptPreview";
 import { anvilTheme, anvilHighlighting } from "./cm/theme";
 import { storyLanguage } from "./cm/language";
+import { loadCursor, saveCursor } from "./cm/cursorCache";
 
 interface Props {
   content: string;
@@ -22,7 +24,7 @@ interface Props {
   cardId: string;
 }
 
-export function ScriptSourceEditor({ content, onChange }: Props) {
+export function ScriptSourceEditor({ content, onChange, cardId }: Props) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
@@ -44,7 +46,8 @@ export function ScriptSourceEditor({ content, onChange }: Props) {
       placeholder(
         "> 炉火噼啪作响。\n\n**布洛克**（neutral）：坐吧，旅人。\n\n*格蕾塔从炉边跑过来。*",
       ),
-      keymap.of([...defaultKeymap, ...historyKeymap]),
+      keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap]),
+      search({ top: true }),
       EditorView.updateListener.of((update) => {
         if (update.docChanged) {
           onChangeRef.current(update.state.doc.toString());
@@ -59,7 +62,27 @@ export function ScriptSourceEditor({ content, onChange }: Props) {
       parent: hostRef.current,
     });
     viewRef.current = view;
+
+    // 恢复上次卸载时的光标与滚动位置
+    const saved = loadCursor(cardId);
+    if (saved) {
+      const maxPos = view.state.doc.length;
+      view.dispatch({
+        selection: {
+          anchor: Math.min(saved.anchor, maxPos),
+          head: Math.min(saved.head, maxPos),
+        },
+      });
+      view.scrollDOM.scrollTop = saved.scrollTop;
+    }
+
     return () => {
+      const sel = view.state.selection.main;
+      saveCursor(cardId, {
+        anchor: sel.anchor,
+        head: sel.head,
+        scrollTop: view.scrollDOM.scrollTop,
+      });
       view.destroy();
       viewRef.current = null;
     };
