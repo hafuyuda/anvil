@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { EditorSelection, EditorState } from "@codemirror/state";
 import {
   EditorView,
@@ -174,6 +174,37 @@ export function ScriptSourceEditor({
   }, [content]);
 
   const parsed = useMemo(() => parseScript(content), [content]);
+  const [panelTab, setPanelTab] = useState<"preview" | "outline">("preview");
+
+  // 大纲：从 content 推导（不读 view state），行号为 0-based 源码行索引
+  const outline = useMemo(() => {
+    const out: {
+      line: number;
+      kind: "jump" | "condition" | "assign";
+      text: string;
+    }[] = [];
+    content.split(/\r?\n/).forEach((t, i) => {
+      const s = t.trim();
+      if (s.startsWith("->"))
+        out.push({ line: i, kind: "jump", text: s.slice(2).trim() });
+      else if (s.startsWith("{"))
+        out.push({ line: i, kind: "condition", text: s });
+      else if (s.startsWith("~"))
+        out.push({ line: i, kind: "assign", text: s.slice(1).trim() });
+    });
+    return out;
+  }, [content]);
+
+  function jumpToLine(line: number) {
+    const view = viewRef.current;
+    if (!view) return;
+    const pos = view.state.doc.line(line + 1).from;
+    view.dispatch({
+      selection: { anchor: pos },
+      effects: EditorView.scrollIntoView(pos, { y: "center" }),
+    });
+    view.focus();
+  }
 
   return (
     <div
@@ -241,19 +272,172 @@ export function ScriptSourceEditor({
         >
           <div
             style={{
-              padding: "6px 12px",
-              fontSize: 10,
-              color: "var(--fg-muted)",
-              textTransform: "uppercase",
-              letterSpacing: 1,
+              display: "flex",
+              gap: 2,
+              padding: "2px 12px",
               borderBottom: "1px solid var(--border-subtle)",
+              alignItems: "center",
             }}
           >
-            解析预览（{parsed.lines.length} 行）
+            <PanelTab
+              active={panelTab === "preview"}
+              onClick={() => setPanelTab("preview")}
+            >
+              预览
+            </PanelTab>
+            <PanelTab
+              active={panelTab === "outline"}
+              onClick={() => setPanelTab("outline")}
+            >
+              大纲
+            </PanelTab>
+            <div style={{ flex: 1 }} />
+            <span
+              style={{
+                fontSize: 10,
+                color: "var(--fg-muted)",
+                textTransform: "uppercase",
+                letterSpacing: 1,
+              }}
+            >
+              {panelTab === "preview"
+                ? `${parsed.lines.length} 行`
+                : `${outline.length} 项`}
+            </span>
           </div>
-          <ScriptPreview script={parsed} />
+          {panelTab === "preview" ? (
+            <ScriptPreview script={parsed} />
+          ) : (
+            <OutlineList outline={outline} onJump={jumpToLine} />
+          )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function PanelTab({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      className="btn btn-ghost"
+      onClick={onClick}
+      style={{
+        fontSize: 11,
+        fontWeight: active ? 600 : 400,
+        color: active ? "var(--fg-primary)" : "var(--fg-secondary)",
+        borderBottom: active
+          ? "2px solid var(--accent-gold)"
+          : "2px solid transparent",
+        borderRadius: 0,
+        padding: "4px 8px",
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+const OUTLINE_KIND_META = {
+  jump: { label: "跳转", color: "var(--accent-flame)" },
+  condition: { label: "条件", color: "var(--accent-gold)" },
+  assign: { label: "赋值", color: "var(--accent-copper)" },
+} as const;
+
+function OutlineList({
+  outline,
+  onJump,
+}: {
+  outline: { line: number; kind: "jump" | "condition" | "assign"; text: string }[];
+  onJump: (line: number) => void;
+}) {
+  if (outline.length === 0) {
+    return (
+      <div
+        style={{
+          textAlign: "center",
+          color: "var(--fg-muted)",
+          fontSize: 12,
+          padding: 24,
+        }}
+      >
+        没有跳转 / 条件 / 赋值行
+      </div>
+    );
+  }
+
+  const groups = (["jump", "condition", "assign"] as const)
+    .map((kind) => ({
+      kind,
+      items: outline.filter((o) => o.kind === kind),
+    }))
+    .filter((g) => g.items.length > 0);
+
+  return (
+    <div style={{ padding: "4px 0" }}>
+      {groups.map((g) => (
+        <div key={g.kind}>
+          <div
+            style={{
+              padding: "6px 12px 2px",
+              fontSize: 10,
+              color: OUTLINE_KIND_META[g.kind].color,
+              textTransform: "uppercase",
+              letterSpacing: 1,
+            }}
+          >
+            {OUTLINE_KIND_META[g.kind].label}（{g.items.length}）
+          </div>
+          {g.items.map((item) => (
+            <button
+              key={`${item.kind}-${item.line}`}
+              className="btn btn-ghost"
+              onClick={() => onJump(item.line)}
+              title={`跳到第 ${item.line + 1} 行`}
+              style={{
+                display: "flex",
+                gap: 8,
+                width: "100%",
+                textAlign: "left",
+                padding: "3px 12px",
+                borderRadius: 0,
+                alignItems: "baseline",
+              }}
+            >
+              <span
+                style={{
+                  fontSize: 10,
+                  color: "var(--fg-muted)",
+                  fontFamily: "var(--font-mono)",
+                  flexShrink: 0,
+                  minWidth: 28,
+                  textAlign: "right",
+                }}
+              >
+                {item.line + 1}
+              </span>
+              <span
+                style={{
+                  fontSize: 12,
+                  color: "var(--fg-primary)",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {item.text || "（空）"}
+              </span>
+            </button>
+          ))}
+        </div>
+      ))}
     </div>
   );
 }
