@@ -1,6 +1,7 @@
 import type { FieldDef, FieldType } from "../../core/ipc";
 import { ImageField } from "./ImageField";
 import { RefField } from "./RefField";
+import { AutoGrowTextarea } from "./AutoGrowTextarea";
 
 interface Props {
   field?: FieldDef;
@@ -63,11 +64,10 @@ export function FieldInput({
 
     case "rich_text":
       return wrapped(
-        <textarea
-          className="textarea"
+        <AutoGrowTextarea
           style={{ minHeight: 100 }}
           value={(value as string) ?? ""}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(v) => onChange(v)}
         />,
       );
 
