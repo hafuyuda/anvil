@@ -148,6 +148,10 @@ export const ipc = {
   searchScripts: (query: string, limit?: number) =>
     invoke<ScriptHit[]>("search_scripts", { query, limit }),
 
+  loadDoc: (cardId: string) => invoke<string | null>("load_doc", { cardId }),
+  saveDoc: (cardId: string, content: string) =>
+    invoke<void>("save_doc", { cardId, content }),
+
   saveTextFile: (path: string, content: string) =>
     invoke<void>("save_text_file", { path, content }),
 
