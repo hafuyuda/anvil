@@ -12,7 +12,8 @@ import {
 import { history, defaultKeymap, historyKeymap } from "@codemirror/commands";
 import { parseScript } from "../parser";
 import { ScriptPreview } from "./ScriptPreview";
-import { anvilTheme } from "./cm/theme";
+import { anvilTheme, anvilHighlighting } from "./cm/theme";
+import { storyLanguage } from "./cm/language";
 
 interface Props {
   content: string;
@@ -38,6 +39,8 @@ export function ScriptSourceEditor({ content, onChange }: Props) {
       highlightActiveLine(),
       EditorView.lineWrapping,
       anvilTheme,
+      storyLanguage,
+      anvilHighlighting,
       placeholder(
         "> 炉火噼啪作响。\n\n**布洛克**（neutral）：坐吧，旅人。\n\n*格蕾塔从炉边跑过来。*",
       ),
