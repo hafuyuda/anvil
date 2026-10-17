@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ipc } from "../../../core/ipc";
 import { ScriptSourceEditor } from "./source/ScriptSourceEditor";
 import { ScriptStructuredEditor } from "./structured/ScriptStructuredEditor";
@@ -20,6 +20,7 @@ export function ScriptEditor({ cardId, cardName, scenes, variables }: Props) {
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [mode, setMode] = useState<Mode>("structured");
+  const lastSavedRef = useRef<string>("");
 
   useEffect(() => {
     setLoaded(false);
@@ -27,28 +28,35 @@ export function ScriptEditor({ cardId, cardName, scenes, variables }: Props) {
     ipc
       .loadScript(cardId)
       .then((c) => {
-        setContent(c ?? "");
+        const initial = c ?? "";
+        setContent(initial);
+        lastSavedRef.current = initial;
         setLoaded(true);
       })
       .catch(() => {
         setContent("");
+        lastSavedRef.current = "";
         setLoaded(true);
       });
   }, [cardId]);
 
   useEffect(() => {
     if (!loaded || !dirty) return;
+    if (content === lastSavedRef.current) return; // 内容没变，跳过
+    const lineCount = content.split("\n").length;
+    const delay = lineCount > 500 ? 1500 : 800;
     const handle = setTimeout(async () => {
       setSaving(true);
       try {
         await ipc.saveScript(cardId, content);
+        lastSavedRef.current = content;
         setDirty(false);
-      } catch (e) {
-        // 静默；保存失败由 dirty 保留状态，用户下次编辑会重试
+      } catch {
+        // 保留 dirty，下次重试
       } finally {
         setSaving(false);
       }
-    }, 800);
+    }, delay);
     return () => clearTimeout(handle);
   }, [content, dirty, loaded, cardId]);
 
