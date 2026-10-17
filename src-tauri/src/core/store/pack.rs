@@ -1,4 +1,5 @@
 use super::project::Project;
+use crate::core::store::atomic::write_atomic;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::io::Write;
@@ -130,6 +131,7 @@ impl Project {
             "sessions",
             "card_groups",
             "assets",
+            "docs",
         ];
 
         let walker = walkdir::WalkDir::new(&self.root)
@@ -372,6 +374,30 @@ impl Project {
                     imported_card_ids.insert(card.id.clone());
                     imported_cards += 1;
                 }
+            }
+        }
+
+        // ── 5.5 卡牌文档（卡 id 不重新映射，跟随 imported_card_ids） ──
+        let docs_dir = temp.join("docs");
+        if docs_dir.exists() {
+            std::fs::create_dir_all(self.docs_dir())?;
+            for entry in std::fs::read_dir(&docs_dir)? {
+                let entry = entry?;
+                let p = entry.path();
+                if p.extension().and_then(|s| s.to_str()) != Some("md") {
+                    continue;
+                }
+                let Some(stem) = p.file_stem().and_then(|s| s.to_str()) else {
+                    continue;
+                };
+                // 卡未导入（类型被 Skip 或卡已存在）→ 跳过该文档
+                if !imported_card_ids.contains(stem) {
+                    continue;
+                }
+                let content = std::fs::read_to_string(&p)?;
+                write_atomic(&self.doc_path(stem), content.as_bytes())?;
+                let conn = self.index.lock().unwrap();
+                crate::core::index::upsert_doc(&conn, stem, &content)?;
             }
         }
 

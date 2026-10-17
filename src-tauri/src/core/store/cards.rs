@@ -76,12 +76,21 @@ impl Project {
         }
         // 同步清理卡组引用
         self.remove_card_from_all_groups(id)?;
+        // 同步清理文档
+        self.delete_doc(id)?;
         Ok(())
     }
 
     pub fn search_cards(&self, query: &str, limit: usize) -> anyhow::Result<Vec<String>> {
         let conn = self.index.lock().unwrap();
-        crate::core::index::search(&conn, query, limit)
+        let mut ids = crate::core::index::search(&conn, query, limit)?;
+        let doc_ids = crate::core::index::search_docs(&conn, query, limit)?;
+        for id in doc_ids {
+            if !ids.contains(&id) && ids.len() < limit {
+                ids.push(id);
+            }
+        }
+        Ok(ids)
     }
 
     pub fn card_types_path(&self) -> PathBuf {
