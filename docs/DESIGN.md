@@ -1022,7 +1022,7 @@ frontmatter（`---` 包围）可写：`bg` / `bgm` / `is_ending` / `ending_name`
 双 tab：
 
 - **结构**（默认）：行卡片列表，每行一个类型选择器 + 对应字段。支持拖拽排序，回车新建下一行（类型延续）
-- **源码**：textarea 直接编辑 Markdown + 右侧解析预览
+- **源码**：CodeMirror 6 编辑 Markdown + 右侧面板（预览 / 大纲双 tab）
 
 顶部固定场景设置区：背景（图片选择器）、音乐（音频选择器）、结局标记、结局名。
 
@@ -1035,10 +1035,23 @@ frontmatter（`---` 包围）可写：`bg` / `bgm` / `is_ending` / `ending_name`
 - 条件行：表达式输入 + 显示文本输入
 - 赋值行：变量下拉 + 操作符选择 + 值输入
 - 粘合行：无字段，仅标记
+- 旁白 / 对白内容 / 动作 / 条件文本使用 `AutoGrowTextarea` 自动增高；
+  粘贴多行文本自动拆分为多条脚本行
+
+源码编辑器（CodeMirror 6）：
+
+- 行号、语法高亮（`StreamLanguage` tokenizer，10 种行类型 + frontmatter）、
+  `Ctrl+F` 查找、撤销重做、自动折行
+- 上下文补全：`@bg/@bgm/@sfx` 资源路径、`->` 场景名、`~` / `{}` 变量名、
+  `**` 说话人（项目卡名）
+- 快捷键：`Ctrl+B` 包裹 `**…**`、`Ctrl+I` 包裹 `*…*`、`Ctrl+Enter` 插入 `-> `
+- 跨 tab / 场景切换后光标与滚动位置恢复（按 cardId 缓存）
+- 右侧「大纲」tab：汇总跳转 / 条件 / 赋值行，点击定位到对应源码行
 
 数据流：`content` 是唯一真源。结构视图解析 → 编辑 → 序列化回 `content` → 自动保存到 `scripts/<card_id>.md`。
 
-**自动保存延迟**：读 `appSettings.autoSaveDelayMs`（默认 800ms）。
+**自动保存延迟**：读 `appSettings.autoSaveDelayMs`（默认 800ms）；超过 500 行的剧本
+延迟加倍（1500ms），内容与上次保存一致时跳过写入。
 
 ### 16.3 导出 Markdown
 
@@ -1060,6 +1073,13 @@ frontmatter（`---` 包围）可写：`bg` / `bgm` / `is_ending` / `ending_name`
 内嵌约 600 行 JS 运行时（tokenizer + 表达式求值 + 骰子 + 剧本解析
 （10 种行）+ pc 扫描 stepper + 打字机 + 选择 + 效果 + 结局）。
 固定中性深色主题。
+
+### 16.5 跨场景搜索
+
+`script_fts`（FTS5 trigram）索引 `scripts/` 下全部文件。
+`save_script` / `delete_script` 增量维护，`rebuild_index` 全量重灌。
+剧情模块顶栏搜索，结果按当前剧情的 `node_ids` 过滤。
+中文短查询（< 3 字符）无效，与卡片搜索一致。
 
 ---
 
