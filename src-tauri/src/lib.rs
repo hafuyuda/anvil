@@ -41,13 +41,8 @@ pub fn run() {
             list_unused_images,
             cleanup_unused_images,
             project_stats,
-            load_script,
-            save_script,
-            delete_script,
-            list_script_card_ids,
             load_doc,
             save_doc,
-            search_scripts,
             save_text_file,
             export_scenario_html,
             // cards

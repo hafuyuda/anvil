@@ -266,24 +266,29 @@ impl Project {
     pub fn list_audios_with_meta(&self) -> anyhow::Result<Vec<AudioMeta>> {
         let list = self.list_audios()?;
 
-        // 扫描所有剧本，统计每个音频路径被引用次数
+        // 扫描所有剧本（scenarios/<id>/*.md），统计每个音频路径被引用次数
         let mut ref_counts: std::collections::HashMap<String, usize> =
             std::collections::HashMap::new();
-        let scripts_dir = self.scripts_dir();
-        if scripts_dir.exists() {
-            for entry in std::fs::read_dir(&scripts_dir)? {
+        let scenarios_dir = self.scenarios_dir();
+        if scenarios_dir.exists() {
+            for entry in std::fs::read_dir(&scenarios_dir)? {
                 let entry = entry?;
-                let path = entry.path();
-                if path.extension().and_then(|s| s.to_str()) != Some("md") {
+                if !entry.file_type()?.is_dir() {
                     continue;
                 }
-                let content = match std::fs::read_to_string(&path) {
-                    Ok(c) => c,
-                    Err(_) => continue,
-                };
-                for audio_path in &list {
-                    if content.contains(audio_path) {
-                        *ref_counts.entry(audio_path.clone()).or_insert(0) += 1;
+                for md in std::fs::read_dir(entry.path())? {
+                    let path = md?.path();
+                    if path.extension().and_then(|s| s.to_str()) != Some("md") {
+                        continue;
+                    }
+                    let content = match std::fs::read_to_string(&path) {
+                        Ok(c) => c,
+                        Err(_) => continue,
+                    };
+                    for audio_path in &list {
+                        if content.contains(audio_path) {
+                            *ref_counts.entry(audio_path.clone()).or_insert(0) += 1;
+                        }
                     }
                 }
             }

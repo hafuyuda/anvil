@@ -33,12 +33,6 @@ fn init_schema(conn: &Connection) -> anyhow::Result<()> {
 
         CREATE INDEX IF NOT EXISTS idx_cards_type ON cards(type_id);
 
-        CREATE VIRTUAL TABLE IF NOT EXISTS script_fts USING fts5(
-            card_id UNINDEXED,
-            content,
-            tokenize = 'trigram'
-        );
-
         CREATE VIRTUAL TABLE IF NOT EXISTS docs_fts USING fts5(
             card_id UNINDEXED,
             content,
@@ -67,13 +61,11 @@ pub fn rebuild(
     conn: &mut Connection,
     cards: &[Card],
     relations: &[Relation],
-    scripts: &[(String, String)],
     docs: &[(String, String)],
 ) -> anyhow::Result<()> {
     let tx = conn.transaction()?;
     tx.execute("DELETE FROM cards", [])?;
     tx.execute("DELETE FROM cards_fts", [])?;
-    tx.execute("DELETE FROM script_fts", [])?;
     tx.execute("DELETE FROM docs_fts", [])?;
     tx.execute("DELETE FROM relations", [])?;
     {
@@ -106,13 +98,6 @@ pub fn rebuild(
                 meta,
                 r.created_at
             ])?;
-        }
-    }
-    {
-        let mut ins_script =
-            tx.prepare("INSERT INTO script_fts (card_id, content) VALUES (?1, ?2)")?;
-        for (card_id, content) in scripts {
-            ins_script.execute(params![card_id, content])?;
         }
     }
     {
@@ -197,26 +182,6 @@ pub fn delete_relation(conn: &Connection, id: &str) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub fn upsert_script(conn: &Connection, card_id: &str, content: &str) -> anyhow::Result<()> {
-    conn.execute(
-        "DELETE FROM script_fts WHERE card_id = ?1",
-        params![card_id],
-    )?;
-    conn.execute(
-        "INSERT INTO script_fts (card_id, content) VALUES (?1, ?2)",
-        params![card_id, content],
-    )?;
-    Ok(())
-}
-
-pub fn delete_script(conn: &Connection, card_id: &str) -> anyhow::Result<()> {
-    conn.execute(
-        "DELETE FROM script_fts WHERE card_id = ?1",
-        params![card_id],
-    )?;
-    Ok(())
-}
-
 pub fn upsert_doc(conn: &Connection, card_id: &str, content: &str) -> anyhow::Result<()> {
     conn.execute(
         "DELETE FROM docs_fts WHERE card_id = ?1",
@@ -267,39 +232,6 @@ pub fn search(conn: &Connection, query: &str, limit: usize) -> anyhow::Result<Ve
         ids.push(r?);
     }
     Ok(ids)
-}
-
-#[derive(serde::Serialize)]
-pub struct ScriptHit {
-    pub card_id: String,
-    pub snippet: String,
-}
-
-pub fn search_scripts(
-    conn: &Connection,
-    query: &str,
-    limit: usize,
-) -> anyhow::Result<Vec<ScriptHit>> {
-    let q = sanitize_fts_query(query);
-    if q.is_empty() {
-        return Ok(Vec::new());
-    }
-    let mut stmt = conn.prepare(
-        "SELECT card_id, snippet(script_fts, 1, '[[', ']]', '…', 20)
-         FROM script_fts WHERE script_fts MATCH ?1
-         ORDER BY rank LIMIT ?2",
-    )?;
-    let rows = stmt.query_map(params![q, limit as i64], |row| {
-        Ok(ScriptHit {
-            card_id: row.get(0)?,
-            snippet: row.get(1)?,
-        })
-    })?;
-    let mut out = Vec::new();
-    for r in rows {
-        out.push(r?);
-    }
-    Ok(out)
 }
 
 fn sanitize_fts_query(input: &str) -> String {

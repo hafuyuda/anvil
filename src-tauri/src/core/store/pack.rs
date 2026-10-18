@@ -130,7 +130,6 @@ impl Project {
             "scenarios",
             "sessions",
             "card_groups",
-            "scripts",
             "docs",
             "assets",
         ];
@@ -212,6 +211,13 @@ impl Project {
 
     fn merge_pack_from(&self, temp: &Path, options: &MergeOptions) -> anyhow::Result<MergeResult> {
         let now = crate::core::util::now_ms();
+
+        // ── 0. 版本门禁：0.4 硬切 ──
+        let manifest_path = temp.join("manifest.json");
+        let manifest: crate::core::model::manifest::Manifest =
+            serde_json::from_slice(&std::fs::read(&manifest_path)
+                .map_err(|_| anyhow::anyhow!("包缺少 manifest.json"))?)?;
+        ensure_pack_schema(&manifest.schema_version)?;
 
         // ── 1. 读对方的类型定义（旧包先跑 JSON 迁移） ──
         let remote_types = crate::core::model::card_type::read_card_types_migrated(
@@ -402,30 +408,6 @@ impl Project {
             }
         }
 
-        // ── 5.6 剧本（卡 id 不重新映射，跟随 imported_card_ids） ──
-        let scripts_dir = temp.join("scripts");
-        if scripts_dir.exists() {
-            std::fs::create_dir_all(self.scripts_dir())?;
-            for entry in std::fs::read_dir(&scripts_dir)? {
-                let entry = entry?;
-                let p = entry.path();
-                if p.extension().and_then(|s| s.to_str()) != Some("md") {
-                    continue;
-                }
-                let Some(stem) = p.file_stem().and_then(|s| s.to_str()) else {
-                    continue;
-                };
-                // 卡未导入（类型被 Skip 或卡已存在）→ 跳过该剧本
-                if !imported_card_ids.contains(stem) {
-                    continue;
-                }
-                let content = std::fs::read_to_string(&p)?;
-                write_atomic(&self.script_path(stem), content.as_bytes())?;
-                let conn = self.index.lock().unwrap();
-                crate::core::index::upsert_script(&conn, stem, &content)?;
-            }
-        }
-
         // ── 6. 导入关系 ──
         let mut imported_relations = 0usize;
         let existing_rel_ids: std::collections::HashSet<String> = self
@@ -478,7 +460,7 @@ impl Project {
             }
         }
 
-        // ── 7. Scenario ──
+        // ── 7. Scenario（目录：scenarios/<id>/scenario.json + *.md） ──
         let mut imported_scenarios = 0usize;
         let scen_dir = temp.join("scenarios");
         if scen_dir.exists() {
@@ -487,12 +469,15 @@ impl Project {
 
             for entry in std::fs::read_dir(&scen_dir)? {
                 let entry = entry?;
-                let p = entry.path();
-                if p.extension().and_then(|s| s.to_str()) != Some("json") {
+                if !entry.file_type()?.is_dir() {
                     continue;
                 }
-                let bytes = std::fs::read(&p)?;
-                let mut scenario: crate::core::model::scenario::Scenario =
+                let meta_path = entry.path().join("scenario.json");
+                if !meta_path.exists() {
+                    continue;
+                }
+                let bytes = std::fs::read(&meta_path)?;
+                let scenario: crate::core::model::scenario::Scenario =
                     match serde_json::from_slice(&bytes) {
                         Ok(s) => s,
                         Err(_) => continue,
@@ -508,33 +493,21 @@ impl Project {
                     continue;
                 }
 
-                // 过滤节点
-                scenario
-                    .node_ids
-                    .retain(|id| imported_card_ids.contains(id));
-                scenario
-                    .node_positions
-                    .retain(|k, _| imported_card_ids.contains(k));
-
-                // edge_kinds 映射
-                let mut new_edge_kinds = Vec::new();
-                for k in &scenario.edge_kinds {
-                    match kind_id_map.get(k) {
-                        Some(Some(mapped)) => new_edge_kinds.push(mapped.clone()),
-                        Some(None) => {}
-                        None => new_edge_kinds.push(k.clone()),
-                    }
-                }
-                scenario.edge_kinds = new_edge_kinds;
-
-                // entry_node 不在节点里则改
-                if let Some(en) = &scenario.entry_node {
-                    if !scenario.node_ids.contains(en) {
-                        scenario.entry_node = scenario.node_ids.first().cloned();
-                    }
-                }
-
                 self.save_scenario(&scenario)?;
+
+                // 剧本文件整体复制
+                for md in std::fs::read_dir(entry.path())? {
+                    let p = md?.path();
+                    if p.extension().and_then(|s| s.to_str()) != Some("md") {
+                        continue;
+                    }
+                    let Some(filename) = p.file_name().and_then(|s| s.to_str()) else {
+                        continue;
+                    };
+                    let content = std::fs::read_to_string(&p)?;
+                    self.save_script(&scenario.id, filename, &content)?;
+                }
+
                 imported_scenarios += 1;
             }
         }
@@ -698,6 +671,15 @@ impl Project {
     }
 }
 
+/// 资源包 schema 门禁：0.4 硬切。
+pub(crate) fn ensure_pack_schema(v: &str) -> anyhow::Result<()> {
+    if v == crate::core::model::manifest::CURRENT_SCHEMA_VERSION {
+        Ok(())
+    } else {
+        Err(anyhow::anyhow!("资源包版本 {v} 不受支持，需 0.4 格式"))
+    }
+}
+
 /// 解压到临时目录，返回临时目录路径。
 fn extract_to_temp(src: &Path) -> anyhow::Result<std::path::PathBuf> {
     let temp = std::env::temp_dir().join(format!("anvil_pack_{}", uuid::Uuid::new_v4()));
@@ -720,6 +702,7 @@ fn inspect_pack_dir(temp: &Path) -> anyhow::Result<PackInspection> {
     }
     let manifest: crate::core::model::manifest::Manifest =
         serde_json::from_slice(&std::fs::read(&manifest_path)?)?;
+    ensure_pack_schema(&manifest.schema_version)?;
 
     // card types
     let types_path = temp.join("types").join("card_types.json");
@@ -782,7 +765,7 @@ fn inspect_pack_dir(temp: &Path) -> anyhow::Result<PackInspection> {
     }
 
     // scenarios / boards
-    let scenarios = list_named_json(&temp.join("scenarios"))?;
+    let scenarios = list_named_scenario_dirs(&temp.join("scenarios"))?;
     let boards = list_named_json(&temp.join("boards"))?;
 
     let card_groups = list_named_json(&temp.join("card_groups"))?;
@@ -832,6 +815,38 @@ fn inspect_pack_dir(temp: &Path) -> anyhow::Result<PackInspection> {
         total_cards,
         total_relations,
     })
+}
+
+/// 场景目录：scenarios/<id>/scenario.json
+fn list_named_scenario_dirs(dir: &Path) -> anyhow::Result<Vec<InspectNamed>> {
+    let mut out = Vec::new();
+    if !dir.exists() {
+        return Ok(out);
+    }
+    for entry in std::fs::read_dir(dir)? {
+        let entry = entry?;
+        if !entry.file_type()?.is_dir() {
+            continue;
+        }
+        let meta = entry.path().join("scenario.json");
+        if !meta.exists() {
+            continue;
+        }
+        let bytes = std::fs::read(&meta)?;
+        let v: serde_json::Value = serde_json::from_slice(&bytes)?;
+        let id = v
+            .get("id")
+            .and_then(|x| x.as_str())
+            .unwrap_or("")
+            .to_string();
+        let name = v
+            .get("name")
+            .and_then(|x| x.as_str())
+            .unwrap_or("")
+            .to_string();
+        out.push(InspectNamed { id, name });
+    }
+    Ok(out)
 }
 
 fn list_named_json(dir: &Path) -> anyhow::Result<Vec<InspectNamed>> {

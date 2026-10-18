@@ -68,6 +68,12 @@ impl Project {
     fn import_preset_from(&self, temp: &Path) -> anyhow::Result<MergeResult> {
         let now = crate::core::util::now_ms();
 
+        // ── 0. 版本门禁：0.4 硬切 ──
+        let manifest: crate::core::model::manifest::Manifest =
+            serde_json::from_slice(&std::fs::read(temp.join("manifest.json"))
+                .map_err(|_| anyhow::anyhow!("包缺少 manifest.json"))?)?;
+        crate::core::store::pack::ensure_pack_schema(&manifest.schema_version)?;
+
         // ── 1. 读源包类型（旧包先跑 JSON 迁移） ──
         let remote_types = crate::core::model::card_type::read_card_types_migrated(
             &temp.join("types").join("card_types.json"),
@@ -212,7 +218,7 @@ impl Project {
             }
         }
 
-        // ── 5. 导入场景 ──
+        // ── 5. 导入场景（目录：scenarios/<id>/scenario.json + *.md） ──
         let mut imported_scenarios = 0usize;
         let mut existing_scenario_names: HashSet<String> =
             self.load_scenarios()?.into_iter().map(|s| s.name).collect();
@@ -222,11 +228,14 @@ impl Project {
         if scen_dir.exists() {
             for entry in std::fs::read_dir(&scen_dir)? {
                 let entry = entry?;
-                let p = entry.path();
-                if p.extension().and_then(|s| s.to_str()) != Some("json") {
+                if !entry.file_type()?.is_dir() {
                     continue;
                 }
-                let bytes = std::fs::read(&p)?;
+                let meta_path = entry.path().join("scenario.json");
+                if !meta_path.exists() {
+                    continue;
+                }
+                let bytes = std::fs::read(&meta_path)?;
                 let mut scenario: Scenario = match serde_json::from_slice(&bytes) {
                     Ok(s) => s,
                     Err(_) => continue,
@@ -237,29 +246,6 @@ impl Project {
                 scenario.id = new_id.clone();
                 scenario_id_map.insert(old_id, new_id);
 
-                scenario.node_ids = scenario
-                    .node_ids
-                    .iter()
-                    .filter_map(|id| card_id_map.get(id).cloned())
-                    .collect();
-
-                if let Some(en) = &scenario.entry_node {
-                    scenario.entry_node = card_id_map.get(en).cloned();
-                }
-
-                scenario.node_positions = scenario
-                    .node_positions
-                    .into_iter()
-                    .filter_map(|(k, v)| card_id_map.get(&k).map(|nk| (nk.clone(), v)))
-                    .collect();
-
-                // edge_kinds 映射
-                scenario.edge_kinds = scenario
-                    .edge_kinds
-                    .iter()
-                    .filter_map(|k| kind_id_map.get(k).cloned())
-                    .collect();
-
                 scenario.name = unique_name(&existing_scenario_names, &scenario.name);
                 existing_scenario_names.insert(scenario.name.clone());
 
@@ -267,6 +253,20 @@ impl Project {
                 scenario.updated_at = now;
 
                 self.save_scenario(&scenario)?;
+
+                // 剧本文件整体复制
+                for md in std::fs::read_dir(entry.path())? {
+                    let p = md?.path();
+                    if p.extension().and_then(|s| s.to_str()) != Some("md") {
+                        continue;
+                    }
+                    let Some(filename) = p.file_name().and_then(|s| s.to_str()) else {
+                        continue;
+                    };
+                    let content = std::fs::read_to_string(&p)?;
+                    self.save_script(&scenario.id, filename, &content)?;
+                }
+
                 imported_scenarios += 1;
             }
         }
