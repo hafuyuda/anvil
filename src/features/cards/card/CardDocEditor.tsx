@@ -8,6 +8,8 @@ import {
   highlightActiveLine,
 } from "@codemirror/view";
 import { history, defaultKeymap, historyKeymap } from "@codemirror/commands";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { ipc } from "../../../core/ipc";
 import { anvilTheme } from "../../../components/field/editorTheme";
 
@@ -15,7 +17,7 @@ interface Props {
   cardId: string;
 }
 
-/** 卡牌附属文档编辑器：纯 Markdown 源码，自动保存。 */
+/** 卡牌附属文档编辑器：纯 Markdown 源码，自动保存，支持预览。 */
 export function CardDocEditor({ cardId }: Props) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const viewRef = useRef<EditorView | null>(null);
@@ -23,6 +25,7 @@ export function CardDocEditor({ cardId }: Props) {
   const [loaded, setLoaded] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [mode, setMode] = useState<"edit" | "preview">("edit");
   const lastSavedRef = useRef<string>("");
 
   // 挂载 + 加载文档
@@ -107,10 +110,51 @@ export function CardDocEditor({ cardId }: Props) {
         style={{
           display: "flex",
           alignItems: "center",
+          gap: 8,
           padding: "2px 4px",
           flexShrink: 0,
         }}
       >
+        <button
+          className="btn btn-ghost"
+          onClick={() => {
+            setMode("edit");
+            viewRef.current?.focus();
+          }}
+          style={{
+            fontSize: 11,
+            fontWeight: mode === "edit" ? 600 : 400,
+            color:
+              mode === "edit" ? "var(--fg-primary)" : "var(--fg-secondary)",
+            borderBottom:
+              mode === "edit"
+                ? "2px solid var(--accent-gold)"
+                : "2px solid transparent",
+            borderRadius: 0,
+            padding: "2px 8px",
+          }}
+        >
+          编辑
+        </button>
+        <button
+          className="btn btn-ghost"
+          onClick={() => setMode("preview")}
+          style={{
+            fontSize: 11,
+            fontWeight: mode === "preview" ? 600 : 400,
+            color:
+              mode === "preview" ? "var(--fg-primary)" : "var(--fg-secondary)",
+            borderBottom:
+              mode === "preview"
+                ? "2px solid var(--accent-gold)"
+                : "2px solid transparent",
+            borderRadius: 0,
+            padding: "2px 8px",
+          }}
+        >
+          预览
+        </button>
+        <div style={{ flex: 1 }} />
         <span
           style={{
             fontSize: 11,
@@ -124,10 +168,40 @@ export function CardDocEditor({ cardId }: Props) {
           {saving ? "保存中…" : dirty ? "有未保存修改" : "已保存"}
         </span>
       </div>
-      <div
-        ref={hostRef}
-        style={{ flex: 1, minHeight: 0, overflow: "hidden" }}
-      />
+      {/* 编辑区与预览叠加：编辑器保持挂载，切回时光标 / 滚动不丢 */}
+      <div style={{ flex: 1, minHeight: 0, position: "relative" }}>
+        <div
+          ref={hostRef}
+          style={{ position: "absolute", inset: 0, overflow: "hidden" }}
+        />
+        {mode === "preview" && (
+          <div
+            className="card-doc-preview"
+            style={{
+              position: "absolute",
+              inset: 0,
+              overflowY: "auto",
+              background: "var(--bg-app)",
+              padding: 12,
+            }}
+          >
+            {content.trim() ? (
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+            ) : (
+              <div
+                style={{
+                  color: "var(--fg-muted)",
+                  fontSize: 12,
+                  textAlign: "center",
+                  paddingTop: 40,
+                }}
+              >
+                还没有内容
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
