@@ -130,8 +130,9 @@ impl Project {
             "scenarios",
             "sessions",
             "card_groups",
-            "assets",
+            "scripts",
             "docs",
+            "assets",
         ];
 
         let walker = walkdir::WalkDir::new(&self.root)
@@ -398,6 +399,30 @@ impl Project {
                 write_atomic(&self.doc_path(stem), content.as_bytes())?;
                 let conn = self.index.lock().unwrap();
                 crate::core::index::upsert_doc(&conn, stem, &content)?;
+            }
+        }
+
+        // ── 5.6 剧本（卡 id 不重新映射，跟随 imported_card_ids） ──
+        let scripts_dir = temp.join("scripts");
+        if scripts_dir.exists() {
+            std::fs::create_dir_all(self.scripts_dir())?;
+            for entry in std::fs::read_dir(&scripts_dir)? {
+                let entry = entry?;
+                let p = entry.path();
+                if p.extension().and_then(|s| s.to_str()) != Some("md") {
+                    continue;
+                }
+                let Some(stem) = p.file_stem().and_then(|s| s.to_str()) else {
+                    continue;
+                };
+                // 卡未导入（类型被 Skip 或卡已存在）→ 跳过该剧本
+                if !imported_card_ids.contains(stem) {
+                    continue;
+                }
+                let content = std::fs::read_to_string(&p)?;
+                write_atomic(&self.script_path(stem), content.as_bytes())?;
+                let conn = self.index.lock().unwrap();
+                crate::core::index::upsert_script(&conn, stem, &content)?;
             }
         }
 

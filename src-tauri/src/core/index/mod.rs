@@ -197,6 +197,26 @@ pub fn delete_relation(conn: &Connection, id: &str) -> anyhow::Result<()> {
     Ok(())
 }
 
+pub fn upsert_script(conn: &Connection, card_id: &str, content: &str) -> anyhow::Result<()> {
+    conn.execute(
+        "DELETE FROM script_fts WHERE card_id = ?1",
+        params![card_id],
+    )?;
+    conn.execute(
+        "INSERT INTO script_fts (card_id, content) VALUES (?1, ?2)",
+        params![card_id, content],
+    )?;
+    Ok(())
+}
+
+pub fn delete_script(conn: &Connection, card_id: &str) -> anyhow::Result<()> {
+    conn.execute(
+        "DELETE FROM script_fts WHERE card_id = ?1",
+        params![card_id],
+    )?;
+    Ok(())
+}
+
 pub fn upsert_doc(conn: &Connection, card_id: &str, content: &str) -> anyhow::Result<()> {
     conn.execute(
         "DELETE FROM docs_fts WHERE card_id = ?1",

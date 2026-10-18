@@ -29,23 +29,13 @@ impl Project {
                 std::fs::remove_file(&path)?;
             }
             let conn = self.index.lock().unwrap();
-            conn.execute(
-                "DELETE FROM script_fts WHERE card_id = ?1",
-                rusqlite::params![card_id],
-            )?;
+            crate::core::index::delete_script(&conn, card_id)?;
             return Ok(());
         }
         std::fs::create_dir_all(self.scripts_dir())?;
         write_atomic(&path, content.as_bytes())?;
         let conn = self.index.lock().unwrap();
-        conn.execute(
-            "DELETE FROM script_fts WHERE card_id = ?1",
-            rusqlite::params![card_id],
-        )?;
-        conn.execute(
-            "INSERT INTO script_fts (card_id, content) VALUES (?1, ?2)",
-            rusqlite::params![card_id, content],
-        )?;
+        crate::core::index::upsert_script(&conn, card_id, content)?;
         Ok(())
     }
 
@@ -55,10 +45,7 @@ impl Project {
             std::fs::remove_file(&path)?;
         }
         let conn = self.index.lock().unwrap();
-        conn.execute(
-            "DELETE FROM script_fts WHERE card_id = ?1",
-            rusqlite::params![card_id],
-        )?;
+        crate::core::index::delete_script(&conn, card_id)?;
         Ok(())
     }
 
