@@ -27,12 +27,9 @@ pub struct PresetDef {
     pub bytes: &'static [u8],
 }
 
-pub const PRESETS: &[PresetDef] = &[PresetDef {
-    id: "anvil_castle",
-    label: "铁砧堡",
-    description: "示例世界，覆盖全部功能",
-    bytes: include_bytes!("../../../assets/presets/anvil_castle.anvilpack"),
-}];
+/// 内置预设已清空（schema 0.4 破坏性变更，旧预设包不兼容）。
+/// IPC 与 UI 骨架保留，后续可在此重新登记预设。
+pub const PRESETS: &[PresetDef] = &[];
 
 pub fn list_presets() -> Vec<PresetInfo> {
     PRESETS
@@ -54,7 +51,7 @@ impl Project {
         let def = PRESETS
             .iter()
             .find(|p| p.id == preset_id)
-            .ok_or_else(|| anyhow::anyhow!("未知预设: {preset_id}"))?;
+            .ok_or_else(|| anyhow::anyhow!("预设不存在: {preset_id}"))?;
 
         let temp = std::env::temp_dir().join(format!("anvil_preset_{}", uuid::Uuid::new_v4()));
         extract_bytes_to_temp(def.bytes, &temp)?;
