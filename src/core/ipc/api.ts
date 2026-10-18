@@ -149,15 +149,6 @@ export const ipc = {
   cleanupUnusedImages: () => invoke<string[]>("cleanup_unused_images"),
   projectStats: () => invoke<ProjectStats>("project_stats"),
 
-  loadScript: (cardId: string) =>
-    invoke<string | null>("load_script", { cardId }),
-  saveScript: (cardId: string, content: string) =>
-    invoke<void>("save_script", { cardId, content }),
-  deleteScript: (cardId: string) => invoke<void>("delete_script", { cardId }),
-  listScriptCardIds: () => invoke<string[]>("list_script_card_ids"),
-  searchScripts: (query: string, limit?: number) =>
-    invoke<ScriptHit[]>("search_scripts", { query, limit }),
-
   loadDoc: (cardId: string) => invoke<string | null>("load_doc", { cardId }),
   saveDoc: (cardId: string, content: string) =>
     invoke<void>("save_doc", { cardId, content }),
