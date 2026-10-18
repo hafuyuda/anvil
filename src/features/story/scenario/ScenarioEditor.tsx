@@ -1,7 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { save as saveDialog } from "@tauri-apps/plugin-dialog";
-import { ipc, type Card, type Scenario, type ScriptHit } from "../../../core/ipc";
-import { useProjectStore } from "../../../stores/projectStore";
+import { ipc, type Scenario, type ScriptHit } from "../../../core/ipc";
 import { ScriptEditor } from "../script/ScriptEditor";
 import { PlayView } from "../play/PlayView";
 import { exportScenarioMarkdown } from "./exportMarkdown";
@@ -47,17 +46,28 @@ function SnippetText({ snippet }: { snippet: string }) {
 }
 
 export function ScenarioEditor({ scenario }: Props) {
-  const cards = useProjectStore((s) => s.cards) ?? [];
-  const cardTypes = useProjectStore((s) => s.cardTypes) ?? [];
-  const setCurrentScenario = useProjectStore((s) => s.setCurrentScenario);
-  const currentSceneId = useProjectStore((s) => s.currentSceneId);
-  const setCurrentScene = useProjectStore((s) => s.setCurrentScene);
-
+  const [filenames, setFilenames] = useState<string[]>([]);
+  const [activeFile, setActiveFile] = useState<string | null>(null);
   const [playOpen, setPlayOpen] = useState(false);
   const [exportingMd, setExportingMd] = useState(false);
   const [exportingHtml, setExportingHtml] = useState(false);
 
-  // 跨场景剧本搜索
+  // 剧本文件列表
+  const reloadFiles = useCallback(async () => {
+    const files = await ipc
+      .listScenarioScriptFiles(scenario.id)
+      .catch(() => [] as string[]);
+    setFilenames(files);
+    setActiveFile((cur) =>
+      cur && files.includes(cur) ? cur : (files[0] ?? null),
+    );
+  }, [scenario.id]);
+
+  useEffect(() => {
+    reloadFiles();
+  }, [reloadFiles]);
+
+  // 当前剧情内剧本搜索
   const [q, setQ] = useState("");
   const [hits, setHits] = useState<ScriptHit[] | null>(null);
   const searchRef = useRef<HTMLDivElement | null>(null);
@@ -69,13 +79,15 @@ export function ScenarioEditor({ scenario }: Props) {
       return;
     }
     const h = setTimeout(async () => {
-      const r = await runWithError(() => ipc.searchScripts(text, 30), "搜索失败");
+      const r = await runWithError(
+        () => ipc.searchScenarioScripts(scenario.id, text, 30),
+        "搜索失败",
+      );
       if (!r.ok) return;
-      const nodeSet = new Set(scenario.node_ids);
-      setHits(r.value.filter((x) => nodeSet.has(x.card_id)));
+      setHits(r.value);
     }, 300);
     return () => clearTimeout(h);
-  }, [q, scenario.node_ids]);
+  }, [q, scenario.id]);
 
   // 点击外部关闭搜索下拉
   useEffect(() => {
@@ -89,30 +101,6 @@ export function ScenarioEditor({ scenario }: Props) {
     return () => window.removeEventListener("mousedown", onDown);
   }, [hits]);
 
-  const sceneCards: Card[] = scenario.node_ids
-    .map((id) => cards.find((c) => c.id === id))
-    .filter((c): c is Card => Boolean(c));
-
-  const selectedScene = currentSceneId
-    ? (cards.find((c) => c.id === currentSceneId) ?? null)
-    : null;
-
-  // 当前场景合法性：不在本剧情的节点列表里则重置到 entry / 第一个节点
-  useEffect(() => {
-    const valid = currentSceneId && scenario.node_ids.includes(currentSceneId);
-    if (valid) return;
-    setCurrentScene(scenario.entry_node ?? scenario.node_ids[0] ?? null);
-  }, [scenario.node_ids, scenario.entry_node, currentSceneId, setCurrentScene]);
-
-  // 通知 store 当前剧情；卸载时同时清理场景
-  useEffect(() => {
-    setCurrentScenario(scenario.id);
-    return () => {
-      setCurrentScenario(null);
-      setCurrentScene(null);
-    };
-  }, [scenario.id, setCurrentScenario, setCurrentScene]);
-
   // 播放模式 Esc 关闭
   useEffect(() => {
     if (!playOpen) return;
@@ -123,16 +111,43 @@ export function ScenarioEditor({ scenario }: Props) {
     return () => window.removeEventListener("keydown", onKey);
   }, [playOpen]);
 
+  async function handleAddFile() {
+    const base = `part${filenames.length + 1}`;
+    const name = window.prompt("新剧本文件名（.md 结尾）", `${base}.md`);
+    if (!name) return;
+    const filename = name.endsWith(".md") ? name : `${name}.md`;
+    if (filenames.includes(filename)) {
+      toast.error("文件已存在");
+      return;
+    }
+    const r = await runWithError(
+      () => ipc.saveScenarioScript(scenario.id, filename, ""),
+      "创建失败",
+    );
+    if (!r.ok) return;
+    await reloadFiles();
+    setActiveFile(filename);
+  }
+
+  async function handleDeleteFile(filename: string) {
+    if (
+      !window.confirm(`删除剧本文件「${filename}」？不可恢复。`)
+    )
+      return;
+    const r = await runWithError(
+      () => ipc.deleteScenarioScript(scenario.id, filename),
+      "删除失败",
+    );
+    if (!r.ok) return;
+    await reloadFiles();
+  }
+
   async function handleExportMarkdown() {
     if (exportingMd) return;
     setExportingMd(true);
     try {
       await runWithError(async () => {
-        const md = await exportScenarioMarkdown({
-          scenario,
-          cards,
-          cardTypes,
-        });
+        const md = await exportScenarioMarkdown({ scenario });
         const output = await saveDialog({
           defaultPath: `${scenario.name || "未命名"}-剧本.md`,
           filters: [{ name: "Markdown", extensions: ["md"] }],
@@ -241,9 +256,9 @@ export function ScenarioEditor({ scenario }: Props) {
               )}
               {hits.map((h) => (
                 <button
-                  key={h.card_id}
+                  key={`${h.filename}:${h.line}`}
                   onClick={() => {
-                    setCurrentScene(h.card_id);
+                    setActiveFile(h.filename);
                     setQ("");
                     setHits(null);
                   }}
@@ -271,7 +286,7 @@ export function ScenarioEditor({ scenario }: Props) {
                       color: "var(--fg-primary)",
                     }}
                   >
-                    {cards.find((c) => c.id === h.card_id)?.name ?? h.card_id}
+                    {h.filename} : {h.line + 1}
                   </div>
                   <div
                     style={{
@@ -318,7 +333,7 @@ export function ScenarioEditor({ scenario }: Props) {
         </button>
       </div>
 
-      {/* 场景 tab 栏 */}
+      {/* 文件 tab 栏 */}
       <div
         style={{
           padding: "4px 12px",
@@ -330,7 +345,7 @@ export function ScenarioEditor({ scenario }: Props) {
           overflowX: "auto",
         }}
       >
-        {sceneCards.length === 0 && (
+        {filenames.length === 0 && (
           <span
             style={{
               fontSize: 12,
@@ -338,45 +353,74 @@ export function ScenarioEditor({ scenario }: Props) {
               padding: "6px 8px",
             }}
           >
-            还没有场景。去「⚙ 设置」里添加节点。
+            还没有剧本文件。点「+ 文件」创建 main.md。
           </span>
         )}
-        {sceneCards.map((c) => {
-          const active = c.id === currentSceneId;
+        {filenames.map((f) => {
+          const active = f === activeFile;
           return (
-            <button
-              key={c.id}
-              onClick={() => setCurrentScene(c.id)}
-              style={{
-                padding: "4px 12px",
-                border: "none",
-                background: active ? "var(--bg-raised)" : "transparent",
-                color: active ? "var(--fg-primary)" : "var(--fg-secondary)",
-                borderBottom: active
-                  ? "2px solid var(--accent-gold)"
-                  : "2px solid transparent",
-                fontWeight: active ? 600 : 400,
-                fontSize: 12,
-                cursor: "pointer",
-                fontFamily: "inherit",
-                whiteSpace: "nowrap",
-                flexShrink: 0,
-              }}
-            >
-              {c.name}
-            </button>
+            <div key={f} style={{ display: "flex", flexShrink: 0 }}>
+              <button
+                onClick={() => setActiveFile(f)}
+                style={{
+                  padding: "4px 12px",
+                  border: "none",
+                  background: active ? "var(--bg-raised)" : "transparent",
+                  color: active ? "var(--fg-primary)" : "var(--fg-secondary)",
+                  borderBottom: active
+                    ? "2px solid var(--accent-gold)"
+                    : "2px solid transparent",
+                  fontWeight: active ? 600 : 400,
+                  fontSize: 12,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {f}
+              </button>
+              {filenames.length > 1 && (
+                <button
+                  onClick={() => handleDeleteFile(f)}
+                  title={`删除 ${f}`}
+                  style={{
+                    border: "none",
+                    background: "transparent",
+                    color: "var(--fg-muted)",
+                    cursor: "pointer",
+                    fontSize: 11,
+                    padding: "0 4px",
+                  }}
+                >
+                  ×
+                </button>
+              )}
+            </div>
           );
         })}
+        <button
+          onClick={handleAddFile}
+          title="新建剧本文件"
+          style={{
+            border: "none",
+            background: "transparent",
+            color: "var(--fg-secondary)",
+            cursor: "pointer",
+            fontSize: 13,
+            padding: "4px 8px",
+            flexShrink: 0,
+          }}
+        >
+          + 文件
+        </button>
       </div>
 
       {/* 内容 */}
-      {selectedScene ? (
+      {activeFile ? (
         <ScriptEditor
-          key={selectedScene.id}
-          cardId={selectedScene.id}
-          cardName={selectedScene.name}
-          scenes={sceneCards.map((c) => ({ id: c.id, name: c.name }))}
-          variables={scenario.variables.map((v) => v.key)}
+          key={`${scenario.id}/${activeFile}`}
+          scenarioId={scenario.id}
+          filename={activeFile}
         />
       ) : (
         <div
@@ -389,7 +433,7 @@ export function ScenarioEditor({ scenario }: Props) {
             fontSize: 12,
           }}
         >
-          选择或创建一个场景
+          选择或创建一个剧本文件
         </div>
       )}
 

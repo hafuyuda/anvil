@@ -14,17 +14,15 @@ export function ScenarioList() {
   const removeScenario = useProjectStore((s) => s.removeScenario);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
+  const upsertScenario = useProjectStore((s) => s.upsertScenario);
+
   async function addScenario() {
     const now = nowMs();
     const s: Scenario = {
       id: newId(),
       name: "新剧情",
       description: null,
-      entry_node: null,
-      node_ids: [],
-      edge_kinds: [],
-      node_positions: {},
-      variables: [],
+      entry_knot: null,
       created_at: now,
       updated_at: now,
     };
@@ -34,12 +32,11 @@ export function ScenarioList() {
   }
 
   const deleteWithUndo = useDeleteUndo();
-  const upsertScenario = useProjectStore((s) => s.upsertScenario);
 
   async function handleDelete(s: Scenario) {
     if (
       !(await confirmDialog({
-        message: `删除剧情「${s.name}」？可用 Ctrl+Z 撤销。`,
+        message: `删除剧情「${s.name}」？剧本文件会一并删除，可用 Ctrl+Z 撤销。`,
         confirmLabel: "删除",
         danger: true,
       }))

@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { useProjectStore } from "../../../stores/projectStore";
-import type { Card, Scenario } from "../../../core/ipc";
+import type { Scenario } from "../../../core/ipc";
 import { usePlayState } from "./usePlayState";
 import { VariablePanel } from "./panels/VariablePanel";
 import { VNStage } from "./vn/VNStage";
@@ -11,49 +10,66 @@ interface Props {
 }
 
 export function PlayView({ scenario }: Props) {
-  const cards = useProjectStore((s) => s.cards) ?? [];
-
   const {
+    loading,
+    loadError,
+    entryError,
+    hasContent,
+    state,
     values,
     setValue,
-    currentId,
-    history,
-    jumps,
-    chooseJump,
-    back,
-    reset,
     resetVars,
-    scriptLoading,
-    advanceLine,
-    atEnd,
-    hasScript,
-    currentLine,
+    variables,
+    history,
+    currentKnot,
     currentBg,
     currentBgm,
     currentSfx,
+    choices,
+    currentLine,
+    ended,
     isEnding,
     endingName,
+    advance,
+    choose,
+    back,
+    reset,
   } = usePlayState(scenario);
 
-  useSceneAudio(currentId, currentBgm, currentSfx);
+  useSceneAudio(currentKnot, currentBgm, currentSfx);
 
   const [showVariables, setShowVariables] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
 
-  const currentCard: Card | null = currentId
-    ? (cards.find((c) => c.id === currentId) ?? null)
-    : null;
-
-  if (!currentId || !currentCard) {
+  if (loading) {
     return (
       <div
         style={{
-          padding: 24,
+          flex: 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
           color: "var(--fg-muted)",
           fontSize: 13,
         }}
       >
-        该剧情没有入口节点。去「设置」里指定。
+        加载剧本…
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div style={{ padding: 24, color: "var(--warning)", fontSize: 13 }}>
+        剧本加载失败：{loadError}
+      </div>
+    );
+  }
+
+  if (entryError || !hasContent || !state) {
+    return (
+      <div style={{ padding: 24, color: "var(--fg-muted)", fontSize: 13 }}>
+        {entryError ?? "该剧情还没有剧本文件。"}
       </div>
     );
   }
@@ -68,19 +84,16 @@ export function PlayView({ scenario }: Props) {
       }}
     >
       <VNStage
-        scriptLoading={scriptLoading}
-        hasScript={hasScript}
         currentLine={currentLine}
         currentBg={currentBg}
-        atEnd={atEnd}
-        onAdvanceLine={advanceLine}
-        jumps={jumps}
-        onChoose={chooseJump}
-        cards={cards}
-        fallbackCard={currentCard}
-        scenario={scenario}
+        ended={ended}
         isEnding={isEnding}
         endingName={endingName}
+        choices={choices}
+        onAdvance={advance}
+        onChoose={choose}
+        scenarioName={scenario.name}
+        knot={currentKnot}
       />
 
       {/* 右上角工具栏 */}
@@ -145,12 +158,11 @@ export function PlayView({ scenario }: Props) {
           }}
         >
           <VariablePanel
-            scenario={scenario}
+            variables={variables}
             values={values}
             onChangeValue={setValue}
             onResetVars={resetVars}
-            history={history.map((h) => h.sceneId)}
-            cards={cards}
+            history={history.map((h) => h.knot ?? "")}
           />
         </div>
       )}
@@ -195,20 +207,17 @@ export function PlayView({ scenario }: Props) {
               fontSize: 12,
             }}
           >
-            {history.map((h, i) => {
-              const c = cards.find((x) => x.id === h.sceneId);
-              return (
-                <li
-                  key={i}
-                  style={{
-                    color: "var(--fg-secondary)",
-                    padding: "2px 0",
-                  }}
-                >
-                  {c?.name ?? h.sceneId.slice(0, 8)}
-                </li>
-              );
-            })}
+            {history.map((h, i) => (
+              <li
+                key={i}
+                style={{
+                  color: "var(--fg-secondary)",
+                  padding: "2px 0",
+                }}
+              >
+                {h.knot ?? "—"}
+              </li>
+            ))}
           </ul>
         </div>
       )}

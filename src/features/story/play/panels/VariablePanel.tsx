@@ -1,22 +1,21 @@
-import type { Card, Scenario } from "../../../../core/ipc";
+import type { VariableDef } from "../../../../core/ipc";
 import { VariableRow } from "./VariableRow";
 
 interface Props {
-  scenario: Scenario;
+  variables: VariableDef[];
   values: Record<string, unknown>;
   onChangeValue: (key: string, value: unknown) => void;
   onResetVars: () => void;
+  /** 经过 knot 名列表（最近在最后） */
   history: string[];
-  cards: Card[];
 }
 
 export function VariablePanel({
-  scenario,
+  variables,
   values,
   onChangeValue,
   onResetVars,
   history,
-  cards,
 }: Props) {
   return (
     <div
@@ -44,10 +43,10 @@ export function VariablePanel({
         >
           变量
         </div>
-        {scenario.variables.length === 0 && (
+        {variables.length === 0 && (
           <div style={{ fontSize: 12, color: "var(--fg-muted)" }}>无</div>
         )}
-        {scenario.variables.map((v) => (
+        {variables.map((v) => (
           <VariableRow
             key={v.key}
             def={v}
@@ -55,7 +54,7 @@ export function VariablePanel({
             onChange={(val) => onChangeValue(v.key, val)}
           />
         ))}
-        {scenario.variables.length > 0 && (
+        {variables.length > 0 && (
           <button
             className="btn"
             onClick={onResetVars}
@@ -86,20 +85,17 @@ export function VariablePanel({
             fontSize: 12,
           }}
         >
-          {history.map((id, i) => {
-            const c = cards.find((x) => x.id === id);
-            return (
-              <li
-                key={i}
-                style={{
-                  color: "var(--fg-secondary)",
-                  padding: "2px 0",
-                }}
-              >
-                {c?.name ?? id.slice(0, 8)}
-              </li>
-            );
-          })}
+          {history.map((knot, i) => (
+            <li
+              key={i}
+              style={{
+                color: "var(--fg-secondary)",
+                padding: "2px 0",
+              }}
+            >
+              {knot || "—"}
+            </li>
+          ))}
         </ul>
       </div>
     </div>

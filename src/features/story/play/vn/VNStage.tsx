@@ -1,68 +1,38 @@
-import type { Card, Scenario } from "../../../../core/ipc";
 import type { ScriptLine } from "../../script/types";
 import { VNStageBackground } from "./VNStageBackground";
 import { VNStageChoice } from "./VNStageChoice";
 import { VNStageDialogue } from "./VNStageDialogue";
 import { VNStageEnding } from "./VNStageEnding";
-import { VNStageFallback } from "./VNStageFallback";
-import { VNStagePortrait } from "./VNStagePortrait";
 
 interface Props {
-  scriptLoading: boolean;
-  hasScript: boolean;
   currentLine: ScriptLine | null;
   currentBg: string | null;
-  atEnd: boolean;
-  onAdvanceLine: () => void;
-
-  jumps: { target: string }[];
-  onChoose: (target: string) => void;
-  cards: Card[];
-
-  fallbackCard: Card | null;
-  scenario: Scenario;
-
+  ended: boolean;
   isEnding: boolean;
   endingName: string | null;
+  choices: { label: string; index: number }[];
+  onAdvance: () => void;
+  onChoose: (index: number) => void;
+  scenarioName: string;
+  knot: string | null;
 }
 
 export function VNStage({
-  scriptLoading,
-  hasScript,
   currentLine,
   currentBg,
-  atEnd,
-  onAdvanceLine,
-  jumps,
-  onChoose,
-  cards,
-  fallbackCard,
-  scenario,
+  ended,
   isEnding,
   endingName,
+  choices,
+  onAdvance,
+  onChoose,
+  scenarioName,
+  knot,
 }: Props) {
-  if (scriptLoading) {
-    return (
-      <div
-        style={{
-          flex: 1,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "var(--bg-app)",
-          color: "var(--fg-muted)",
-          fontSize: 13,
-        }}
-      >
-        加载剧本…
-      </div>
-    );
-  }
-
-  // 有选项（停在 jump 列表）或走到底（结局 / 无选项）时显示选择面板
-  const showChoices = jumps.length > 0 || atEnd;
-  // 仅停在可显示行、无选项时点击推进
-  const advanceable = hasScript && Boolean(currentLine) && !showChoices;
+  const showChoices = choices.length > 0;
+  const showEnd = ended;
+  // 仅停在可显示行、无选项未结束时点击推进
+  const advanceable = Boolean(currentLine) && !showChoices && !showEnd;
 
   return (
     <div
@@ -90,11 +60,6 @@ export function VNStage({
         {currentBg && <VNStageBackground path={currentBg} />}
       </div>
 
-      {/* 立绘层 */}
-      {hasScript && currentLine && (
-        <VNStagePortrait line={currentLine} cards={cards} />
-      )}
-
       {/* 内容层 */}
       <div
         style={{
@@ -106,32 +71,50 @@ export function VNStage({
           flexDirection: "column",
         }}
       >
-        {hasScript && currentLine ? (
+        <div
+          style={{
+            padding: "8px 16px",
+            fontSize: 10,
+            color: "var(--fg-muted)",
+            textTransform: "uppercase",
+            letterSpacing: 1,
+          }}
+        >
+          {scenarioName}
+          {knot ? ` · ${knot}` : ""}
+        </div>
+
+        {currentLine ? (
           <>
             <div
-              onClick={advanceable ? onAdvanceLine : undefined}
+              onClick={advanceable ? onAdvance : undefined}
               style={{
                 flex: 1,
                 cursor: advanceable ? "pointer" : "default",
               }}
             />
 
-            {showChoices ? (
-              <>
-                {atEnd && isEnding && <VNStageEnding name={endingName} />}
-                <VNStageChoice jumps={jumps} onChoose={onChoose} />
-              </>
+            {showEnd ? (
+              isEnding && <VNStageEnding name={endingName} />
+            ) : showChoices ? (
+              <VNStageChoice choices={choices} onChoose={onChoose} />
             ) : (
-              <VNStageDialogue line={currentLine} onAdvance={onAdvanceLine} />
+              <VNStageDialogue line={currentLine} onAdvance={onAdvance} />
             )}
           </>
         ) : (
-          <VNStageFallback
-            card={fallbackCard}
-            scenario={scenario}
-            jumps={jumps}
-            onChoose={onChoose}
-          />
+          <div
+            style={{
+              flex: 1,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "var(--fg-muted)",
+              fontSize: 13,
+            }}
+          >
+            {showEnd ? "剧情结束" : "…"}
+          </div>
         )}
       </div>
     </div>

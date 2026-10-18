@@ -68,6 +68,11 @@ pub fn run() {
             list_scenarios,
             upsert_scenario,
             delete_scenario,
+            list_scenario_script_files,
+            load_scenario_script,
+            save_scenario_script,
+            delete_scenario_script,
+            search_scenario_scripts,
             // boards
             list_boards,
             upsert_board,

@@ -1,9 +1,9 @@
 export function VNStageChoice({
-  jumps,
+  choices,
   onChoose,
 }: {
-  jumps: { target: string }[];
-  onChoose: (target: string) => void;
+  choices: { label: string; index: number }[];
+  onChoose: (index: number) => void;
 }) {
   return (
     <div
@@ -30,16 +30,16 @@ export function VNStageChoice({
         选择
       </div>
 
-      {jumps.length === 0 && (
+      {choices.length === 0 && (
         <div style={{ fontSize: 12, color: "var(--fg-muted)" }}>
           没有可走的选项
         </div>
       )}
 
-      {jumps.map((j, i) => (
+      {choices.map((c) => (
         <div
-          key={i}
-          onClick={() => onChoose(j.target)}
+          key={c.index}
+          onClick={() => onChoose(c.index)}
           style={{
             padding: "10px 14px",
             marginBottom: 6,
@@ -64,7 +64,7 @@ export function VNStageChoice({
                 flex: 1,
               }}
             >
-              {j.target}
+              {c.label}
             </span>
           </div>
         </div>

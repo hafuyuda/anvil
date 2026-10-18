@@ -1,8 +1,5 @@
 import type { Scenario } from "../../../../core/ipc";
-import { useProjectStore } from "../../../../stores/projectStore";
 import { SectionLabel } from "../../../../components/ui/SectionLabel";
-import { ScenarioNodesEditor } from "../ScenarioNodesEditor";
-import { ScenarioVariablesEditor } from "../ScenarioVariablesEditor";
 
 interface Props {
   draft: Scenario;
@@ -10,9 +7,6 @@ interface Props {
 }
 
 export function ScenarioGlobalSettings({ draft, update }: Props) {
-  const cards = useProjectStore((s) => s.cards) ?? [];
-  const cardTypes = useProjectStore((s) => s.cardTypes) ?? [];
-
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <div>
@@ -26,40 +20,34 @@ export function ScenarioGlobalSettings({ draft, update }: Props) {
       </div>
 
       <div>
-        <SectionLabel variant="block">入口节点</SectionLabel>
-        <select
-          className="select"
-          value={draft.entry_node ?? ""}
-          onChange={(e) => update({ entry_node: e.target.value || null })}
-        >
-          <option value="">— 未设置 —</option>
-          {draft.node_ids.map((id) => {
-            const c = cards.find((x) => x.id === id);
-            return (
-              <option key={id} value={id}>
-                {c?.name ?? id.slice(0, 8)}
-              </option>
-            );
-          })}
-        </select>
-      </div>
-
-      <div>
-        <SectionLabel variant="block">
-          节点（{draft.node_ids.length}）
-        </SectionLabel>
-        <ScenarioNodesEditor
-          selectedIds={draft.node_ids}
-          onChange={(node_ids) => update({ node_ids })}
-          cards={cards}
-          cardTypes={cardTypes}
+        <SectionLabel variant="block">入口 knot</SectionLabel>
+        <input
+          className="input"
+          value={draft.entry_knot ?? ""}
+          onChange={(e) => update({ entry_knot: e.target.value || null })}
+          placeholder="留空则从第一个文件的第一个 knot 开始"
+          style={{ fontSize: 12 }}
         />
+        <div
+          style={{
+            fontSize: 11,
+            color: "var(--fg-muted)",
+            marginTop: 4,
+          }}
+        >
+          需与剧本中的 === knot 名一致
+        </div>
       </div>
 
-      <ScenarioVariablesEditor
-        variables={draft.variables}
-        onChange={(variables) => update({ variables })}
-      />
+      <div
+        style={{
+          fontSize: 11,
+          color: "var(--fg-muted)",
+          lineHeight: 1.6,
+        }}
+      >
+        变量由剧本中的 VAR 行声明，无需在此维护。
+      </div>
     </div>
   );
 }

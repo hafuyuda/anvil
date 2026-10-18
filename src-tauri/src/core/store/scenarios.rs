@@ -3,6 +3,14 @@ use crate::core::model::scenario::Scenario;
 use crate::core::store::atomic::write_atomic;
 use std::path::PathBuf;
 
+/// 剧本搜索命中。
+#[derive(serde::Serialize)]
+pub struct ScriptHit {
+    pub filename: String,
+    pub line: usize,
+    pub snippet: String,
+}
+
 impl Project {
     pub fn scenarios_dir(&self) -> PathBuf {
         self.root.join("scenarios")
@@ -136,6 +144,54 @@ impl Project {
             std::fs::remove_file(&path)?;
         }
         Ok(())
+    }
+
+    /// 剧本搜索命中：只搜该剧情目录下的 .md。
+    pub fn search_scenario_scripts(
+        &self,
+        scenario_id: &str,
+        query: &str,
+        limit: usize,
+    ) -> anyhow::Result<Vec<ScriptHit>> {
+        let q = query.trim();
+        let mut hits = Vec::new();
+        if q.is_empty() {
+            return Ok(hits);
+        }
+        for filename in self.list_script_files(scenario_id)? {
+            let Some(content) = self.load_script(scenario_id, &filename)? else {
+                continue;
+            };
+            for (i, line) in content.lines().enumerate() {
+                if hits.len() >= limit {
+                    return Ok(hits);
+                }
+                if let Some(pos) = line.find(q) {
+                    // 命中行截取前后文各 ~12 字节作为 snippet，不切进多字节字符
+                    let start = {
+                        let mut s = pos.saturating_sub(12);
+                        while s > 0 && !line.is_char_boundary(s) {
+                            s -= 1;
+                        }
+                        s
+                    };
+                    let end = {
+                        let mut e = (pos + q.len() + 12).min(line.len());
+                        while e < line.len() && !line.is_char_boundary(e) {
+                            e += 1;
+                        }
+                        e
+                    };
+                    let snippet = line[start..end].trim().to_string();
+                    hits.push(ScriptHit {
+                        filename: filename.clone(),
+                        line: i,
+                        snippet,
+                    });
+                }
+            }
+        }
+        Ok(hits)
     }
 }
 

@@ -128,11 +128,8 @@ export interface Scenario {
   id: string;
   name: string;
   description?: string | null;
-  entry_node?: string | null;
-  node_ids: string[];
-  edge_kinds: string[];
-  node_positions: Record<string, [number, number]>;
-  variables: VariableDef[];
+  /** 入口 knot。为空时运行时取文件名字典序第一个文件的第一个 knot。 */
+  entry_knot?: string | null;
   created_at: number;
   updated_at: number;
 }
@@ -349,6 +346,8 @@ export interface AudioMeta {
 }
 
 export interface ScriptHit {
-  card_id: string;
+  filename: string;
+  /** 0-based 行号 */
+  line: number;
   snippet: string;
 }

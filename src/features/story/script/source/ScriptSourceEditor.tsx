@@ -28,11 +28,11 @@ import {
 interface Props {
   content: string;
   onChange: (c: string) => void;
-  /** 用于跨挂载恢复光标（阶段 C 启用） */
-  cardId: string;
-  /** 剧情全部场景名（-> 补全用） */
+  /** 用于跨挂载恢复光标 */
+  cursorKey: string;
+  /** knot 名（-> 补全用） */
   scenes: string[];
-  /** 剧情变量名（~ / {} 补全用） */
+  /** 剧本变量名（~ / {} 补全用） */
   variables: string[];
 }
 
@@ -52,7 +52,7 @@ function wrapSelection(view: EditorView, before: string, after: string) {
 export function ScriptSourceEditor({
   content,
   onChange,
-  cardId,
+  cursorKey,
   scenes,
   variables,
 }: Props) {
@@ -137,7 +137,7 @@ export function ScriptSourceEditor({
     viewRef.current = view;
 
     // 恢复上次卸载时的光标与滚动位置
-    const saved = loadCursor(cardId);
+    const saved = loadCursor(cursorKey);
     if (saved) {
       const maxPos = view.state.doc.length;
       view.dispatch({
@@ -151,7 +151,7 @@ export function ScriptSourceEditor({
 
     return () => {
       const sel = view.state.selection.main;
-      saveCursor(cardId, {
+      saveCursor(cursorKey, {
         anchor: sel.anchor,
         head: sel.head,
         scrollTop: view.scrollDOM.scrollTop,

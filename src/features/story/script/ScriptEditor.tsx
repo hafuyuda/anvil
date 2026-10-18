@@ -1,20 +1,18 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ipc } from "../../../core/ipc";
+import { parseScript } from "./parser";
 import { ScriptSourceEditor } from "./source/ScriptSourceEditor";
 import { ScriptStructuredEditor } from "./structured/ScriptStructuredEditor";
 
 interface Props {
-  cardId: string;
-  cardName: string;
-  /** 剧情全部场景（jump 下拉用） */
-  scenes: { id: string; name: string }[];
-  /** 剧情变量名（assign 下拉用） */
-  variables: string[];
+  scenarioId: string;
+  /** 剧本文件名，如 main.md */
+  filename: string;
 }
 
 type Mode = "structured" | "source";
 
-export function ScriptEditor({ cardId, cardName, scenes, variables }: Props) {
+export function ScriptEditor({ scenarioId, filename }: Props) {
   const [content, setContent] = useState("");
   const [loaded, setLoaded] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -26,7 +24,7 @@ export function ScriptEditor({ cardId, cardName, scenes, variables }: Props) {
     setLoaded(false);
     setDirty(false);
     ipc
-      .loadScript(cardId)
+      .loadScenarioScript(scenarioId, filename)
       .then((c) => {
         const initial = c ?? "";
         setContent(initial);
@@ -38,7 +36,7 @@ export function ScriptEditor({ cardId, cardName, scenes, variables }: Props) {
         lastSavedRef.current = "";
         setLoaded(true);
       });
-  }, [cardId]);
+  }, [scenarioId, filename]);
 
   useEffect(() => {
     if (!loaded || !dirty) return;
@@ -48,7 +46,7 @@ export function ScriptEditor({ cardId, cardName, scenes, variables }: Props) {
     const handle = setTimeout(async () => {
       setSaving(true);
       try {
-        await ipc.saveScript(cardId, content);
+        await ipc.saveScenarioScript(scenarioId, filename, content);
         lastSavedRef.current = content;
         setDirty(false);
       } catch {
@@ -58,12 +56,21 @@ export function ScriptEditor({ cardId, cardName, scenes, variables }: Props) {
       }
     }, delay);
     return () => clearTimeout(handle);
-  }, [content, dirty, loaded, cardId]);
+  }, [content, dirty, loaded, scenarioId, filename]);
 
   function handleChange(c: string) {
     setContent(c);
     setDirty(true);
   }
+
+  // knot 名与变量名从当前内容实时解析（jump / ~ 补全用）
+  const { scenes, variables } = useMemo(() => {
+    const parsed = parseScript(content);
+    return {
+      scenes: Object.keys(parsed.knots),
+      variables: parsed.vars.map((v) => v.key),
+    };
+  }, [content]);
 
   if (!loaded) {
     return (
@@ -91,7 +98,7 @@ export function ScriptEditor({ cardId, cardName, scenes, variables }: Props) {
         flexDirection: "column",
       }}
     >
-      {/* 顶部：场景名 + 保存状态 */}
+      {/* 顶部：文件名 + 保存状态 */}
       <div
         style={{
           padding: "6px 12px",
@@ -111,7 +118,7 @@ export function ScriptEditor({ cardId, cardName, scenes, variables }: Props) {
             color: "var(--fg-primary)",
           }}
         >
-          {cardName}
+          {filename}
         </span>
         <div style={{ flex: 1 }} />
         <span
@@ -154,7 +161,7 @@ export function ScriptEditor({ cardId, cardName, scenes, variables }: Props) {
         <ScriptStructuredEditor
           content={content}
           onChange={handleChange}
-          scenes={scenes}
+          scenes={scenes.map((name) => ({ id: name, name }))}
           variables={variables}
         />
       )}
@@ -162,8 +169,8 @@ export function ScriptEditor({ cardId, cardName, scenes, variables }: Props) {
         <ScriptSourceEditor
           content={content}
           onChange={handleChange}
-          cardId={cardId}
-          scenes={scenes.map((s) => s.name)}
+          cursorKey={`${scenarioId}/${filename}`}
+          scenes={scenes}
           variables={variables}
         />
       )}

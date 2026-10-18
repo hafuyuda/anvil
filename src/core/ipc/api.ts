@@ -92,6 +92,16 @@ export const ipc = {
   upsertScenario: (scenario: Scenario) =>
     invoke<void>("upsert_scenario", { scenario }),
   deleteScenario: (id: string) => invoke<void>("delete_scenario", { id }),
+  listScenarioScriptFiles: (scenarioId: string) =>
+    invoke<string[]>("list_scenario_script_files", { scenarioId }),
+  loadScenarioScript: (scenarioId: string, filename: string) =>
+    invoke<string | null>("load_scenario_script", { scenarioId, filename }),
+  saveScenarioScript: (scenarioId: string, filename: string, content: string) =>
+    invoke<void>("save_scenario_script", { scenarioId, filename, content }),
+  deleteScenarioScript: (scenarioId: string, filename: string) =>
+    invoke<void>("delete_scenario_script", { scenarioId, filename }),
+  searchScenarioScripts: (scenarioId: string, query: string, limit?: number) =>
+    invoke<ScriptHit[]>("search_scenario_scripts", { scenarioId, query, limit }),
 
   // ── 棋盘 ──
   listBoards: () => invoke<Board[]>("list_boards"),
