@@ -1,9 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  ipc,
-  type Scenario,
-  type ScriptHit,
-} from "../../../core/ipc";
+import { ipc, type Scenario, type ScriptHit } from "../../../core/ipc";
 import { useProjectStore } from "../../../stores/projectStore";
 import { parseScript } from "./parser";
 import type { ParsedScript } from "./types";
@@ -12,6 +8,8 @@ import { ScriptStructuredEditor } from "./structured/ScriptStructuredEditor";
 import { toast } from "../../../lib/toast";
 import { runWithError } from "../../../lib/runWithError";
 import { nowMs } from "../../../lib/time";
+import { Modal } from "../../../components/ui/Modal";
+import { confirmDialog } from "../../../lib/confirm";
 
 interface Props {
   scenarioId: string;
@@ -189,28 +187,43 @@ export function ScriptEditor({ scenarioId, entryKnot }: Props) {
   // ── 文件管理 ────────────────────────────────────────
   async function handleCreateFile(filename: string) {
     await flushAll();
+    // save_script 语义：空内容 = 删除文件，因此创建时必须带初始 knot
     const r = await runWithError(
-      () => ipc.saveScenarioScript(scenarioId, filename, ""),
+      () => ipc.saveScenarioScript(scenarioId, filename, "=== 开场\n"),
       "创建失败",
     );
     if (!r.ok) return;
     await reloadAll(filename);
   }
 
-  async function handleAddFile() {
-    const base = `part${files.length + 1}`;
-    const name = window.prompt("新剧本文件名（.md 结尾）", `${base}.md`);
+  const [newFileOpen, setNewFileOpen] = useState(false);
+  const [newFileName, setNewFileName] = useState("");
+
+  function handleAddFile() {
+    setNewFileName(`part${files.length + 1}.md`);
+    setNewFileOpen(true);
+  }
+
+  async function confirmNewFile() {
+    const name = newFileName.trim();
     if (!name) return;
     const filename = name.endsWith(".md") ? name : `${name}.md`;
     if (files.includes(filename)) {
       toast.error("文件已存在");
       return;
     }
+    setNewFileOpen(false);
     await handleCreateFile(filename);
   }
 
   async function handleDeleteFile(filename: string) {
-    if (!window.confirm(`删除剧本文件「${filename}」？不可恢复。`)) return;
+    if (
+      !(await confirmDialog({
+        message: `删除剧本文件「${filename}」？不可恢复。`,
+        danger: true,
+      }))
+    )
+      return;
     const r = await runWithError(
       () => ipc.deleteScenarioScript(scenarioId, filename),
       "删除失败",
@@ -267,11 +280,7 @@ export function ScriptEditor({ scenarioId, entryKnot }: Props) {
     if (mode === "structured") {
       const p = parsedByFile[currentFile];
       if (!p) return null;
-      for (
-        let i = Math.min(cursorLine, p.lines.length - 1);
-        i >= 0;
-        i--
-      ) {
+      for (let i = Math.min(cursorLine, p.lines.length - 1); i >= 0; i--) {
         const l = p.lines[i];
         if (l.type === "knot") return l.name;
       }
@@ -440,7 +449,9 @@ export function ScriptEditor({ scenarioId, entryKnot }: Props) {
                     fontSize: 12,
                     fontFamily: "var(--font-mono)",
                     fontWeight: active ? 600 : 400,
-                    color: active ? "var(--accent-gold)" : "var(--fg-secondary)",
+                    color: active
+                      ? "var(--accent-gold)"
+                      : "var(--fg-secondary)",
                     overflow: "hidden",
                     textOverflow: "ellipsis",
                     whiteSpace: "nowrap",
@@ -501,7 +512,9 @@ export function ScriptEditor({ scenarioId, entryKnot }: Props) {
             {allKnotNames.length}
           </span>
         </PanelHeader>
-        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", paddingBottom: 8 }}>
+        <div
+          style={{ flex: 1, minHeight: 0, overflowY: "auto", paddingBottom: 8 }}
+        >
           {outline.map(({ file, knots }) => (
             <div key={file}>
               {files.length > 1 && (
@@ -558,9 +571,7 @@ export function ScriptEditor({ scenarioId, entryKnot }: Props) {
                   >
                     {k.name}
                     {k.scene ? (
-                      <span
-                        style={{ color: "var(--fg-muted)", fontSize: 10 }}
-                      >
+                      <span style={{ color: "var(--fg-muted)", fontSize: 10 }}>
                         {" "}
                         @{k.scene}
                       </span>
@@ -908,15 +919,44 @@ export function ScriptEditor({ scenarioId, entryKnot }: Props) {
           )}
         </section>
       </div>
+      {newFileOpen && (
+        <Modal
+          title="新建剧本文件"
+          onClose={() => setNewFileOpen(false)}
+          width={400}
+        >
+          <input
+            className="input"
+            value={newFileName}
+            onChange={(e) => setNewFileName(e.target.value)}
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === "Enter") confirmNewFile();
+            }}
+            placeholder="main.md"
+          />
+          <div
+            style={{
+              marginTop: 12,
+              display: "flex",
+              gap: 8,
+              justifyContent: "flex-end",
+            }}
+          >
+            <button className="btn" onClick={() => setNewFileOpen(false)}>
+              取消
+            </button>
+            <button className="btn btn-primary" onClick={confirmNewFile}>
+              创建
+            </button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
 
-function PanelHeader({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+function PanelHeader({ children }: { children: React.ReactNode }) {
   return (
     <div
       style={{
