@@ -300,7 +300,7 @@ function scanInlineConds(text: string): InlineCond[] {
 }
 
 /** `{表达式: A|B}` 花括号内部分割。无 `|` 时返回 null（整行条件场景）。 */
-function parseInlineInner(inner: string): InlineCond | null {
+export function parseInlineInner(inner: string): InlineCond | null {
   // 第一个不在双引号内的冒号
   let colon = -1;
   let inStr = false;
