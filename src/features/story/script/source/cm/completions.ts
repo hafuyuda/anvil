@@ -4,8 +4,11 @@ import type {
 } from "@codemirror/autocomplete";
 
 export interface CompletionSources {
+  /** 项目卡名（** 说话人 / @scene / @actor 补全） */
   speakers: string[];
-  scenes: string[];
+  /** knot 名（-> 补全，自动附 END） */
+  knotNames: string[];
+  /** 剧本变量名（~ / {} 补全，{} 里另附 visited_*） */
   variables: string[];
   images: string[];
   audios: string[];
@@ -13,7 +16,7 @@ export interface CompletionSources {
 
 export const EMPTY_SOURCES: CompletionSources = {
   speakers: [],
-  scenes: [],
+  knotNames: [],
   variables: [],
   images: [],
   audios: [],
@@ -36,12 +39,25 @@ export function storyCompletions(get: () => CompletionSources) {
       };
     }
 
-    // -> 场景名
+    // @scene / @actor 卡名
+    const ref = before.match(/^@(scene|actor)\s+(\S*)$/);
+    if (ref) {
+      return {
+        from: context.pos - ref[2].length,
+        options: sources.speakers.map((s) => ({ label: s, type: "class" })),
+        validFor: /^\S*$/,
+      };
+    }
+
+    // -> knot 名（附 END）
     const jump = before.match(/^->\s*(\S*)$/);
     if (jump) {
       return {
         from: context.pos - jump[1].length,
-        options: sources.scenes.map((s) => ({ label: s, type: "keyword" })),
+        options: [...sources.knotNames, "END"].map((s) => ({
+          label: s,
+          type: "keyword",
+        })),
         validFor: /^\S*$/,
       };
     }
@@ -69,12 +85,20 @@ export function storyCompletions(get: () => CompletionSources) {
       };
     }
 
-    // { 条件里的变量
+    // { 条件里的变量 + visited_*
     const cond = before.match(/^\{([a-zA-Z_]\w*)?$/);
     if (cond) {
+      const vars = sources.variables.map((v) => ({
+        label: v,
+        type: "variable" as const,
+      }));
+      const visited = sources.knotNames.map((k) => ({
+        label: `visited_${k}`,
+        type: "variable" as const,
+      }));
       return {
         from: context.pos - (cond[1]?.length ?? 0),
-        options: sources.variables.map((v) => ({ label: v, type: "variable" })),
+        options: [...vars, ...visited],
         validFor: /^\w*$/,
       };
     }

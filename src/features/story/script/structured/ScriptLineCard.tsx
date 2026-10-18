@@ -4,13 +4,19 @@ import { AudioSelect } from "../../../../components/field/AudioSelect";
 import { AutoGrowTextarea } from "../../../../components/field/AutoGrowTextarea";
 
 const TYPE_LABELS: { value: ScriptLine["type"]; label: string }[] = [
+  { value: "knot", label: "knot" },
+  { value: "var", label: "变量" },
   { value: "narration", label: "旁白" },
   { value: "say", label: "对白" },
   { value: "action", label: "动作" },
   { value: "bg", label: "背景" },
   { value: "bgm", label: "音乐" },
   { value: "sfx", label: "音效" },
+  { value: "scene_ref", label: "场景卡" },
+  { value: "actor_ref", label: "角色" },
   { value: "jump", label: "跳转" },
+  { value: "choice", label: "选项" },
+  { value: "gather", label: "汇合" },
   { value: "condition", label: "条件" },
   { value: "assign", label: "赋值" },
   { value: "glue", label: "粘合" },
@@ -21,10 +27,10 @@ interface Props {
   handleProps: Record<string, unknown>;
   isDragging?: boolean;
   autoFocus?: boolean;
-  /** 剧情全部场景（jump 下拉用） */
-  scenes: { id: string; name: string }[];
-  /** 剧情变量名（assign 下拉用） */
-  variables: string[];
+  /** knot 名（jump 下拉用，不含 END） */
+  knotNames: string[];
+  /** 剧本变量名（assign 下拉用） */
+  varNames: string[];
   onChange: (next: ScriptLine) => void;
   onDelete: () => void;
   onEnter: () => void;
@@ -35,8 +41,8 @@ export function ScriptLineCard({
   handleProps,
   isDragging,
   autoFocus,
-  scenes,
-  variables,
+  knotNames,
+  varNames,
   onChange,
   onDelete,
   onEnter,
@@ -68,6 +74,12 @@ export function ScriptLineCard({
     const text = "text" in line ? line.text : "";
     // 保留可保留的字段，其余置空
     switch (newType) {
+      case "knot":
+        onChange({ type: "knot", name: "" });
+        return;
+      case "var":
+        onChange({ type: "var", key: "", literal: "" });
+        return;
       case "narration":
         onChange({ type: "narration", text });
         return;
@@ -86,8 +98,20 @@ export function ScriptLineCard({
       case "sfx":
         onChange({ type: "sfx", file: "" });
         return;
+      case "scene_ref":
+        onChange({ type: "scene_ref", cardName: "" });
+        return;
+      case "actor_ref":
+        onChange({ type: "actor_ref", cardName: "" });
+        return;
       case "jump":
         onChange({ type: "jump", target: "" });
+        return;
+      case "choice":
+        onChange({ type: "choice", label: "" });
+        return;
+      case "gather":
+        onChange({ type: "gather", text: "" });
         return;
       case "condition":
         onChange({ type: "condition", expr: "", text: "" });
@@ -100,6 +124,11 @@ export function ScriptLineCard({
         return;
     }
   }
+
+  const monoStyle: React.CSSProperties = {
+    fontSize: 11,
+    fontFamily: "var(--font-mono)",
+  };
 
   return (
     <div
@@ -136,7 +165,7 @@ export function ScriptLineCard({
         className="select"
         value={line.type}
         onChange={(e) => switchType(e.target.value as ScriptLine["type"])}
-        style={{ width: 72, flexShrink: 0, fontSize: 12 }}
+        style={{ width: 76, flexShrink: 0, fontSize: 12 }}
       >
         {TYPE_LABELS.map((t) => (
           <option key={t.value} value={t.value}>
@@ -146,6 +175,40 @@ export function ScriptLineCard({
       </select>
 
       <div style={{ flex: 1, minWidth: 0, display: "flex", gap: 6 }}>
+        {line.type === "knot" && (
+          <input
+            ref={primaryRef}
+            className="input"
+            value={line.name}
+            onChange={(e) => onChange({ ...line, name: e.target.value })}
+            onKeyDown={handleKeyDown}
+            placeholder="knot 名（如 铁匠铺 或 铁匠铺.夜）"
+            style={{ ...monoStyle, flex: 1 }}
+          />
+        )}
+
+        {line.type === "var" && (
+          <>
+            <input
+              ref={primaryRef}
+              className="input"
+              value={line.key}
+              onChange={(e) => onChange({ ...line, key: e.target.value })}
+              onKeyDown={handleKeyDown}
+              placeholder="变量名"
+              style={{ ...monoStyle, width: 120, flexShrink: 0 }}
+            />
+            <input
+              className="input"
+              value={line.literal}
+              onChange={(e) => onChange({ ...line, literal: e.target.value })}
+              onKeyDown={handleKeyDown}
+              placeholder="初始值（数字 / 字符串 / true）"
+              style={{ ...monoStyle, flex: 1 }}
+            />
+          </>
+        )}
+
         {line.type === "narration" && (
           <AutoGrowTextarea
             value={line.text}
@@ -210,10 +273,7 @@ export function ScriptLineCard({
             onChange={(e) => onChange({ ...line, image: e.target.value })}
             onKeyDown={handleKeyDown}
             placeholder="图片路径（assets/images/...）"
-            style={{
-              fontSize: 11,
-              fontFamily: "var(--font-mono)",
-            }}
+            style={monoStyle}
           />
         )}
 
@@ -237,6 +297,30 @@ export function ScriptLineCard({
           </div>
         )}
 
+        {line.type === "scene_ref" && (
+          <input
+            ref={primaryRef}
+            className="input"
+            value={line.cardName}
+            onChange={(e) => onChange({ ...line, cardName: e.target.value })}
+            onKeyDown={handleKeyDown}
+            placeholder="场景卡名（按名字匹配项目中的卡）"
+            style={{ flex: 1, fontSize: 12 }}
+          />
+        )}
+
+        {line.type === "actor_ref" && (
+          <input
+            ref={primaryRef}
+            className="input"
+            value={line.cardName}
+            onChange={(e) => onChange({ ...line, cardName: e.target.value })}
+            onKeyDown={handleKeyDown}
+            placeholder="角色卡名（按名字匹配项目中的卡）"
+            style={{ flex: 1, fontSize: 12 }}
+          />
+        )}
+
         {line.type === "jump" && (
           <select
             ref={selectRef}
@@ -246,13 +330,42 @@ export function ScriptLineCard({
             onKeyDown={handleKeyDown}
             style={{ flex: 1, fontSize: 12 }}
           >
-            <option value="">— 选择场景 —</option>
-            {scenes.map((s) => (
-              <option key={s.id} value={s.name}>
-                {s.name}
+            <option value="">— 选择目标 —</option>
+            <option value="END">END（结束）</option>
+            {knotNames.map((k) => (
+              <option key={k} value={k}>
+                {k}
               </option>
             ))}
+            {line.target &&
+            line.target !== "END" &&
+            !knotNames.includes(line.target) ? (
+              <option value={line.target}>{line.target}（未找到）</option>
+            ) : null}
           </select>
+        )}
+
+        {line.type === "choice" && (
+          <input
+            ref={primaryRef}
+            className="input"
+            value={line.label}
+            onChange={(e) => onChange({ ...line, label: e.target.value })}
+            onKeyDown={handleKeyDown}
+            placeholder="选项文本"
+            style={{ flex: 1, fontSize: 12 }}
+          />
+        )}
+
+        {line.type === "gather" && (
+          <AutoGrowTextarea
+            value={line.text}
+            onChange={(v) => onChange({ ...line, text: v })}
+            onEnter={onEnter}
+            autoFocus={autoFocus}
+            placeholder="汇合标记（可空，选项在此汇合）"
+            style={{ fontSize: 12 }}
+          />
         )}
 
         {line.type === "condition" && (
@@ -283,7 +396,7 @@ export function ScriptLineCard({
 
         {line.type === "assign" && (
           <>
-            {variables.length > 0 ? (
+            {varNames.length > 0 ? (
               <select
                 ref={selectRef}
                 className="select"
@@ -293,7 +406,7 @@ export function ScriptLineCard({
                 style={{ width: 110, flexShrink: 0, fontSize: 12 }}
               >
                 <option value="">— 变量 —</option>
-                {variables.map((v) => (
+                {varNames.map((v) => (
                   <option key={v} value={v}>
                     {v}
                   </option>

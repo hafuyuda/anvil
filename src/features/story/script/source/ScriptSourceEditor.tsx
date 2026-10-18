@@ -31,9 +31,13 @@ interface Props {
   /** 用于跨挂载恢复光标 */
   cursorKey: string;
   /** knot 名（-> 补全用） */
-  scenes: string[];
+  knotNames: string[];
   /** 剧本变量名（~ / {} 补全用） */
-  variables: string[];
+  varNames: string[];
+  /** 光标所在行（0-based 源码行索引），用于「当前 knot」显示 */
+  onCursorLine?: (line: number | null) => void;
+  /** 外部请求定位到某行（knot 大纲 / 搜索命中点击） */
+  scrollToLine?: { line: number; nonce: number } | null;
 }
 
 function wrapSelection(view: EditorView, before: string, after: string) {
@@ -53,23 +57,27 @@ export function ScriptSourceEditor({
   content,
   onChange,
   cursorKey,
-  scenes,
-  variables,
+  knotNames,
+  varNames,
+  onCursorLine,
+  scrollToLine,
 }: Props) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
+  const onCursorLineRef = useRef(onCursorLine);
+  onCursorLineRef.current = onCursorLine;
 
   const cards = useProjectStore((s) => s.cards);
   const sourcesRef = useRef<CompletionSources>({ ...EMPTY_SOURCES });
 
-  // 同步补全数据：说话人（卡名）、场景名、变量名随 store / props 更新
+  // 同步补全数据：说话人（卡名）、knot 名、变量名随 store / props 更新
   useEffect(() => {
     sourcesRef.current.speakers = cards.map((c) => c.name);
-    sourcesRef.current.scenes = scenes;
-    sourcesRef.current.variables = variables;
-  }, [cards, scenes, variables]);
+    sourcesRef.current.knotNames = knotNames;
+    sourcesRef.current.variables = varNames;
+  }, [cards, knotNames, varNames]);
 
   // 资源路径挂载时各拉一次，失败静默为空列表
   useEffect(() => {
@@ -125,6 +133,12 @@ export function ScriptSourceEditor({
         if (update.docChanged) {
           onChangeRef.current(update.state.doc.toString());
         }
+        if (update.selectionSet || update.docChanged) {
+          onCursorLineRef.current?.(
+            update.state.doc.lineAt(update.state.selection.main.head).number -
+              1,
+          );
+        }
       }),
     ];
     const view = new EditorView({
@@ -172,6 +186,20 @@ export function ScriptSourceEditor({
       changes: { from: 0, to: current.length, insert: content },
     });
   }, [content]);
+
+  // 外部请求定位到某行（放在挂载 effect 之后，确保 view 已就绪）
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view || !scrollToLine) return;
+    const lineNo = scrollToLine.line + 1;
+    if (lineNo < 1 || lineNo > view.state.doc.lines) return;
+    const pos = view.state.doc.line(lineNo).from;
+    view.dispatch({
+      selection: { anchor: pos },
+      effects: EditorView.scrollIntoView(pos, { y: "center" }),
+    });
+    view.focus();
+  }, [scrollToLine]);
 
   const parsed = useMemo(() => parseScript(content), [content]);
   const [panelTab, setPanelTab] = useState<"preview" | "outline">("preview");
@@ -228,13 +256,14 @@ export function ScriptSourceEditor({
         }}
       >
         {"> 旁白"} · {"**角色**（表情）：对白"} · {"*动作*"} · {"@bg 路径"} ·{" "}
-        {"@bgm 文件"} · {"@sfx 文件"} · {"-> 场景名"} · {"{条件: 文本}"} ·{" "}
+        {"@bgm 文件"} · {"@sfx 文件"} · {"@scene 场景卡"} ·{" "}
+        {"@actor 角色卡"} · {"-> knot / END"} · {"{条件: 文本}"} ·{" "}
         {"~ 变量 = 值"} · {"<>"}
         <div style={{ color: "var(--fg-muted)", fontSize: 10 }}>
-          顶部 frontmatter 可写：
+          结构行：
           <span style={{ color: "var(--fg-secondary)" }}>
             {" "}
-            bg · bgm · is_ending · ending_name
+            === knot 名 · VAR 变量 = 值 · * 选项 · - 汇合
           </span>
         </div>
         <div style={{ color: "var(--fg-muted)", fontSize: 10 }}>

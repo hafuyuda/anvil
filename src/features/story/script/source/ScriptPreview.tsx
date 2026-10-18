@@ -74,6 +74,36 @@ function PreviewLine({ line }: { line: ParsedScript["lines"][number] }) {
   };
 
   switch (line.type) {
+    case "knot":
+      return (
+        <div style={{ ...rowStyle, borderLeftColor: "var(--accent-gold)" }}>
+          <span style={labelStyle}>knot</span>
+          <span
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontWeight: 600,
+              color: "var(--fg-primary)",
+            }}
+          >
+            === {line.name}
+          </span>
+        </div>
+      );
+    case "var":
+      return (
+        <div style={rowStyle}>
+          <span style={labelStyle}>变量</span>
+          <span
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: 11,
+              color: "var(--fg-secondary)",
+            }}
+          >
+            {line.key} = {line.literal}
+          </span>
+        </div>
+      );
     case "narration":
       return (
         <div style={rowStyle}>
@@ -140,11 +170,43 @@ function PreviewLine({ line }: { line: ParsedScript["lines"][number] }) {
           </span>
         </div>
       );
+    case "scene_ref":
+      return (
+        <div style={{ ...rowStyle, borderLeftColor: "var(--accent-steel)" }}>
+          <span style={labelStyle}>场景卡</span>
+          <span style={{ color: "var(--fg-primary)" }}>@scene {line.cardName}</span>
+        </div>
+      );
+    case "actor_ref":
+      return (
+        <div style={{ ...rowStyle, borderLeftColor: "var(--accent-steel)" }}>
+          <span style={labelStyle}>角色</span>
+          <span style={{ color: "var(--fg-primary)" }}>@actor {line.cardName}</span>
+        </div>
+      );
     case "jump":
       return (
         <div style={{ ...rowStyle, borderLeftColor: "var(--accent-gold)" }}>
           <span style={labelStyle}>跳转</span>
           <span style={{ color: "var(--fg-primary)" }}>→ {line.target}</span>
+        </div>
+      );
+    case "choice":
+      return (
+        <div style={{ ...rowStyle, borderLeftColor: "var(--accent-gold)" }}>
+          <span style={labelStyle}>选项</span>
+          <span style={{ color: "var(--fg-primary)" }}>· {line.label}</span>
+        </div>
+      );
+    case "gather":
+      return (
+        <div style={{ ...rowStyle, borderLeftColor: "var(--accent-steel)" }}>
+          <span style={labelStyle}>汇合</span>
+          {line.text ? (
+            <span style={{ color: "var(--fg-secondary)" }}>{line.text}</span>
+          ) : (
+            <span style={{ color: "var(--fg-muted)" }}>选项在此汇合</span>
+          )}
         </div>
       );
     case "condition":

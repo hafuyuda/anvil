@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
   KeyboardSensor,
@@ -25,26 +25,41 @@ import type { ScriptFrontmatter, ScriptLine } from "../types";
 interface Props {
   content: string;
   onChange: (c: string) => void;
-  /** 剧情全部场景（jump 下拉用） */
-  scenes: { id: string; name: string }[];
-  /** 剧情变量名（assign 下拉用） */
-  variables: string[];
+  /** knot 名（jump 下拉用，附 END） */
+  knotNames: string[];
+  /** 剧本变量名（assign 下拉用） */
+  varNames: string[];
+  /** 光标所在行（0-based 结构行索引），用于「当前 knot」显示 */
+  onCursorLine?: (line: number | null) => void;
+  /** 外部请求定位到某行（knot 大纲 / 搜索命中点击） */
+  scrollToLine?: { line: number; nonce: number } | null;
 }
 
 export function ScriptStructuredEditor({
   content,
   onChange,
-  scenes,
-  variables,
+  knotNames,
+  varNames,
+  onCursorLine,
+  scrollToLine,
 }: Props) {
   const parsed = useMemo(() => parseScript(content), [content]);
   const [focusIdx, setFocusIdx] = useState<number | null>(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (focusIdx === null) return;
     const t = setTimeout(() => setFocusIdx(null), 80);
     return () => clearTimeout(t);
   }, [focusIdx]);
+
+  useEffect(() => {
+    if (!scrollToLine) return;
+    const el = listRef.current?.querySelector(
+      `[data-line-idx="${scrollToLine.line}"]`,
+    );
+    el?.scrollIntoView({ block: "center" });
+  }, [scrollToLine]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -132,6 +147,24 @@ export function ScriptStructuredEditor({
       case "action":
         newLine = { type: "action", text: "" };
         break;
+      case "knot":
+        newLine = { type: "knot", name: "" };
+        break;
+      case "var":
+        newLine = { type: "var", key: "", literal: "" };
+        break;
+      case "choice":
+        newLine = { type: "choice", label: "" };
+        break;
+      case "gather":
+        newLine = { type: "gather", text: "" };
+        break;
+      case "scene_ref":
+        newLine = { type: "scene_ref", cardName: "" };
+        break;
+      case "actor_ref":
+        newLine = { type: "actor_ref", cardName: "" };
+        break;
       default:
         newLine = { type: "narration", text: "" };
         break;
@@ -167,6 +200,7 @@ export function ScriptStructuredEditor({
       />
 
       <div
+        ref={listRef}
         style={{
           flex: 1,
           minHeight: 0,
@@ -203,10 +237,12 @@ export function ScriptStructuredEditor({
               <SortableLineRow
                 key={i}
                 id={String(i)}
+                index={i}
                 line={line}
                 autoFocus={focusIdx === i}
-                scenes={scenes}
-                variables={variables}
+                knotNames={knotNames}
+                varNames={varNames}
+                onCursorLine={onCursorLine}
                 onChange={(next) => handleLineChange(i, next)}
                 onDelete={() => handleDelete(i)}
                 onEnter={() => handleEnter(i)}
@@ -229,19 +265,23 @@ export function ScriptStructuredEditor({
 
 function SortableLineRow({
   id,
+  index,
   line,
   autoFocus,
-  scenes,
-  variables,
+  knotNames,
+  varNames,
+  onCursorLine,
   onChange,
   onDelete,
   onEnter,
 }: {
   id: string;
+  index: number;
   line: ScriptLine;
   autoFocus: boolean;
-  scenes: { id: string; name: string }[];
-  variables: string[];
+  knotNames: string[];
+  varNames: string[];
+  onCursorLine?: (line: number | null) => void;
   onChange: (next: ScriptLine) => void;
   onDelete: () => void;
   onEnter: () => void;
@@ -264,14 +304,19 @@ function SortableLineRow({
   };
 
   return (
-    <div ref={setNodeRef} style={style}>
+    <div
+      ref={setNodeRef}
+      style={style}
+      data-line-idx={index}
+      onFocus={() => onCursorLine?.(index)}
+    >
       <ScriptLineCard
         line={line}
         handleProps={{ ...attributes, ...listeners }}
         isDragging={isDragging}
         autoFocus={autoFocus}
-        scenes={scenes}
-        variables={variables}
+        knotNames={knotNames}
+        varNames={varNames}
         onChange={onChange}
         onDelete={onDelete}
         onEnter={onEnter}

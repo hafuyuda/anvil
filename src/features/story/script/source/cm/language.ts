@@ -20,6 +20,14 @@ const parser: StreamParser<State> = {
     }
 
     if (stream.sol()) {
+      if (stream.match("===")) {
+        stream.skipToEnd();
+        return "keyword";
+      }
+      if (stream.match("VAR")) {
+        stream.skipToEnd();
+        return "keyword";
+      }
       if (stream.match("<>")) return "atom";
       if (stream.match("->")) {
         stream.skipToEnd();
@@ -33,7 +41,12 @@ const parser: StreamParser<State> = {
         stream.skipToEnd();
         return "operator";
       }
-      if (stream.match(/@(bg|bgm|sfx)\b/)) {
+      // gather：单独的 - 或 - 文本（-> 已在上面消费）
+      if (stream.match(/-(\s|$)/)) {
+        stream.skipToEnd();
+        return "operator";
+      }
+      if (stream.match(/@(bg|bgm|sfx|scene|actor)\b/)) {
         stream.skipToEnd();
         return "meta";
       }
@@ -46,6 +59,11 @@ const parser: StreamParser<State> = {
         // 对白：说话人
         stream.skipTo("**");
         stream.match("**");
+        return "strong";
+      }
+      // choice：* 后带空白；action：*文本*
+      if (stream.match(/\*\s/)) {
+        stream.skipToEnd();
         return "strong";
       }
       if (stream.match("*")) {
