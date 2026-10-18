@@ -400,6 +400,7 @@ pub struct CardGroup {
 不进 `Card.values`，不进剧情引擎，不进 HTML 导出，也不在卡框里渲染。
 
 编辑入口在卡片编辑面板的「文档」tab（CodeMirror 6 源码编辑，自动保存）。
+编辑面板提供「编辑 / 预览」双 tab，预览用 react-markdown（GFM）渲染。
 
 搜索：卡牌墙搜索同时命中 `docs_fts`（FTS5 trigram，与 `cards_fts` 并列，
 `cards_fts` 命中排前，文档命中追加在后）。
@@ -510,6 +511,7 @@ MyWorld.anvil/
 | 状态       | Zustand（slice 模式）     |
 | 拖拽排序   | @dnd-kit                  |
 | 包管理器   | pnpm                      |
+| Markdown 渲染 | react-markdown + remark-gfm（卡牌文档预览） |
 
 **已移除**：`@xyflow/react`（React Flow）—— 节点图删除后不再需要。
 
@@ -1143,6 +1145,8 @@ world.anvilpack (zip)
 ├── scenarios/
 ├── sessions/
 ├── card_groups/
+├── scripts/          # 场景剧本
+├── docs/             # 卡牌文档
 └── assets/
     ├── images/
     └── audio/
