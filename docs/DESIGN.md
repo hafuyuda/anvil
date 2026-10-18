@@ -2,7 +2,7 @@
 
 版本 0.14 · 单人创作工具 · 桌面优先 · 开源
 
-> 本文档反映当前实现。M1–M6 完成，M6.5 视觉小说与卡牌扩展已收尾。0.3.0 正在开发。
+> 本文档反映当前实现。M1–M6 完成，M6.5 视觉小说与卡牌扩展已收尾。0.3.0 已发布（2026-10-13），Unreleased 开发中。
 
 ---
 
@@ -60,7 +60,7 @@ Anvil 是一个以**卡牌为核心**的世界观创作与跑团工具。它把�
 | 功能     | 数据来源                        | 主要视图                 | 运行时          |
 | -------- | ------------------------------- | ------------------------ | --------------- |
 | 世界观   | Card + Relation                 | 卡片墙                   | 无              |
-| 分支故事 | Card + Scenario（内联逻辑剧本） | 场景 tab + 剧本编辑器    | 条件求值 + 赋值 |
+| 分支故事 | Card + Scenario（weave 多文件剧本） | 三栏编辑器（文件树 / 编辑 / 检查器） | 两态机（条件求值 + 赋值） |
 | 棋盘     | Card + Token + Board            | HTML 画布                | 坐标与状态      |
 | 跑团     | Card + Session + Token          | 舞台 + 对话流 + 角色列表 | 事件日志        |
 
@@ -69,13 +69,15 @@ Anvil 是一个以**卡牌为核心**的世界观创作与跑团工具。它把�
 
 **CardPile** 是 Token 的变体，在棋盘上以堆叠形式存在，支持抽牌与洗牌。
 
-### 3.4 场景卡
+### 3.4 场景卡与角色卡
 
-剧情图的节点推荐用「场景」CardType，而不是角色或地点：
+剧本通过名字引用项目中的卡，而不是把流程绑在卡上：
 
-- 故事从场景出发，不从人物出发
-- 同一地点可发生多场戏
-- 场景卡字段：时间、地点、参与者、氛围、描述、对白
+- `@scene 卡名` / `@actor 卡名` 把场景卡 / 角色卡挂到当前 knot（0.4 起 parser
+  仅识别，运行时联动是后续扩展点）
+- `**角色**（表情）：对白` 的说话人按名字匹配卡，立绘从卡的
+  `portrait_<表情>` image 字段读取
+- 场景卡推荐字段：时间、地点、参与者、氛围、描述
 
 场景卡是**约定**，不强制。
 
@@ -96,8 +98,8 @@ Anvil 是一个以**卡牌为核心**的世界观创作与跑团工具。它把�
 
 「分支故事」模块服务于**视觉小说 / 互动叙事**的作者，不是跑团工具。
 
-- 节点是**场景**，边是**剧情转移**
-- 条件、变量、效果是剧情状态的表达
+- 剧本按 **knot**（`===` 段落）组织，`->` 在 knot 间跳转，跨文件可跳
+- 条件、变量是剧情状态的表达，全部内联在剧本里
 - 「运行」是作者的**试玩 / 预览**，全屏浮层
 - 可以导出为 Markdown（可读剧本）和 HTML（静态阅读器）
 
@@ -105,12 +107,12 @@ Anvil 是一个以**卡牌为核心**的世界观创作与跑团工具。它把�
 
 - 不绑定 Session
 - 不写跑团事件日志
-- `Scenario.variables` 和 `Session.state` 是两套东西
+- 剧本 `VAR` 变量和 `Session.state` 是两套东西
 - 两者共享 Card 数据，但运行时不互相操作
 
 **HTML 导出是「导出格式」，不是「游戏引擎」：**
 
-- 支持：文本、背景图、点击推进、选择、条件、效果、骰子、打字机、结局、重玩
+- 支持：文本、背景图、点击推进、选项分支、条件、赋值、行内条件、打字机、结局、重玩
 - 不支持：立绘渲染、动画、转场、音频播放、存档、成就、打包 EXE / APK
 - 想要完整演出，请把剧本导入 Ren'Py 或 Godot
 
@@ -234,15 +236,13 @@ scenario_id）已删除，meta 现在只承载各功能的扩展数据，前端�
 ### 4.3 剧情
 
 ```rust
+/// 剧情元数据。流程拓扑不在其中——剧本本体是 `scenarios/<id>/*.md`（weave 语法）。
 pub struct Scenario {
-    pub id: ScenarioId,
+    pub id: String,
     pub name: String,
     pub description: Option<String>,
-    pub entry_node: Option<CardId>,
-    pub node_ids: Vec<CardId>,
-    pub edge_kinds: Vec<String>,
-    pub node_positions: BTreeMap<CardId, [f64; 2]>,  // 保留字段，当前未使用
-    pub variables: Vec<VariableDef>,
+    /// 入口 knot。为空时运行时取文件名字典序第一个文件的第一个 knot。
+    pub entry_knot: Option<String>,
     pub created_at: i64,
     pub updated_at: i64,
 }
@@ -255,7 +255,9 @@ pub struct VariableDef {
 }
 ```
 
-**`node_positions` 保留但不再使用**。节点图已删除，此字段供旧项目兼容，不再写入。
+流程结构（knot、跳转、选项、条件）全部在剧本文件里，`Scenario` 只存元数据。
+变量由剧本中的 `VAR` 行声明（运行时推断类型），`VariableDef` 保留给
+后续把变量提升为剧情设置用。
 
 ### 4.4 棋盘
 
@@ -363,7 +365,12 @@ pub struct Theme {
 }
 ```
 
-`CURRENT_SCHEMA_VERSION = "0.1"`。`Manifest::new()` 的默认版本是 `"0.1.0"`，与应用版本（`0.3.0`）独立。
+`CURRENT_SCHEMA_VERSION = "0.4"`。`Manifest::new()` 的 `schema_version` 取 `CURRENT_SCHEMA_VERSION`，与应用版本独立。
+
+**0.4 硬门禁，不做迁移**：`Project::open` 读取已存在 manifest 时，`schema_version`
+不是 `0.4` 直接报错（旧项目不受支持，请新建项目）。资源包导入与预设导入同样检查
+（`ensure_pack_schema`）。这是剧本格式从场景卡分支图到 weave 多文件的重写，
+旧数据结构无法自动映射。
 
 ### 4.7 卡组
 
@@ -393,7 +400,7 @@ pub struct CardGroup {
 
 ### 4.8 卡牌文档
 
-每张卡可附带一份 Markdown 长文（`docs/<card_id>.md`），与 `scripts/` 同构，
+每张卡可附带一份 Markdown 长文（`docs/<card_id>.md`），与剧本文件同构，
 一卡一文件，内容为空时删除文件。
 
 与剧本的区别：**文档不参与运行时**。它是卡牌的附属资料（设定、背景、备注），
@@ -426,12 +433,13 @@ MyWorld.anvil/
 ├── cards/ab/<uuid>.json
 ├── relations/from/<card_uuid>.jsonl
 ├── boards/<uuid>.json
-├── scenarios/<uuid>.json
+├── scenarios/<uuid>/          # 一剧情一目录
+│   ├── scenario.json          # 剧情元数据（Scenario）
+│   └── main.md                # 剧本文件（weave 语法，可多个）
 ├── card_groups/<uuid>.json
 ├── sessions/<uuid>/
 │   ├── session.json
 │   └── events.jsonl
-├── scripts/<card_uuid>.md
 ├── docs/<card_uuid>.md
 ├── assets/
 │   ├── images/<文件名>.<ext>
@@ -441,7 +449,7 @@ MyWorld.anvil/
 
 **目录创建时机**：
 
-- `Project::open` 创建 10 个目录：`cards / types / relations/from / boards / scenarios / sessions / scripts / docs / card_groups / .anvil`
+- `Project::open` 创建 9 个目录：`cards / types / relations/from / boards / scenarios / sessions / docs / card_groups / .anvil`
 - `themes/` 首次保存主题时创建
 - `assets/images/` / `assets/audio/` 首次导入资源时创建
 
@@ -498,20 +506,22 @@ MyWorld.anvil/
 
 ### 6.1 技术栈
 
-| 层         | 选型                      |
-| ---------- | ------------------------- |
-| 壳         | Tauri 2.x                 |
-| 后端       | Rust                      |
-| 持久化     | 文本文件 + SQLite 索引    |
-| 全文检索   | SQLite FTS5（trigram）    |
-| 资源包     | zip + walkdir             |
-| 无边框窗口 | tauri-plugin-frame        |
-| 文件对话框 | tauri-plugin-dialog       |
-| 前端       | React + TypeScript + Vite |
-| 状态       | Zustand（slice 模式）     |
-| 拖拽排序   | @dnd-kit                  |
-| 包管理器   | pnpm                      |
+| 层            | 选型                                        |
+| ------------- | ------------------------------------------- |
+| 壳            | Tauri 2.x                                   |
+| 后端          | Rust                                        |
+| 持久化        | 文本文件 + SQLite 索引                      |
+| 全文检索      | SQLite FTS5（trigram）                      |
+| 资源包        | zip + walkdir                               |
+| 无边框窗口    | tauri-plugin-frame                          |
+| 文件对话框    | tauri-plugin-dialog                         |
+| 前端          | React + TypeScript + Vite                   |
+| 状态          | Zustand（slice 模式）                       |
+| 拖拽排序      | @dnd-kit                                    |
+| 包管理器      | pnpm                                        |
 | Markdown 渲染 | react-markdown + remark-gfm（卡牌文档预览） |
+| 剧本源码编辑  | CodeMirror 6（行号 / 高亮 / 补全 / 查找）   |
+| 前端测试      | vitest（`pnpm test`）                       |
 
 **已移除**：`@xyflow/react`（React Flow）—— 节点图删除后不再需要。
 
@@ -520,26 +530,23 @@ MyWorld.anvil/
 ```text
 anvil/
 ├── src-tauri/
-│   ├── assets/
-│   │   └── presets/
-│   │       └── anvil_castle.anvilpack   # 内置预设（编译嵌入）
 │   └── src/
 │       ├── core/
 │       │   ├── model/       # 数据模型
-│       │   ├── store/       # 文本文件读写 + 索引 + 资源包（17 个文件，每领域一个）
+│       │   ├── store/       # 文本文件读写 + 索引 + 资源包（15 个领域文件 + mod.rs）
 │       │   │   ├── assets.rs       # 图片 + 音频
 │       │   │   ├── atomic.rs       # 原子写
 │       │   │   ├── boards.rs
 │       │   │   ├── cards.rs
 │       │   │   ├── card_groups.rs
-│       │   │   ├── export_html.rs  # HTML 导出
+│       │   │   ├── docs.rs         # 卡牌附属文档（docs/<card_id>.md）
+│       │   │   ├── export_html.rs  # HTML 导出（内嵌两态机阅读器）
 │       │   │   ├── manifest.rs
-│   │   │   ├── pack.rs         # 资源包导出 / 导入 / 合并
-│   │   │   ├── preset.rs       # 内置预设注册表 + 追加导入
-│   │   │   ├── project.rs      # 项目打开 / 重载 / 索引判断
+│       │   │   ├── pack.rs         # 资源包导出 / 导入 / 合并 / 0.4 门禁
+│       │   │   ├── preset.rs       # 内置预设注册表（0.4 起为空）+ 追加导入
+│       │   │   ├── project.rs      # 项目打开 / 0.4 版本门禁 / 重载 / 索引判断
 │       │   │   ├── relations.rs
-│       │   │   ├── scenarios.rs
-│       │   │   ├── scripts.rs
+│       │   │   ├── scenarios.rs    # 剧情元数据 + 剧本文件（scenarios/<id>/*.md）
 │       │   │   ├── sessions.rs
 │       │   │   └── theme.rs
 │       │   ├── index/       # SQLite 索引 + FTS
@@ -562,15 +569,11 @@ anvil/
 │   │   ├── useExportPack.ts · useImportPack.ts · useKeyboard.ts
 │   │   └── useOpenProject.ts
 │   ├── components/
-│   │   ├── CardFrame/       # 卡牌渲染（分层：primitives + styles）
-│   │   ├── CardGrid/        # 卡片网格（共享布局）
-│   │   ├── Modal.tsx · Toolbar.tsx · PickerDialog.tsx
-│   │   ├── ToastHost.tsx · ConfirmHost.tsx · CommandPalette.tsx
-│   │   ├── HoverPreview.tsx · AudioSelect.tsx · ImageField.tsx · RefField.tsx
-│   │   ├── SectionLabel.tsx · EmptyState.tsx · LabeledBlock.tsx
-│   │   ├── Toggle.tsx · SaveInput.tsx · TypeMultiSelect.tsx
-│   │   ├── EntityListLayout.tsx · ScaledCardFrame.tsx · FieldInput.tsx
-│   │   └── ...
+│   │   ├── ui/              # 纯 UI 原子（Modal / Toggle / SectionLabel / EmptyState / Toolbar / SaveInput / LabeledBlock）
+│   │   ├── card/            # 卡牌领域（CardFrame / CardGrid / HoverPreview / ScaledCardFrame）
+│   │   ├── field/           # 字段编辑（FieldInput / ImageField / RefField / AudioSelect / TypeMultiSelect）
+│   │   ├── overlay/         # 顶层浮层（ToastHost / ConfirmHost / CommandPalette / PickerDialog）
+│   │   └── layout/          # 通用布局（EntityListLayout）
 │   ├── shell/               # 五段布局
 │   │   ├── AppShell.tsx · TopBar.tsx · LeftNav.tsx
 │   │   ├── Workspace.tsx · Inspector.tsx · StatusBar.tsx
@@ -580,22 +583,25 @@ anvil/
 │   │   ├── cards/           # ★ 共享核心
 │   │   │   ├── card/ · card-type/ · card-wall/ · relation/
 │   │   ├── card-groups/
-│   ├── story/
-│   │   ├── scenario/    # 剧情设计 + 导出
-│   │   │   └── inspector/   # 检查器内容
-│   │   ├── play/
-│   │   │   ├── vn/      # VNStage 系列
-│   │   │   └── panels/  # 变量面板
-│   │   ├── script/
-│   │   │   ├── structured/  # 结构编辑
-│   │   │   └── source/      # 源码 + 预览
-│   │   └── effects.ts
+│   │   │   └── views/       # 卡片 / 列表视图
+│   │   ├── story/
+│   │   │   ├── scenario/    # 剧情设计 + 导出
+│   │   │   │   └── inspector/   # 检查器内容
+│   │   │   ├── play/        # 两态机运行时（runtime.ts）+ VN 舞台
+│   │   │   │   ├── vn/      # VNStage 系列
+│   │   │   │   └── panels/  # 变量面板
+│   │   │   └── script/      # weave 剧本语言（parser / serializer / eval / __tests__）
+│   │   │       ├── structured/  # 结构编辑
+│   │   │       └── source/      # 源码 + 预览（CodeMirror）
 │   │   ├── board/           # 棋盘
+│   │   │   └── grid/        # 网格渲染与形状
 │   │   ├── session/         # 跑团
 │   │   │   └── chat/        # 对话流、掷骰、消息编辑
 │   │   ├── player/          # 音乐模块
 │   │   ├── project/         # 项目设置内容 + 资源包合并
+│   │   │   └── theme/       # 主题编辑面板
 │   │   ├── settings/        # 设置浮层
+│   │   │   └── categories/  # 分类注册表与 impl
 │   │   └── commands/        # useGlobalCommands.ts
 │   └── stores/              # Zustand（slice 模式）
 └── package.json
@@ -624,13 +630,12 @@ visited_anvil == true
 gold >= 100
 has_key && !door_locked
 race == "矮人"
-
-变量声明在 Scenario.variables（key / label / 类型 / 默认值）。
-
-骰子支持：赋值值支持 1d3 / 2d6+3 / 1d20-2。前端本地随机，
-执行时记录明细。骰子逻辑统一在 src/lib/dice.ts：rollDice 掷骰，
-validateDiceExpression 只校验不掷。
 ```
+
+变量由剧本 `VAR` 行声明，类型按字面量推断（数字 / 布尔 / 字符串）。
+运行时额外提供内置变量 `visited_<knot>`（该 knot 是否被扫过）。
+
+骰子属于跑团（Session 事件），不属于剧情引擎。剧情条件不掷骰。
 
 ---
 
@@ -687,7 +692,7 @@ if (!r.ok) return;
 
 ## 10. 卡牌悬浮预览
 
-**组件**：`components/HoverPreview.tsx`
+**组件**：`components/card/HoverPreview.tsx`
 
 **两种模式**：
 
@@ -781,43 +786,46 @@ if (!r.ok) return;
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│ 剧情名  保存状态           [▶ 运行] [导出 MD] [导出 HTML]     │
-├──────────────────────────────────────────────────────────────┤
-│ [场景1][场景2][场景3]...                                     │
-├──────────────────────────────────────────────┬───────────────┤
-│                                              │  检查器        │
-│                                              │                │
-│  剧本编辑器（结构 / 源码 tab）                │  场景 / 剧情    │
-│                                              │                │
-└──────────────────────────────────────────────┴───────────────┘
+│ 剧情名                    [▶ 运行] [导出 MD] [导出 HTML]      │
+├────────┬─────────────────────────────────────┬───────────────┤
+│ 文件树  │ 面包屑：文件 › 当前knot   保存状态   │  检查器       │
+│        │ [结构][源码]   [搜索框]              │               │
+│ *.md   │                                     │  剧情设置      │
+│ + 新建  │  剧本编辑器                          │  （入口 knot） │
+│        │                                     │  变量（只读）  │
+│ knot   │                                     │  当前 knot     │
+│ 大纲    │                                     │  @scene/@actor │
+└────────┴─────────────────────────────────────┴───────────────┘
 ```
 
-**顶部一行**：剧情名、保存状态、运行、导出 MD、导出 HTML。
+**顶部一行**：剧情名、运行、导出 MD、导出 HTML。
 
-**第二行**：所有场景横向 tab。切换场景刷新主区和检查器。
+**左栏**（180px）：剧本文件树（增删文件、脏标记）+ knot 大纲
+（跨文件合并解析，点击切文件并定位到行）。
 
-**主区**：剧本编辑器。结构 / 源码双 tab。
+**主区**：面包屑（当前文件 › 当前 knot）+ 保存状态 + 剧本内搜索 +
+编辑器。结构 / 源码双 tab，光标行实时上报用于「当前 knot」显示，
+外部定位（大纲 / 搜索命中点击）双向打通。
 
-**检查器**（`ScenarioInspector`）：
-
-- 描述 / 入口节点 / 节点勾选 / 变量
-- 选中边时切到 `EdgeEditorPanel`（世界观关系的备注 / 类型）
+**检查器**（280px）：剧情设置（描述 / 入口 knot 下拉，来自全部文件的
+knot 名）、变量只读面板（VAR 行解析）、当前 knot 信息（@scene / @actor）。
 
 ### 12.2 运行
 
 点击「▶ 运行」→ **全屏覆盖层**。`Esc` 或顶部「关闭」按钮退出。
 
-`PlayView` 挂载在覆盖层内。带打字机、背景、立绘、bgm、sfx。
+`PlayView` 挂载在覆盖层内。带打字机、背景、立绘、bgm、sfx、
+变量面板（双列历史，可改值 / 重置）。
 
 ### 12.3 删除的部分
 
-**节点图已删除**。原 `StoryGraphView` / `GraphNode` / React Flow 依赖全部移除。原因：
+**节点图已删除**。原 `StoryGraphView` / `GraphNode` / React Flow 依赖、
+`EdgeEditorPanel`、`ScenarioNodesEditor`、`ScenarioVariablesEditor`
+全部移除。原因：
 
 - 全图力导向布局无法建立空间记忆（位置每次重排）
 - 节点间的分支编辑比表单操作更麻烦
-- 场景数量有限（通常 < 20），顶部 tab 完全够用
-
-`Scenario.node_positions` 字段保留但不再写入，用于旧项目兼容。
+- 剧本文本本身就是最好的分支视图，knot 大纲承担导航
 
 ---
 
@@ -905,16 +913,19 @@ CardFrame/
 ├── primitives/            基础构件
 │   ├── CardShell.tsx · CardInner.tsx
 │   ├── CardImage.tsx · CardBack.tsx · FoilOverlay.tsx
-│   └── back-styles/
+│   ├── back-styles/
+│   │   ├── types.ts · registry.ts
+│   │   └── impl/
+│   │       └── anvil.tsx · rune.tsx
+│   └── foil-styles/
 │       ├── types.ts · registry.ts
 │       └── impl/
-│           ├── anvil.tsx · rune.tsx
+│           └── gold.ts · silver.ts · rainbow.ts
 └── styles/                风格实现
     ├── types.ts · registry.ts
     └── impl/
         ├── YuGiOh.tsx · Generic.tsx · Minimal.tsx
         ├── MTG.tsx · Pokemon.tsx · Rainbow.tsx
-
 ```
 
 ### 15.2 数据流
@@ -1017,90 +1028,109 @@ shouldFoil → 包一层 FoilOverlay（读 features）
 
 ### 16.1 剧本格式
 
-Markdown。语法（10 种行类型，分支 / 条件 / 变量全部内联在剧本里）：
+Markdown（weave 语法），一剧情一目录（`scenarios/<id>/`），可多文件。
+剧本按 **knot** 分段，跳转 / 分支 / 条件 / 变量全部内联在剧本里。
+16 种行类型：
 
 ```text
+=== knot 名         → knot 段落（跳转目标；. 子分段仅编辑器展示）
+VAR 变量 = 字面量    → 变量声明（类型按字面量推断：数字/布尔/字符串）
 > 文本              → 旁白
-**说话人**（表情）：文本 → 对白
+**说话人**（表情）：文本 → 对白（说话人按名字匹配卡，立绘读 portrait_<表情>）
 *文本*              → 动作
 @bg 路径            → 背景切换
 @bgm 路径           → 音乐切换
 @sfx 路径           → 音效
--> 场景名           → 跳转（运行时按卡名解析为 card.id）
+@scene 卡名         → 场景卡引用（0.4 仅 parser 识别，运行时联动是扩展点）
+@actor 卡名         → 角色卡引用（同上）
+-> knot 名          → 跳转（全局索引按名字解析，跨文件可跳；END 结束）
+* 选项文本          → 选项（连续 * 行成组，组内后续行是该选项 body）
+- 文本              → 汇合（gather，选项组后第一个 - 行是汇合点）
 {表达式: 文本}      → 条件（满足才显示文本；无冒号则只做门槛）
-~ 变量 操作符 值    → 赋值（操作符：= += -=，值支持骰子如 2d6+1）
+~ 变量 操作符 值    → 赋值（操作符：= += -=）
 <>                  → 粘合（下一文本行与前一显示行拼接）
 ```
 
 frontmatter（`---` 包围）可写：`bg` / `bgm` / `is_ending` / `ending_name`。
 
-条件表达式前端本地求值（`script/eval.ts`，递归下降，约 100 行）：
-运算符 `== != < <= > >= && || ! +`；字面量数字 / 双引号字符串 / 布尔；
-标识符从变量表读取。不走 IPC。
+行内条件 `{expr: A|B}`：`|` 分隔分支（双引号内的 `|` 不算），渲染前按
+求值结果取分支替换。仅旁白 / 对白 / 动作三种文本行支持。
+
+条件表达式前端本地求值（`script/eval.ts`，递归下降）：运算符
+`== != < <= > >= && || ! +`；字面量数字 / 双引号字符串 / 布尔；标识符
+从变量表与内置变量（`visited_<knot>`）读取。不走 IPC。
+
+运行时是**两态机纯函数**（`play/runtime.ts`）：`continueStep` 推进一行，
+`chooseStep` 选择选项分支。状态 = `(file, pc, choice 状态, visited 集, 变量表)`。
+循环保护：单次运行最多 1000 步。
 
 ### 16.2 剧本编辑器
 
-双 tab：
+三栏布局（见 12.1）。编辑区双 tab：
 
-- **结构**（默认）：行卡片列表，每行一个类型选择器 + 对应字段。支持拖拽排序，回车新建下一行（类型延续）
+- **结构**（默认）：行卡片列表，每行一个类型选择器（16 种）+ 对应字段。
+  支持拖拽排序，回车新建下一行（类型延续）
 - **源码**：CodeMirror 6 编辑 Markdown + 右侧面板（预览 / 大纲双 tab）
-
-顶部固定场景设置区：背景（图片选择器）、音乐（音频选择器）、结局标记、结局名。
 
 结构视图行内：
 
+- knot 行：knot 名输入
+- var 行：变量名 + 字面量双输入
 - 对白行：说话人 + 表情 + 内容
-- 音效行：`AudioSelect` 音频选择器
+- 音效 / 音乐行：`AudioSelect` 音频选择器
 - 背景行：图片路径文本
-- 跳转行：场景下拉（从剧情 node_ids 选，显示卡名）
-- 条件行：表达式输入 + 显示文本输入
-- 赋值行：变量下拉 + 操作符选择 + 值输入
-- 粘合行：无字段，仅标记
+- 场景卡 / 角色行：卡名输入
+- 跳转行：knot 下拉（全部文件的 knot 名 + END）
+- 选项 / 汇合 / 条件 / 赋值 / 粘合行：对应文本与字段输入
 - 旁白 / 对白内容 / 动作 / 条件文本使用 `AutoGrowTextarea` 自动增高；
   粘贴多行文本自动拆分为多条脚本行
 
 源码编辑器（CodeMirror 6）：
 
-- 行号、语法高亮（`StreamLanguage` tokenizer，10 种行类型 + frontmatter）、
+- 行号、语法高亮（`StreamLanguage` tokenizer，16 种行类型）、
   `Ctrl+F` 查找、撤销重做、自动折行
-- 上下文补全：`@bg/@bgm/@sfx` 资源路径、`->` 场景名、`~` / `{}` 变量名、
+- 上下文补全：`@bg/@bgm/@sfx` 资源路径、`@scene/@actor` 卡名、
+  `->` knot 名（附 END）、`~` 变量名、`{}` 变量 + `visited_*`、
   `**` 说话人（项目卡名）
 - 快捷键：`Ctrl+B` 包裹 `**…**`、`Ctrl+I` 包裹 `*…*`、`Ctrl+Enter` 插入 `-> `
-- 跨 tab / 场景切换后光标与滚动位置恢复（按 cardId 缓存）
+- 跨 tab / 文件切换后光标与滚动位置恢复（按 `scenarioId:文件名` 缓存）
 - 右侧「大纲」tab：汇总跳转 / 条件 / 赋值行，点击定位到对应源码行
 
-数据流：`content` 是唯一真源。结构视图解析 → 编辑 → 序列化回 `content` → 自动保存到 `scripts/<card_id>.md`。
+数据流：每个文件 `content` 是唯一真源。结构视图解析 → 编辑 → 序列化回
+`content` → 防抖自动保存到 `scenarios/<id>/<文件名>`（`save_scenario_script`）。
 
-**自动保存延迟**：读 `appSettings.autoSaveDelayMs`（默认 800ms）；超过 500 行的剧本
-延迟加倍（1500ms），内容与上次保存一致时跳过写入。
+**自动保存延迟**：默认 800ms；超过 500 行的文件延迟加倍（1500ms），
+切换文件 / 增删文件前立即落盘全部脏文件。
 
 ### 16.3 导出 Markdown
 
-场景 → 导出按钮 → 保存对话框 → `剧情名-剧本.md`。
+剧情 → 导出按钮 → 保存对话框 → `剧情名-剧本.md`。
 
-输出结构：标题 + 简介 + 变量列表 + 场景（入口优先，其余按 node_ids
-顺序编号）+ 分支列表（扫描各场景剧本的 `->` 行，去重后列出）。
+输出结构：标题 + 简介 + 入口 knot 标注，之后每个 knot 一个二级标题。
+入口 knot 排第一，其余按从入口出发的首次可达顺序编号（不可达的按文件
+顺序补后）。choice 渲染为嵌套列表，gather 标注「汇合」，多文件时标题
+后缀来源文件名。
 
 ### 16.4 导出 HTML
 
 单文件 HTML，图片 base64 内嵌，音频不导出。目标：
 
-- 支持：文本、背景图、点击推进、`->` 选择、条件、赋值（含骰子）、
-  粘合、打字机、结局、重玩
+- 支持：文本、背景图、点击推进、选项分支、条件、赋值、行内条件、
+  粘合、打字机、结局（frontmatter `is_ending`）、重玩
 - 不支持：立绘渲染（数据里有 `portrait` 但 JS 不渲染）、动画、转场、
   音频播放（bgm / sfx 只显示为文本行）、存档、成就
 
-技术要点：Rust 侧生成 JSON 数据（不再导出剧情边）+ 内嵌 HTML 模板 +
-内嵌约 600 行 JS 运行时（tokenizer + 表达式求值 + 骰子 + 剧本解析
-（10 种行）+ pc 扫描 stepper + 打字机 + 选择 + 效果 + 结局）。
-固定中性深色主题。
+技术要点：Rust 侧收集 ExportData（场景元数据 + 全部文件原始行 + knot
+索引 + 变量 + 资源 dataURL）+ 内嵌 HTML 模板 + 内嵌 JS 两态机
+（tokenizer + 表达式求值 + 剧本解析 + continueStep/chooseStep 同构实现 +
+打字机 + 结局界面）。固定中性深色主题。
 
-### 16.5 跨场景搜索
+### 16.5 剧本内搜索
 
-`script_fts`（FTS5 trigram）索引 `scripts/` 下全部文件。
+`scenario_script_fts`（FTS5 trigram）索引 `scenarios/*/` 下全部 .md 文件。
 `save_script` / `delete_script` 增量维护，`rebuild_index` 全量重灌。
-剧情模块顶栏搜索，结果按当前剧情的 `node_ids` 过滤。
-中文短查询（< 3 字符）无效，与卡片搜索一致。
+剧情编辑器顶栏搜索（≥3 字），命中显示 `文件:行号` + 高亮片段，
+点击切换文件并定位到行。
 
 卡牌墙搜索同时命中 `docs_fts`（卡牌文档，见 4.8），`cards_fts` 命中排前。
 
@@ -1142,10 +1172,9 @@ world.anvilpack (zip)
 ├── cards/
 ├── relations/
 ├── boards/
-├── scenarios/
+├── scenarios/        # 一剧情一目录（scenario.json + *.md）
 ├── sessions/
 ├── card_groups/
-├── scripts/          # 场景剧本
 ├── docs/             # 卡牌文档
 └── assets/
     ├── images/
@@ -1157,6 +1186,9 @@ world.anvilpack (zip)
 ### 18.2 导入（覆盖式）
 
 选包 → 选目标目录 → 解压 → 自动打开。防路径遍历（拒绝含 `..` 或绝对路径的条目）。
+
+**版本门禁**：导入前检查包内 `manifest.json` 的 `schema_version`
+（`ensure_pack_schema`），不是 `0.4` 直接报错。
 
 ### 18.3 合并
 
@@ -1171,7 +1203,8 @@ world.anvilpack (zip)
 - **关系类型**：`Skip` / `Existing` / `New` 同上
 - **卡片**：仅在类型映射非 Skip 且卡 ID 不冲突时导入
 - **关系**：仅在 from / to 都已导入且关系 ID 不冲突时导入。`kind` 按映射表替换
-- **剧情**：选择性导入，ID 冲突跳过。节点 ID 过滤为本次导入的卡；`edge_kinds` 按映射表替换；`entry_node` 不在节点里时改为第一个
+- **剧情**：选择性导入，ID 冲突跳过。整目录复制（`scenario.json` + 全部
+  剧本 .md）；ID 冲突时连目录一起跳过。`entry_knot` 原样保留
 - **棋盘**：选择性导入，ID 冲突跳过
 - **会话**：选择性导入，ID 冲突跳过。事件重新分配 `seq`
 - **卡组**：选择性导入，ID 冲突跳过。保留原 ID，卡组内引用只保留本次导入的卡
@@ -1183,15 +1216,15 @@ world.anvilpack (zip)
 
 内置预设是编译进二进制的 `.anvilpack`，存放在 `src-tauri/assets/presets/` 下，通过 `include_bytes!` 嵌入。
 
-唯一入口是「添加预设…」（TopBar → 项目菜单，新建项目时也会询问是否添加）：
-把指定预设作为**副本**追加到当前已打开的项目。内容实体全部重新生成 UUID；
-与现有项目同名的实体加 `(2)` / `(3)`；卡类型与关系类型按**名字**复用
-（已有同名字的类型不再新建），其余内容（卡 / 关系 / 剧情 / 棋盘 / 会话 /
-卡组 / 图片）一律新建。不修改目标项目的 manifest。
+**0.4 起预设已清空**：旧预设「铁砧堡」（anvil_castle）按旧剧本格式打包，
+与 0.4 不兼容，已删除。`PRESETS: &[PresetDef] = &[]`；IPC（`list_presets` /
+`add_preset`）与「添加预设…」弹窗骨架保留，列表为空时显示「没有可用预设」，
+新建项目不再询问是否添加示例内容。新增预设只需把 0.4 格式的 `.anvilpack`
+放进 `assets/presets/` 并在 `PRESETS` 中登记一行。
 
-预设注册表定义在 `src-tauri/src/core/store/preset.rs`，`PRESETS` 常量列出所有可用预设（id / label / description）。新增预设只需把 `.anvilpack` 放进 `assets/presets/` 并在 `PRESETS` 中登记一行。`anvil_castle`（铁砧堡）是首个预设，内容：6 个类型 / 30 张卡 / 5 个关系类型 + 22 条关系 / 3 个卡组 / 1 个剧情「失踪的学徒」+ 5 个场景完整剧本 / 2 个棋盘 / 1 个会话 / 4 张 SVG 背景图。覆盖 5 种卡框风格、闪卡、卡背、卡盒、翻牌、剧本结构化编辑器、音频选择器。
-
-导入顺序：类型 → 关系 → 剧情 → 卡组 → 棋盘 → 会话 → 图片。棋盘 token 的 pile（卡盒）里 `group_id` 映射到新建卡组 id，`remaining`/`initial` 里的卡 id 映射到新建卡 id，`total` 重算；会话的 `board_id` 按映射指向新导入的棋盘（映射失败则置空）。
+预设导入仍走「追加副本」语义：内容实体全部重新生成 UUID；与现有项目
+同名的实体加 `(2)` / `(3)`；卡类型与关系类型按**名字**复用；剧情整目录
+复制。不修改目标项目的 manifest。导入前同样检查 0.4 门禁。
 
 ---
 
@@ -1333,7 +1366,11 @@ world.anvilpack (zip)
 
 **0.2.0 已发布**（2026-10-09）。
 
-**0.3.0 开发中** —— 音频播放器 + 音乐模块、无边框标题栏、LeftNav 可拖拽排序、TopBar 极简化、设置面板重构、剧情模块改造（内联逻辑剧本）、卡框渲染分层、资源管理搜索、卡组卡片视图、卡组多份引用 + 按类型生成。
+**0.3.0 已发布**（2026-10-13）—— 音频播放器 + 音乐模块、无边框标题栏、LeftNav 可拖拽排序、TopBar 极简化、设置面板重构、剧情模块改造（内联逻辑剧本）、银箔闪卡、卡框渲染分层、资源管理搜索、卡组卡片视图、多预设 / 添加预设、闪卡与卡背风格注册表化。
+
+**Unreleased 开发中** —— 剧情边彻底删除、剧本语言扩展到 10 种行类型、CodeMirror 6 源码编辑器、卡牌附属文档、卡组多份引用 + 按类型生成、出框功能删除。
+
+**0.4.0（未发布，开发中）** —— **剧本格式破坏性重写（schema 0.4，硬门禁不迁移）**：剧本从场景卡分支图改为 weave 多文件 + knot 语法（16 种行类型，支持 `@scene/@actor` 卡引用解析）、两态机运行时（条件求值 + 赋值 + `visited_` 内置变量 + 循环保护）、`scenarios/<id>/` 一剧情一目录多文件、schema 0.4 打开 / 资源包 / 预设三重门禁、三栏剧情编辑器（文件树 + knot 大纲 / 结构·源码 / 检查器）、剧本内 FTS 搜索、导出 knot 化（MD 按可达顺序编号 / HTML 内嵌两态机）、引入 vitest 前端测试、内置预设清空。
 
 ---
 
@@ -1342,23 +1379,24 @@ world.anvilpack (zip)
 **P2（提升与优化）**
 
 - [ ] 时间线视图
-- [ ] 导入合并的 schema 版本迁移
 - [ ] 图片缩略图
 - [ ] 命令面板性能
 - [ ] 文件监听（notify）
 - [ ] 卡组同步到棋盘（只补不删）
 - [ ] 位置单元（Cell）—— 命名位置 + 吸附布局
-- [ ] 闪卡扩展（全息彩虹等）
-- [ ] 第二种卡背风格
 - [ ] 资源包合并支持音频
+- [ ] `@scene` / `@actor` 运行时联动（卡立绘 / 场景背景自动应用）
 
 **技术债（顺手改）**
 
 - [ ] 内联样式 → 组件（`SectionLabel` / `EmptyState` / `Toggle`）长尾替换
 - [ ] `useEffect` 依赖数组隐患逐个核实
-- [ ] 单元测试（从 `lib/dice.ts` 和 `script/parser.ts` 开始）
 - [ ] CI 增强（加 `cargo check` + `cargo fmt --check` + `prettier --check`）
 - [ ] `index.css` 里 `.graph-handle` 残留样式清理
+
+**已完成**
+
+- [x] 单元测试（`script/parser.ts` 5 例、`play/runtime.ts` 7 例、Rust store 9 例）
 
 **P3（长期）**
 

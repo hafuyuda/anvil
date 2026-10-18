@@ -2,7 +2,7 @@
 
 > 铁砧。一个以卡牌为核心的世界观创作与跑团工具。
 
-Anvil 把世界观搭建、分支故事、棋盘推演、跑团记录统一在同一份数据之上。世界观里的 NPC、剧情节点、棋盘上的角色，都是同一张卡。你不需要在多个软件之间来回搬运设定。
+Anvil 把世界观搭建、分支故事、棋盘推演、跑团记录统一在同一份数据之上。世界观里的 NPC、剧情里的角色、棋盘上的棋子，都是同一张卡。你不需要在多个软件之间来回搬运设定。
 
 **一切内容实体皆卡牌。四大功能是同一份数据的不同视图。**
 
@@ -12,8 +12,8 @@ Anvil 把世界观搭建、分支故事、棋盘推演、跑团记录统一在�
 
 - **卡牌核心** — 自定义卡牌类型与字段，从文本、数字到图片、引用、枚举，字段只增不减，旧数据永不丢失。支持类型复制。
 - **关系系统** — 卡与卡之间的边是一等公民，独立于卡片字段。关系面板显示方向与反向名，鼠标悬停查看对方卡片预览。
-- **分支故事** — 场景卡 + 内联逻辑剧本。分支（`->`）、条件（`{}`）、变量（`~`）都写在剧本里，一键全屏试玩。
-- **视觉小说** — 结构化剧本编辑器（行卡片 + 拖拽排序 + 源码模式）、打字机对白、立绘表情、背景切换、结局标记、背景音乐和音效播放。导出 Markdown 剧本和单文件 HTML 阅读器。
+- **分支故事** — weave 剧本语言：剧本按 knot（`===` 段落）组织，可拆多文件。跳转（`->`）、选项（`*`）、条件（`{}`）、变量（`VAR` / `~`）全部内联在剧本里。
+- **视觉小说** — 三栏剧本编辑器（文件树 + knot 大纲 / 结构·源码双模式 / 检查器）、打字机对白、立绘表情、背景切换、结局标记、背景音乐和音效播放。一键全屏试玩，导出 Markdown 剧本和单文件 HTML 阅读器。
 - **棋盘推演** — HTML 层渲染，支持拖拽、缩放、旋转、背景图、网格形状切换（方格 / 点阵 / 横线 / 竖线）、卡盒抽牌、翻牌、占位 Token、世界观关系线叠加。Token 用同一套卡框渲染。
 - **跑团对话** — 舞台 + 对话流 + 角色面板。消息写入 JSONL，可回放、可编辑、可删除。会话内支持卡盒抽牌。
 - **音乐播放** — 全局音频播放器，右下角迷你播放器常驻，跨模块、跨设置持续播放。独立「音乐」模块管理项目音频。
@@ -25,16 +25,16 @@ Anvil 把世界观搭建、分支故事、棋盘推演、跑团记录统一在�
 - **命令面板** — `Ctrl+K` 打开，所有操作可搜可执行。`Ctrl+M` 快速切到音乐模块。
 - **无边框标题栏** — 窗口按钮与 Anvil 配色统一，支持 Windows 11 Snap Layout。
 - **撤销 / 重做 / 自动保存** — 覆盖单卡编辑、删除、批量操作、卡盒抽牌。撤销 / 重做状态显示在底栏。
-- **内置示例世界** — 开箱即用的「铁砧堡」演示项目，覆盖全部功能。
 
 ---
 
 ## 截图
 
-![alt text](docs/start-menu.png)
+![alt text](docs/screenshot-start-menu.png)
 
 ```text
 docs/
+├── screenshot-start-menu.png
 ├── screenshot-card-wall.png
 ├── screenshot-story.png
 ├── screenshot-board.png
@@ -51,11 +51,11 @@ docs/
 | 后端       | Rust                                                      |
 | 持久化     | 文本文件（JSON / JSONL）+ SQLite 索引（rusqlite bundled） |
 | 全文检索   | SQLite FTS5（trigram）                                    |
-| 表达式求值 | evalexpr                                                  |
 | 资源包     | zip + walkdir                                             |
 | 无边框窗口 | tauri-plugin-frame                                        |
 | 文件对话框 | tauri-plugin-dialog                                       |
 | 前端       | React + TypeScript + Vite                                 |
+| 前端测试   | vitest                                                    |
 | 状态       | Zustand                                                   |
 | 拖拽排序   | @dnd-kit                                                  |
 | 包管理器   | pnpm                                                      |
@@ -105,13 +105,10 @@ pnpm tauri build
 ```text
 anvil/
 ├── src-tauri/
-│   ├── assets/
-│   │   └── presets/
-│   │       └── anvil_castle.anvilpack  # 内置预设（编译嵌入）
 │   └── src/
 │       ├── core/
 │       │   ├── model/          # Card / CardType / Relation / Scenario / Board / Session / CardGroup
-│       │   ├── store/          # 文本文件读写 + 索引 + 资源包 + 预设导入
+│       │   ├── store/          # 文本文件读写 + 索引 + 资源包 + 预设
 │       │   ├── index/          # SQLite 索引 + FTS
 │       │   └── ipc/            # Tauri 命令（按领域拆分）
 │       └── lib.rs
@@ -121,22 +118,13 @@ anvil/
 │   │   ├── applyProjectTheme.ts
 │   │   └── openProjectAt.ts
 │   ├── lib/                # 通用工具（模块级单例 + 纯函数）
-│   │   ├── id.ts · time.ts · theme.ts · fontScale.ts · lookup.ts
-│   │   ├── assetCache.ts · audioPlayer.ts · moduleOrder.ts
-│   │   ├── toast.ts · confirm.ts · runWithError.ts · saveRegistry.ts
-│   │   ├── dice.ts · appSettings.ts · commands.ts
-│   │   └── recentProjects.ts
 │   ├── hooks/              # 通用 hook（useDraft / useKeyboard / useAppSettings / ...）
 │   ├── components/
-│   │   ├── CardFrame/      # 卡牌渲染（分层：primitives + styles）
-│   │   ├── CardGrid/       # 卡片网格（共享布局）
-│   │   ├── Modal.tsx · Toolbar.tsx · PickerDialog.tsx
-│   │   ├── ToastHost.tsx · ConfirmHost.tsx · CommandPalette.tsx
-│   │   ├── HoverPreview.tsx · AudioSelect.tsx · ImageField.tsx · RefField.tsx
-│   │   ├── SectionLabel.tsx · EmptyState.tsx · LabeledBlock.tsx
-│   │   ├── Toggle.tsx · SaveInput.tsx · TypeMultiSelect.tsx
-│   │   ├── EntityListLayout.tsx · ScaledCardFrame.tsx · FieldInput.tsx
-│   │   └── ...
+│   │   ├── ui/             # 纯 UI 原子（Modal / Toggle / SectionLabel / EmptyState / Toolbar / SaveInput / LabeledBlock）
+│   │   ├── card/           # 卡牌领域（CardFrame / CardGrid / HoverPreview / ScaledCardFrame）
+│   │   ├── field/          # 字段编辑（FieldInput / ImageField / RefField / AudioSelect / TypeMultiSelect）
+│   │   ├── overlay/        # 顶层浮层（ToastHost / ConfirmHost / CommandPalette / PickerDialog）
+│   │   └── layout/         # 通用布局（EntityListLayout）
 │   ├── shell/              # 五段布局
 │   ├── themes/             # 内置主题定义
 │   ├── features/
@@ -146,19 +134,22 @@ anvil/
 │   │   │   ├── card-type/  # 卡牌类型、字段、卡框配置
 │   │   │   └── relation/   # 关系类型与关系表单
 │   │   ├── card-groups/    # 卡组
+│   │   │   └── views/      # 卡片 / 列表视图
 │   │   ├── story/
-│   │   │   ├── scenario/   # 剧情设计（场景 tab、导出）
+│   │   │   ├── scenario/   # 剧情设计 + 导出
 │   │   │   │   └── inspector/  # 检查器内容
-│   │   │   ├── play/       # 视觉小说运行 + 音频
-│   │   │   ├── script/     # 剧本解析、编辑、序列化
-│   │   │   └── effects.ts  # 共享条件与效果
+│   │   │   ├── play/       # 两态机运行时 + 视觉小说舞台
+│   │   │   └── script/     # weave 剧本语言（parser / serializer / eval / 测试）
 │   │   ├── board/          # 棋盘
+│   │   │   └── grid/       # 网格渲染与形状
 │   │   ├── session/
 │   │   │   ├── chat/       # 对话流、掷骰、消息编辑
 │   │   │   └── ...         # 会话容器、角色面板、事件日志
 │   │   ├── player/         # 音乐模块（PlayerView + PlayerInspector + MiniPlayer）
 │   │   ├── project/        # 项目设置内容（主题 / 资源 / 统计）+ 资源包合并
+│   │   │   └── theme/      # 主题编辑面板
 │   │   ├── settings/       # 设置浮层（分类面板）
+│   │   │   └── categories/ # 分类注册表与 impl
 │   │   └── commands/       # 全局命令注册
 │   └── stores/             # Zustand（slice 模式）
 └── package.json
@@ -193,7 +184,7 @@ Anvil 项目是一个文件夹，**文本文件是唯一真相源**：
 
 ```text
 MyWorld.anvil/
-├── manifest.json               # 项目元数据
+├── manifest.json               # 项目元数据（schema_version）
 ├── themes/<uuid>.json          # 项目主题
 ├── types/
 │   ├── card_types.json
@@ -201,12 +192,14 @@ MyWorld.anvil/
 ├── cards/ab/<uuid>.json        # 一卡一文件
 ├── relations/from/<uuid>.jsonl # 一行一边
 ├── boards/<uuid>.json
-├── scenarios/<uuid>.json
+├── scenarios/<uuid>/           # 一剧情一目录
+│   ├── scenario.json           # 剧情元数据
+│   └── main.md                 # 剧本（weave 语法，可多文件）
 ├── card_groups/<uuid>.json
 ├── sessions/<uuid>/
 │   ├── session.json
 │   └── events.jsonl
-├── scripts/<uuid>.md           # 场景剧本（Markdown）
+├── docs/<uuid>.md              # 卡牌附属文档（Markdown）
 ├── assets/
 │   ├── images/<文件名>.<ext>
 │   └── audio/<文件名>.<ext>
@@ -217,7 +210,7 @@ MyWorld.anvil/
 
 **目录创建时机**：
 
-- 打开 / 创建项目时：`cards / types / relations/from / boards / scenarios / sessions / scripts / card_groups / .anvil`
+- 打开 / 创建项目时：`cards / types / relations/from / boards / scenarios / sessions / docs / card_groups / .anvil`
 - 首次保存主题时：`themes/`
 - 首次导入资源时：`assets/images/` 或 `assets/audio/`
 
@@ -228,7 +221,7 @@ MyWorld.anvil/
 1. **数据 > 视图。** 先想清楚数据模型，再想 UI。
 2. **文本真相源 > 二进制锁定。** 项目可用 git 管理，SQLite 只是索引。
 3. **边界清晰 > 功能快。** `features/cards/` 是共享核心，任何功能不得绕过它私建卡模型。
-4. **格式稳定 > 内部优雅。** 资源包一旦发布，破坏性修改要有迁移路径。
+4. **格式稳定 > 内部优雅。** 资源包一旦发布，破坏性修改要么提供迁移路径，要么硬切版本门禁（schema 0.4 剧本格式重写选择了后者：旧项目 / 旧包直接报错，不迁移）。
 5. **本地优先。** 不引入网络依赖就能完整工作。
 6. **颜色走 CSS 变量。** 为主题系统留路。
 
@@ -279,12 +272,13 @@ MyWorld.anvil/
 - [d3-force](https://github.com/d3/d3-force)
 - [Zustand](https://github.com/pmndrs/zustand)
 - [@dnd-kit](https://dndkit.com/)
-- [evalexpr](https://github.com/ISibboI/evalexpr)
 
 ---
 
 ## 状态
 
-**早期开发中。** 核心功能已可用，但 API 和数据格式仍可能变化。欢迎试用和反馈。
+**早期开发中，经常出现破坏性更新。** 核心功能已可用，但 API 和数据格式仍可能变化。欢迎试用和反馈。
 
-当前版本 `0.2.0`（2026-10-09）。下一版本 `0.3.0` 正在开发，主要变化：音频播放器 + 音乐模块、无边框标题栏、LeftNav 可拖拽排序、TopBar 极简化、设置面板重构、剧情模块改造（内联逻辑剧本）、银箔闪卡、卡框渲染分层、资源管理搜索、卡组卡片视图、卡组多份引用 + 按类型生成。
+当前版本 `0.3.0`（2026-10-13），包含音频播放器 + 音乐模块、无边框标题栏、LeftNav 可拖拽排序、TopBar 极简化、设置面板重构、剧情模块改造（内联逻辑剧本）、银箔闪卡、卡框渲染分层、资源管理搜索、卡组卡片视图、多预设 / 添加预设、闪卡与卡背风格注册表化。
+
+`0.4.0` 开发中，**剧本格式破坏性重写（schema 0.4，硬门禁不迁移，旧项目 / 旧资源包直接报错，请新建项目）**：weave 剧本语言（knot + 16 种行类型 + `@scene/@actor` 卡引用）、`scenarios/<id>/` 一剧情一目录多文件、两态机运行时、三栏剧情编辑器（文件树 + knot 大纲 / 结构·源码 / 检查器）、剧本内搜索、导出 knot 化、内置预设清空（「铁砧堡」按旧格式打包，已移除）。

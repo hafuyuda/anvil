@@ -40,11 +40,14 @@ pnpm tauri dev
 # TS 无报错
 pnpm tsc --noEmit
 
+# 前端测试通过
+pnpm test
+
 # Rust 无报错
 cd src-tauri && cargo check
 ```
 
-两个都通过，就可以开始开发了。
+三个都通过，就可以开始开发了。
 
 ---
 
@@ -67,7 +70,7 @@ git checkout -b fix/your-bugfix
 ### 3. 写代码
 
 - 改完跑 `pnpm tauri dev`，手动验证功能
-- 跑 `pnpm tsc --noEmit` 和 `cd src-tauri && cargo check`
+- 跑 `pnpm tsc --noEmit`、`pnpm test` 和 `cd src-tauri && cargo check`
 - 尽量小步提交
 
 ### 4. 提交
@@ -130,14 +133,13 @@ src-tauri/src/
 │   │   ├── cards.rs
 │   │   ├── card_groups.rs
 │   │   ├── docs.rs         # 卡牌附属文档（docs/<card_id>.md）
-│   │   ├── export_html.rs
+│   │   ├── export_html.rs  # HTML 导出（内嵌两态机阅读器）
 │   │   ├── manifest.rs
 │   │   ├── pack.rs
-│   │   ├── project.rs
+│   │   ├── project.rs      # 打开 / schema 0.4 版本门禁 / 索引判断
 │   │   ├── relations.rs
-│   │   ├── scenarios.rs
-│   │   ├── scripts.rs
-│   │   ├── preset.rs       # 内置预设注册表 + 非空项目追加导入
+│   │   ├── scenarios.rs    # 剧情元数据 + 剧本文件（scenarios/<id>/*.md）
+│   │   ├── preset.rs       # 内置预设注册表（0.4 起为空）+ 非空项目追加导入
 │   │   ├── sessions.rs
 │   │   └── theme.rs
 │   ├── index/          # SQLite 索引 + FTS
@@ -175,22 +177,26 @@ src/
 │   ├── cards/          # ★ 共享核心
 │   │   ├── card/ · card-type/ · card-wall/ · relation/
 │   ├── card-groups/
+│   │   └── views/      # 卡片 / 列表视图
 │   ├── story/
 │   │   ├── scenario/   # 剧情设计 + 导出
 │   │   │   └── inspector/   # 检查器内容
-│   │   ├── play/
+│   │   ├── play/       # 两态机运行时（runtime.ts）+ VN 舞台
 │   │   │   ├── vn/     # VNStage 系列
 │   │   │   └── panels/ # 变量面板
-│   │   ├── script/
-│   │   │   ├── structured/  # 结构编辑
-│   │   │   └── source/      # 源码 + 预览
-│   │   └── effects.ts
+│   │   └── script/     # weave 剧本语言（parser / serializer / eval）
+│   │       ├── __tests__/    # vitest 测试
+│   │       ├── structured/  # 结构编辑
+│   │       └── source/      # 源码 + 预览（CodeMirror）
 │   ├── board/
+│   │   └── grid/       # 网格渲染与形状
 │   ├── session/
 │   │   └── chat/
 │   ├── player/         # 音乐模块
 │   ├── project/        # 项目设置内容 + 资源包合并 + 主题子目录
+│   │   └── theme/
 │   ├── settings/       # 设置浮层 + 分类面板
+│   │   └── categories/
 │   └── commands/       # useGlobalCommands.ts
 └── stores/
     ├── projectStore.ts · uiStore.ts
@@ -207,10 +213,10 @@ src/
 - **feature 顶层不放散文件**，要么是容器组件，要么是子目录。
 - **子目录内不放转发文件**。
 - **`components/` 放跨 feature 通用组件**。若某组件只被一个 feature 用，它应该在那个 feature 里。
-- **`components/CardFrame/` 分三层**：
+- **`components/card/CardFrame/` 分三层**：
   - `index.tsx` / `types.ts` / `mapping.ts` — 分派、类型、数据映射
   - `primitives/` — 基础构件（Shell / Inner / Image / Back / Foil）
-  - `styles/` — 五种风格实现
+  - `styles/` — 六种风格实现
 - **`features/` 之间不互相引用内部文件**。需要共享，提升到 `components/` 或 `lib/`。
   - 已知例外：`session/SessionEditor` 引 `board/BoardCanvas`。
 - **新增文件时先问：半年后的自己打开这个目录，能否一眼猜到它在这里。**
@@ -250,13 +256,13 @@ src/
 
 ### 数据层
 
-1. **卡牌是唯一内容实体。** 世界观 NPC、剧情节点、棋盘角色都是同一张卡。Board / Scenario / Session 是容器。CardGroup 是辅助索引，CardPile 是 Token 的变体。
+1. **卡牌是唯一内容实体。** 世界观 NPC、剧情里的角色、棋盘角色都是同一张卡。Board / Scenario / Session 是容器。CardGroup 是辅助索引，CardPile 是 Token 的变体。
 
-2. **关系是一等公民。** 卡与卡之间的边独立存储，与卡片字段分离。关系边只表达世界观连接；剧情的分支 / 条件 / 变量内联在剧本语言（`->` / `{}` / `~`）里，不写入 Relation.meta。
+2. **关系是一等公民。** 卡与卡之间的边独立存储，与卡片字段分离。关系边只表达世界观连接；剧情的跳转 / 选项 / 条件 / 变量内联在 weave 剧本（`->` / `*` / `{}` / `VAR` / `~`）里，不写入 Relation.meta。
 
 3. **文本真相源。** 项目是一个文件夹，文本文件（JSON / JSONL / Markdown）是唯一真相源。SQLite（`.anvil/index.db`）是可删除、可重建的索引。
 
-4. **字段只增不减。** `FieldDef` 删除时用 `deprecated = true`，不真删。新增 Rust 结构体字段用 `#[serde(default)]`，保证旧项目文件能读。CardFrameConfig 的 legacy 字段已在 0.3 迁移中删除，属于一次性的破坏性迁移，有 schema_version 保护
+4. **字段只增不减。** `FieldDef` 删除时用 `deprecated = true`，不真删。新增 Rust 结构体字段用 `#[serde(default)]`，保证旧项目文件能读。**例外是 schema 版本硬切**：0.4 剧本格式重写不做迁移，`Project::open` / 资源包 / 预设三重门禁直接拒绝旧版本。
 
 ### 前端架构
 
@@ -386,9 +392,9 @@ src/
 
 42. **Rust HTML / CSS / JS 嵌在 raw string 里时用 `r##"..."##`**（双 #），因为代码里会出现 `"#xxx`。
 
-43. **`include_bytes!` 是编译期嵌入。** `example_world.anvilpack` 改了必须重新编译。
+43. **`include_bytes!` 是编译期嵌入。** `assets/presets/*.anvilpack` 改了必须重新编译。（0.4 起预设已清空，重新登记预设时适用。）
 
-44. **`Project::open` 创建 10 个目录**：`cards / types / relations/from / boards / scenarios / sessions / scripts / docs / card_groups / .anvil`。`themes/` 和 `assets/images|audio/` 按需创建。
+44. **`Project::open` 创建 9 个目录**：`cards / types / relations/from / boards / scenarios / sessions / docs / card_groups / .anvil`。`themes/` 和 `assets/images|audio/` 按需创建。打开已有项目时检查 `manifest.json` 的 `schema_version`，不是 `0.4` 直接报错（硬门禁，不迁移）。
 
 45. **索引重建判断只看 `cards / types / relations` 的 mtime**，`PRAGMA user_version == 0` 也触发重建。
 
@@ -437,11 +443,13 @@ color: "var(--fg-muted)", fontSize: 12
 
 ### 单元测试
 
-项目当前**没有单元测试**。值得补的地方：
+前端用 vitest（`pnpm test`），Rust 用 `cargo test`。已有：
 
-- `lib/dice.ts` —— 骰子解析与求值
-- `story/script/parser.ts` + `serializer.ts` —— 剧本 parse ↔ serialize 往返
-- `story/effects.ts` —— 条件求值 + 效果
+- `story/script/__tests__/parser.test.ts` —— weave 解析 / 序列化往返、knot 索引、choice 组、行内条件
+- `story/play/__tests__/runtime.test.ts` —— 两态机推进 / 选项 / 跨文件跳转 / 循环保护
+- Rust `scenarios.rs` / `project.rs` —— 剧本文件读写 / 版本门禁
+
+改到这些模块时同步补测试；新增纯函数逻辑优先写成可测试的纯函数。
 
 ### CI 增强
 
@@ -465,8 +473,14 @@ pnpm tauri build
 # TS 类型检查
 pnpm tsc --noEmit
 
+# 前端测试
+pnpm test
+
 # Rust 检查
 cd src-tauri && cargo check
+
+# Rust 测试
+cd src-tauri && cargo test
 
 # Rust 格式化
 cd src-tauri && cargo fmt
@@ -479,30 +493,31 @@ pnpm prettier --write src/
 
 ## 测试
 
-目前项目**没有单元测试**，主要靠手动验证。CI 只跑类型检查。
+自动化测试：前端 `pnpm test`（vitest，parser / runtime），Rust `cd src-tauri && cargo test`（store / 门禁）。CI 另跑类型检查。
 
 提交 PR 前请手动验证：
 
-1. 新建项目 → 弹「添加示例内容？」→ 添加铁砧堡 → 数据完整；再打开非空项目 → 项目菜单「添加预设…」→ 选「铁砧堡」→ 内容追加且无 id 冲突、同名实体带 `(2)` 后缀
+1. 打开旧 schema 项目（可把 manifest.json 的 schema_version 改成 0.3）→ 应报「版本不受支持」；导入 / 添加 0.3 资源包同样报错
 2. 卡片墙 → 搜索、筛选、多选、批量操作、排序；卡编辑面板「文档」tab → 编辑 / 预览 / 自动保存 / 内容可被卡片墙搜索命中
 3. 类型 → 字段编辑、拖拽排序、卡框映射、闪卡触发（含风格切换）、裁剪、卡背、类型复制
 4. 关系 → 面板显示方向、反向名、悬浮预览
-5. 剧情 → 场景 tab、剧本（结构 + 源码双视图）、检查器（剧情设置 / 变量 / 节点）、`->` 跳转、`{}` 条件、`~` 赋值、`<>` 粘合、运行全屏、回退、循环保护、源码补全（说话人 / 场景 / 变量 / 资源路径）、大纲 tab 点击定位、顶栏跨场景搜索
-6. 剧情 → 导出 Markdown / HTML
-7. 棋盘 → 拖拽、缩放、旋转、背景、网格形状、卡盒抽牌、翻牌、占位、关系线、边界扩充、批量加卡
-8. 卡组 → 新建（空白 / 按类型生成）、加卡（含同一张卡多份）、按类型填充（追加 / 替换）、卡片/列表视图切换（× N 角标）、拖拽排序、导入棋盘、加卡盒
-9. 跑团 → 对话、掷骰、消息编辑、事件日志、会话内卡盒
-10. 音乐 → 导入、播放、暂停、进度、音量、循环、引用计数、删除警告
-11. MiniPlayer → 右下常驻、跨模块持续、切设置仍播放
-12. LeftNav → 拖拽排序、刷新持久化、非卡片墙收窄、悬停展开
-13. 无边框标题栏 → 窗口按钮、Snap Layout、TopBar 不遮挡
-14. 设置 → 常规 → 改字段 → 保存 → 重开生效
-15. 设置 → 外观 → 切换主题 → 主界面立即跟随；缩放滑块实时生效
-16. 设置 → 资源 → 图片导入 / 删除 / 搜索 / 扫描未引用 / 清理
-17. 设置 → 编辑器 → 自动保存延迟 / 最近项目上限 / 打字机（速度 / 开关 / 旁白）
-18. 设置 → 高级 → 统计刷新 / 重建索引 / 导出诊断信息 / 清除缓存 / 恢复默认设置（含模块排序）
-19. 设置 → Esc 关闭、遮罩点击关闭、↑↓ 切分类、搜索跳转
-20. 导出 → 导入 → 合并 → 导出 → 导入 → 合并（含 scripts/ 与 docs/）
+5. 剧情 → 新建剧情 → 左栏新建 / 删除剧本文件 → knot 大纲点击定位 → 结构 / 源码双视图 → `->` 跳转、`*` 选项、`-` 汇合、`{}` 条件、`~` 赋值、`VAR` 声明、`<>` 粘合、行内条件 → 运行全屏（选择 / 回退 / 循环保护 / 变量面板）→ 源码补全（说话人 / knot / 变量 / 资源路径）→ 顶栏搜索命中定位
+6. 剧情 → 检查器：描述、入口 knot 下拉、变量只读、当前 knot 的 @scene / @actor
+7. 剧情 → 导出 Markdown（knot 编号 / 汇合标注）/ 导出 HTML（选项 / 条件可交互）
+8. 棋盘 → 拖拽、缩放、旋转、背景、网格形状、卡盒抽牌、翻牌、占位、关系线、边界扩充、批量加卡
+9. 卡组 → 新建（空白 / 按类型生成）、加卡（含同一张卡多份）、按类型填充（追加 / 替换）、卡片/列表视图切换（× N 角标）、拖拽排序、导入棋盘、加卡盒
+10. 跑团 → 对话、掷骰、消息编辑、事件日志、会话内卡盒
+11. 音乐 → 导入、播放、暂停、进度、音量、循环、引用计数、删除警告
+12. MiniPlayer → 右下常驻、跨模块持续、切设置仍播放
+13. LeftNav → 拖拽排序、刷新持久化、非卡片墙收窄、悬停展开
+14. 无边框标题栏 → 窗口按钮、Snap Layout、TopBar 不遮挡
+15. 设置 → 常规 → 改字段 → 保存 → 重开生效
+16. 设置 → 外观 → 切换主题 → 主界面立即跟随；缩放滑块实时生效
+17. 设置 → 资源 → 图片导入 / 删除 / 搜索 / 扫描未引用 / 清理
+18. 设置 → 编辑器 → 自动保存延迟 / 最近项目上限 / 打字机（速度 / 开关 / 旁白）
+19. 设置 → 高级 → 统计刷新 / 重建索引 / 导出诊断信息 / 清除缓存 / 恢复默认设置（含模块排序）
+20. 设置 → Esc 关闭、遮罩点击关闭、↑↓ 切分类、搜索跳转
+21. 资源包 → 导出 → 导入 → 合并 → 再导出（含 scenarios/ 目录与 docs/）；项目菜单「添加预设…」→ 空列表显示「没有可用预设」
 
 如果你加了新功能，请在 PR 描述里说明验证步骤。
 
