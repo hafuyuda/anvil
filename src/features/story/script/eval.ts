@@ -80,6 +80,7 @@ function tokenize(src: string): Token[] {
 export function evalExpr(
   expr: string,
   values: Record<string, unknown>,
+  builtins?: Record<string, unknown>,
 ): unknown {
   const tokens = tokenize(expr);
   if (tokens.length === 0) throw new Error("空表达式");
@@ -169,7 +170,9 @@ export function evalExpr(
       pos++;
       if (t.v === "true") return true;
       if (t.v === "false") return false;
-      return values[t.v];
+      if (t.v in values) return values[t.v];
+      if (builtins && t.v in builtins) return builtins[t.v];
+      return undefined;
     }
     throw new Error(`意外的记号：${t.v}`);
   }
@@ -183,8 +186,9 @@ export function evalExpr(
 export function evalCondition(
   expr: string,
   values: Record<string, unknown>,
+  builtins?: Record<string, unknown>,
 ): boolean {
-  return truthy(evalExpr(expr, values));
+  return truthy(evalExpr(expr, values, builtins));
 }
 
 function truthy(v: unknown): boolean {

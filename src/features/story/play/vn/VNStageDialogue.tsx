@@ -16,7 +16,13 @@ export function VNStageDialogue({
     line.type === "sfx" ||
     line.type === "jump" ||
     line.type === "assign" ||
-    line.type === "glue"
+    line.type === "glue" ||
+    line.type === "knot" ||
+    line.type === "var" ||
+    line.type === "gather" ||
+    line.type === "scene_ref" ||
+    line.type === "actor_ref" ||
+    line.type === "choice"
   ) {
     return null;
   }

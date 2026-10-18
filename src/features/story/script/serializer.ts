@@ -1,7 +1,8 @@
 import type { ParsedScript, ScriptLine } from "./types";
 
 /**
- * 序列化为 Markdown 剧本（10 种行）。
+ * 序列化为 Markdown 剧本（weave 语法）。
+ * inline 字段不参与序列化（text 里已含原文）。
  */
 export function serializeScript(script: ParsedScript): string {
   const out: string[] = [];
@@ -31,6 +32,10 @@ export function serializeScript(script: ParsedScript): string {
 
 function serializeLine(line: ScriptLine): string {
   switch (line.type) {
+    case "knot":
+      return `=== ${line.name}`;
+    case "var":
+      return `VAR ${line.key} = ${line.literal}`;
     case "narration":
       return `> ${line.text}`;
     case "say": {
@@ -47,8 +52,16 @@ function serializeLine(line: ScriptLine): string {
       return `@bgm ${line.file}`;
     case "sfx":
       return `@sfx ${line.file}`;
+    case "scene_ref":
+      return `@scene ${line.cardName}`;
+    case "actor_ref":
+      return `@actor ${line.cardName}`;
     case "jump":
       return `-> ${line.target}`;
+    case "choice":
+      return `* ${line.label}`;
+    case "gather":
+      return line.text ? `- ${line.text}` : `-`;
     case "condition":
       return line.text ? `{${line.expr}: ${line.text}}` : `{${line.expr}}`;
     case "assign":

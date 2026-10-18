@@ -1,4 +1,11 @@
-export type { ParsedScript, ScriptFrontmatter, ScriptLine } from "./types";
+export type {
+  ParsedScript,
+  ScriptFrontmatter,
+  ScriptLine,
+  InlineCond,
+  ScriptKnot,
+  ChoiceGroup,
+} from "./types";
 
 export { EMPTY_SCRIPT } from "./types";
 

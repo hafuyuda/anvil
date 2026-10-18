@@ -58,11 +58,11 @@ export function ScriptStructuredEditor({
     for (const k of Object.keys(fm) as (keyof ScriptFrontmatter)[]) {
       if (fm[k] === undefined || fm[k] === null) delete fm[k];
     }
-    onChange(serializeScript({ frontmatter: fm, lines: parsed.lines }));
+    onChange(serializeScript({ ...parsed, frontmatter: fm }));
   }
 
   function updateLines(lines: ScriptLine[]) {
-    onChange(serializeScript({ frontmatter: parsed.frontmatter, lines }));
+    onChange(serializeScript({ ...parsed, lines }));
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -126,8 +126,14 @@ export function ScriptStructuredEditor({
       case "glue":
         newLine = { type: "glue" };
         break;
+      case "narration":
+        newLine = { type: "narration", text: "" };
+        break;
+      case "action":
+        newLine = { type: "action", text: "" };
+        break;
       default:
-        newLine = { type: current.type, text: "" };
+        newLine = { type: "narration", text: "" };
         break;
     }
     const lines = [
