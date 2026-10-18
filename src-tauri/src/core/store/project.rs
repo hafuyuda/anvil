@@ -18,12 +18,11 @@ impl Project {
         let manifest_path = root.join("manifest.json");
         if manifest_path.exists() {
             let bytes = std::fs::read(&manifest_path)?;
-            let version = match serde_json::from_slice::<crate::core::model::manifest::Manifest>(
-                &bytes,
-            ) {
-                Ok(m) => m.schema_version,
-                Err(_) => "<无法解析>".to_string(),
-            };
+            let version =
+                match serde_json::from_slice::<crate::core::model::manifest::Manifest>(&bytes) {
+                    Ok(m) => m.schema_version,
+                    Err(_) => "<无法解析>".to_string(),
+                };
             if version != crate::core::model::manifest::CURRENT_SCHEMA_VERSION {
                 return Err(anyhow::anyhow!(
                     "项目格式版本 {version} 不受支持。Anvil 0.4 起剧本格式为破坏性变更，不支持打开旧项目。请新建项目。"
@@ -55,10 +54,6 @@ impl Project {
 
         if let Err(e) = project.load_manifest() {
             eprintln!("warning: load manifest failed: {e}");
-        }
-
-        if let Err(e) = project.migrate_if_needed() {
-            eprintln!("warning: migration failed: {e}");
         }
 
         Ok(project)
@@ -138,45 +133,6 @@ impl Project {
         }
         false
     }
-
-    /// 数据迁移：把 card_types.json 里 card_frame 的 legacy 字段搬到 bindings。
-    /// 幂等：manifest 已是最新版本则跳过。
-    pub fn migrate_if_needed(&self) -> anyhow::Result<()> {
-        let mut manifest = match self.load_manifest() {
-            Ok(m) => m,
-            Err(_) => return Ok(()),
-        };
-
-        if manifest.schema_version == crate::core::model::manifest::CURRENT_SCHEMA_VERSION {
-            return Ok(());
-        }
-
-        let types_path = self.root.join("types").join("card_types.json");
-        if types_path.exists() {
-            let bytes = std::fs::read(&types_path)?;
-            let mut values: Vec<serde_json::Value> = serde_json::from_slice(&bytes)?;
-            let mut changed = false;
-            for v in values.iter_mut() {
-                if let Some(frame) = v.get_mut("card_frame") {
-                    if crate::core::model::card_type::migrate_card_frame_json(frame) {
-                        changed = true;
-                    }
-                }
-            }
-            if changed {
-                let types: Vec<CardType> = values
-                    .into_iter()
-                    .filter_map(|v| serde_json::from_value(v).ok())
-                    .collect();
-                self.save_card_types(&types)?;
-            }
-        }
-
-        manifest.schema_version = crate::core::model::manifest::CURRENT_SCHEMA_VERSION.into();
-        manifest.updated_at = crate::core::util::now_ms();
-        self.save_manifest(&manifest)?;
-        Ok(())
-    }
 }
 
 fn newest_mtime_recursive(dir: &std::path::Path) -> Option<std::time::SystemTime> {
@@ -229,7 +185,11 @@ mod tests {
             "created_at": 0,
             "updated_at": 0
         });
-        std::fs::write(dir.join("manifest.json"), serde_json::to_vec(&manifest).unwrap()).unwrap();
+        std::fs::write(
+            dir.join("manifest.json"),
+            serde_json::to_vec(&manifest).unwrap(),
+        )
+        .unwrap();
 
         let err = match Project::open(&dir) {
             Err(e) => e,
@@ -237,7 +197,10 @@ mod tests {
         };
         let msg = err.to_string();
         assert!(msg.contains("0.3"), "错误信息应包含旧版本号：{msg}");
-        assert!(msg.contains("不受支持"), "错误信息应说明版本不受支持：{msg}");
+        assert!(
+            msg.contains("不受支持"),
+            "错误信息应说明版本不受支持：{msg}"
+        );
 
         let _ = std::fs::remove_dir_all(&dir);
     }

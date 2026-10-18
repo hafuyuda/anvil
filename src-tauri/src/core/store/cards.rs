@@ -78,8 +78,6 @@ impl Project {
         self.remove_card_from_all_groups(id)?;
         // 同步清理文档
         self.delete_doc(id)?;
-        // 同步清理剧本
-        self.delete_script(id)?;
         Ok(())
     }
 
