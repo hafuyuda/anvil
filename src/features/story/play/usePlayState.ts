@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ipc, type Scenario } from "../../../core/ipc";
 import { toast } from "../../../lib/toast";
 import type { AppliedEffect } from "../effects";
 import { parseScript } from "../script/parser";
 import type { ParsedScript, ScriptLine } from "../script/types";
-import type { VariableDef } from "../../../core/ipc";
+import type { Card, VariableDef } from "../../../core/ipc";
 import {
   buildKnotIndex,
   chooseStep,
@@ -27,6 +27,8 @@ interface PlayModel {
   files: Map<string, ParsedScript>;
   knots: KnotIndex;
   variables: VariableDef[];
+  cards: Card[];
+  duplicates: string[];
   entry: { file: string; knot: string; pc: number } | null;
   entryError: string | null;
 }
@@ -41,6 +43,37 @@ export function usePlayState(scenario: Scenario) {
     rtRef.current = next;
     setRt(next);
   }
+
+  /**
+   * 说话人名 → 立绘资源路径（按表情）。约定：卡 values 的
+   * `portrait_<表情>` 为对应表情 image，无表情时回退 `portrait`。
+   * 纯映射，不碰 IO（资源 URL 由 PortraitLayer 异步加载）。
+   */
+  const portraitLookup = useMemo(() => {
+    const byName = new Map<string, Card>();
+    for (const c of model?.cards ?? []) byName.set(c.name, c);
+    return (speaker: string, emotion?: string | null): string | null => {
+      const card = byName.get(speaker);
+      if (!card) return null;
+      const vals = card.values ?? {};
+      const pick = (k: string): string | null => {
+        const v = vals[k];
+        return typeof v === "string" && v ? v : null;
+      };
+      if (emotion) {
+        const e = pick(`portrait_${emotion}`);
+        if (e) return e;
+      }
+      return pick("portrait");
+    };
+  }, [model?.cards]);
+
+  /** 当前场景卡（rt.sceneCard 按名解析为 Card），用于场景信息面板。 */
+  const currentSceneCard = useMemo(() => {
+    const name = rt?.sceneCard;
+    if (!name || !model) return null;
+    return model.cards.find((c) => c.name === name) ?? null;
+  }, [rt?.sceneCard, model]);
 
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [lastRolls, setLastRolls] = useState<LastRoll[]>([]);
@@ -62,10 +95,11 @@ export function usePlayState(scenario: Scenario) {
           }
         }
 
-        const { knots } = buildKnotIndex(files);
+        const { knots, duplicates } = buildKnotIndex(files);
         const variables = varsToVariables(
           [...files.values()].flatMap((f) => f.vars),
         );
+        const cards = await ipc.listCards();
 
         // 入口 knot：显式 entry_knot 优先，否则文件名字典序第一个文件的第一个 knot
         let entry: PlayModel["entry"] = null;
@@ -94,7 +128,7 @@ export function usePlayState(scenario: Scenario) {
         }
 
         if (cancelled) return;
-        setModel({ files, knots, variables, entry, entryError });
+        setModel({ files, knots, variables, cards, duplicates, entry, entryError });
         setLoading(false);
       } catch (e) {
         if (cancelled) return;
@@ -143,6 +177,10 @@ export function usePlayState(scenario: Scenario) {
         choiceBodyEnd: state.choiceBodyEnd,
         gatherPc: state.gatherPc,
         glue: state.glue,
+        displayLine: state.displayLine,
+        choices: state.choices,
+        portrait: state.portrait,
+        sceneCard: state.sceneCard,
       },
     ]);
   }
@@ -215,24 +253,15 @@ export function usePlayState(scenario: Scenario) {
     const cur = rtRef.current;
     const snap = history[history.length - 1];
     setHistory((h) => h.slice(0, -1));
-    if (!cur) {
-      updateRt({
-        ...snap,
-        displayLine: null,
-        choices: [],
-        bg: null,
-        bgm: null,
-        ended: false,
-      });
-      return;
-    }
-    // 回退：恢复快照，不重放副作用（bg / bgm 保持当前值）
+    // 回退：恢复快照中的显示行/选项/立绘/场景，bg/bgm 副作用保持当前值
     updateRt({
       ...snap,
-      displayLine: null,
-      choices: [],
-      bg: cur.bg,
-      bgm: cur.bgm,
+      displayLine: snap.displayLine,
+      choices: snap.choices,
+      portrait: snap.portrait,
+      sceneCard: snap.sceneCard,
+      bg: cur?.bg ?? null,
+      bgm: cur?.bgm ?? null,
       ended: false,
     });
   }, [history]);
@@ -299,6 +328,11 @@ export function usePlayState(scenario: Scenario) {
     ended: rt?.ended ?? false,
     isEnding: Boolean(currentFm.is_ending),
     endingName: currentFm.ending_name ?? null,
+    portrait: rt?.portrait ?? null,
+    portraitLookup,
+    cards: model?.cards ?? [],
+    currentSceneCard,
+    duplicates: model?.duplicates ?? [],
     // 编辑器侧大纲跳转用
     jumpToKnot: (knot: string) => {
       if (!model) return;
@@ -316,6 +350,7 @@ export function usePlayState(scenario: Scenario) {
         currentChoiceGroupStart: null,
         choices: [],
         displayLine: null,
+        portrait: null,
         ended: false,
       };
       pump(next);

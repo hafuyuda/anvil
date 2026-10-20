@@ -1,0 +1,100 @@
+{
+  "id": "session_night1",
+  "name": "第一夜：麦酒与龙息",
+  "board_id": "board_tavern",
+  "rule_set": "dnd5e",
+  "tracker": {
+    "round": 1,
+    "turn_index": 0,
+    "active": false,
+    "entries": [
+      {
+        "token_id": "tok_thorin",
+        "card_id": "card_thorin",
+        "name": "索林·铁须",
+        "value": 18,
+        "is_pc": true
+      },
+      {
+        "token_id": "tok_balin",
+        "card_id": "card_balin",
+        "name": "巴林",
+        "value": 15,
+        "is_pc": true
+      },
+      {
+        "token_id": "tok_bombur",
+        "card_id": "card_bombur",
+        "name": "邦伯",
+        "value": 9,
+        "is_pc": true
+      }
+    ]
+  },
+  "tokens": [
+    {
+      "id": "tok_thorin",
+      "card_id": "card_thorin",
+      "x": 300,
+      "y": 320
+    },
+    {
+      "id": "tok_balin",
+      "card_id": "card_balin",
+      "x": 560,
+      "y": 380
+    },
+    {
+      "id": "tok_bombur",
+      "card_id": "card_bombur",
+      "x": 720,
+      "y": 450
+    },
+    {
+      "id": "tok_enc1",
+      "card_id": null,
+      "x": 900,
+      "y": 200,
+      "w": 140,
+      "h": 205,
+      "name_override": "遭遇堆",
+      "pile": {
+        "group_id": "group_encounter",
+        "label": "遭遇堆",
+        "remaining": [
+          "card_smaug",
+          "card_bat",
+          "card_spider"
+        ],
+        "initial": [
+          "card_goblin",
+          "card_rat",
+          "card_smaug",
+          "card_bat",
+          "card_spider"
+        ],
+        "total": 5
+      }
+    },
+    {
+      "id": "tok_d1",
+      "card_id": "card_goblin",
+      "x": 1040,
+      "y": 200,
+      "w": 140,
+      "h": 205,
+      "face_down": false
+    },
+    {
+      "id": "tok_d2",
+      "card_id": "card_rat",
+      "x": 1040,
+      "y": 425,
+      "w": 140,
+      "h": 205,
+      "face_down": true
+    }
+  ],
+  "created_at": 1700000000000,
+  "updated_at": 1700000000000
+}

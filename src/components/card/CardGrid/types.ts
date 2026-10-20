@@ -21,7 +21,10 @@ export interface GridCardProps {
   /** 转发给外层容器（供 @dnd-kit 的 setNodeRef 用） */
   wrapperRef?: React.Ref<HTMLDivElement>;
   /** 转发给外层容器（供 @dnd-kit 的 attributes/listeners 用） */
-  wrapperProps?: React.HTMLAttributes<HTMLDivElement>;
+  wrapperProps?: React.HTMLAttributes<HTMLDivElement> &
+    // React 的 HTMLAttributes 没有给 data-* 开索引签名，而调用方经常要挂
+    // data-card-id 之类供测试 / FLIP 定位用，这里显式放开
+    Record<`data-${string}`, string | undefined>;
   /** 覆盖外层容器样式（transform / opacity 等） */
   style?: React.CSSProperties;
 }

@@ -1,0 +1,11 @@
+{
+  "id": "card_mine",
+  "type_id": "type_scene",
+  "name": "深岩矿坑",
+  "values": {
+    "background": "mine_bg.png",
+    "desc": "金子失踪的地方，黑暗里回荡着哥布林的脚步。"
+  },
+  "created_at": 1700000000000,
+  "updated_at": 1700000000000
+}

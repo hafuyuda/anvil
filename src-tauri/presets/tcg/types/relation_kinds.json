@@ -1,0 +1,19 @@
+[
+  {
+    "id": "rel_evolve",
+    "name": "进化",
+    "directed": true,
+    "inverse_name": "退化",
+    "color": "#8e44ad",
+    "created_at": 1700000000000,
+    "updated_at": 1700000000000
+  },
+  {
+    "id": "rel_counter",
+    "name": "克制",
+    "directed": true,
+    "color": "#c0392b",
+    "created_at": 1700000000000,
+    "updated_at": 1700000000000
+  }
+]

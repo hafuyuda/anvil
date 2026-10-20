@@ -1,0 +1,14 @@
+{
+  "id": "group_encounter",
+  "name": "遭遇堆",
+  "description": "矿道里可能撞见的东西，摸到什么算什么。",
+  "card_ids": [
+    "card_goblin",
+    "card_rat",
+    "card_smaug",
+    "card_bat",
+    "card_spider"
+  ],
+  "created_at": 1700000000000,
+  "updated_at": 1700000000000
+}

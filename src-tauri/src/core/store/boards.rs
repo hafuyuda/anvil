@@ -42,6 +42,8 @@ impl Project {
     }
 
     pub fn delete_board(&self, id: &str) -> anyhow::Result<()> {
+        // 先解绑以它为战场的会话，否则会话会指向一个不存在的棋盘
+        self.purge_board_refs(id)?;
         let path = self.board_path(id);
         if path.exists() {
             std::fs::remove_file(&path)?;

@@ -3,6 +3,7 @@ import { useProjectStore } from "../../stores/projectStore";
 import { useDeleteUndo } from "../../hooks/useDeleteUndo";
 import { nowMs } from "../../lib/time";
 import { newId, makeUndoId } from "../../lib/id";
+import { mergeEntity } from "../../lib/undoMerge";
 import { gridPosition, shuffle } from "./tokenPlacement";
 import { toast } from "../../lib/toast";
 import { runWithError } from "../../lib/runWithError";
@@ -75,6 +76,14 @@ export function useBoardActions({ board, upsertBoard, pushUndo }: Args) {
     upsertBoard(b);
   }
 
+  /**
+   * 撤销 / 重做时从 store 读当前棋盘。
+   * 不能信闭包里那份 —— 用户在删除之后又拖了下别的 Token，旧快照会把它吞掉。
+   */
+  function currentBoard(): Board | null {
+    return useProjectStore.getState().boards.find((b) => b.id === board.id) ?? null;
+  }
+
   async function savePatch(patch: Partial<Board>, undoLabel?: string) {
     const before = board;
     const after: Board = {
@@ -90,10 +99,13 @@ export function useBoardActions({ board, upsertBoard, pushUndo }: Args) {
           id: makeUndoId(),
           label: undoLabel,
           undo: async () => {
-            await persist(before);
+            // 棋盘被删了才整体写回 before，否则只回滚本次改过的字段
+            const cur = currentBoard();
+            await persist(cur ? mergeEntity(before, after, cur) : before);
           },
           redo: async () => {
-            await persist(after);
+            const cur = currentBoard();
+            await persist(cur ? mergeEntity(after, before, cur) : after);
           },
         });
       }
@@ -283,27 +295,27 @@ export function useBoardActions({ board, upsertBoard, pushUndo }: Args) {
 
   async function deleteSelectedTokens(ids: string[]) {
     if (ids.length === 0) return;
-    const removed = (board.tokens ?? []).filter((t) => ids.includes(t.id));
+    const before = board;
+    const after: Board = {
+      ...before,
+      tokens: (before.tokens ?? []).filter((t) => !ids.includes(t.id)),
+      updated_at: nowMs(),
+    };
 
     await deleteWithUndo({
       label: `删除 ${ids.length} 个 Token`,
       do: async () => {
-        const next: Board = {
-          ...board,
-          tokens: (board.tokens ?? []).filter((t) => !ids.includes(t.id)),
-          updated_at: nowMs(),
-        };
-        await ipc.upsertBoard(next);
-        upsertBoard(next);
+        await persist(after);
       },
       restore: async () => {
-        const next: Board = {
-          ...board,
-          tokens: [...(board.tokens ?? []), ...removed],
-          updated_at: nowMs(),
-        };
-        await ipc.upsertBoard(next);
-        upsertBoard(next);
+        // 按 id 合并回当前棋盘：删掉的 token 插回原索引，
+        // 用户在删除之后对别的 token 做的改动不受影响
+        const cur = currentBoard();
+        await persist(cur ? mergeEntity(before, after, cur) : before);
+      },
+      redo: async () => {
+        const cur = currentBoard();
+        await persist(cur ? mergeEntity(after, before, cur) : after);
       },
     });
   }

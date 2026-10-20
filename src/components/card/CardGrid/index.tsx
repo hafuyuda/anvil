@@ -90,6 +90,9 @@ export function GridCard({
     <div
       ref={wrapperRef}
       {...wrapperProps}
+      // 闪卡才挂倾斜标记：倾斜会盖掉本元素的 transform，
+      // 而 dnd-kit 的拖拽正是靠 wrapperProps 传 transform 的
+      data-tilt={foil === true ? "" : undefined}
       onClick={onClick}
       style={{
         position: "relative",

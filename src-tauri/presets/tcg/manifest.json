@@ -1,0 +1,9 @@
+{
+  "kind": "anvil-project",
+  "schema_version": "0.4",
+  "name": "元素对决",
+  "version": "0.1.0",
+  "description": "内置预设：卡牌游戏起点。",
+  "created_at": 1700000000000,
+  "updated_at": 1700000000000
+}

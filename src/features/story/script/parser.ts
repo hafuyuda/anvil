@@ -107,10 +107,10 @@ export function parseScript(source: string): ParsedScript {
     }
 
     // @bg / @bgm / @sfx / @scene / @actor
-    const at = line.match(/^@(bg|bgm|sfx|scene|actor)\s+(.+)$/);
+    const at = line.match(/^@(bg|bgm|sfx|scene|actor)(?:\s+(.*))?$/);
     if (at) {
       const kind = at[1];
-      const value = at[2].trim();
+      const value = (at[2] ?? "").trim();
       if (kind === "bg") {
         scriptLines.push({ type: "bg", image: value });
       } else if (kind === "bgm" || kind === "sfx") {
@@ -135,8 +135,10 @@ export function parseScript(source: string): ParsedScript {
     }
 
     // **speaker**（portrait）：text
+    // 允许空说话人（序列化退化形 `****：` / `****`）与省略冒号，保证
+    // 结构化编辑器往返时不把空 say 误判为旁白。
     const say = line.match(
-      /^\*\*([^*]+)\*\*(?:\s*[（(]([^）)]*)[）)])?\s*[:：]\s*(.*)$/,
+      /^\*\*([^*]*)\*\*(?:\s*[（(]([^）)]*)[）)])?\s*[:：]?\s*(.*)$/,
     );
     if (say) {
       const speaker = say[1].trim();
@@ -184,16 +186,22 @@ export function parseScript(source: string): ParsedScript {
       continue;
     }
 
-    // * 选项文本（* 后有空白）
-    const choice = line.match(/^\*\s+(.+)$/);
+    // * 选项文本（* 后有空白；允许空标签，避免空 choice 退化为旁白）
+    // 空选项序列化后为 `* `，经 trim 退化成裸 `*`——显式识别为空 choice。
+    if (line === "*") {
+      scriptLines.push({ type: "choice", label: "" });
+      i++;
+      continue;
+    }
+    const choice = line.match(/^\*\s+(.*)$/);
     if (choice) {
       scriptLines.push({ type: "choice", label: choice[1].trim() });
       i++;
       continue;
     }
 
-    // *action*（* 后无空白、行尾闭合）
-    const action = line.match(/^\*(.+)\*$/);
+    // *action*（* 后无空白、行尾闭合；允许空文本，避免空 action 退化为旁白）
+    const action = line.match(/^\*(.*)\*$/);
     if (action) {
       scriptLines.push(withInline({ type: "action", text: action[1].trim() }));
       i++;
@@ -208,8 +216,10 @@ export function parseScript(source: string): ParsedScript {
       continue;
     }
 
-    // 不认识的语法：当 narration 处理，不丢数据
-    scriptLines.push(withInline({ type: "narration", text: line }));
+    // 不认识的语法：当 narration 处理，不丢数据。
+    // 标记为 draft，使源码预览能把它显示成「草稿」而不是误导性的「旁白」，
+    // 与结构化编辑器（空行只是空输入、不会变成旁白）保持一致。
+    scriptLines.push(withInline({ type: "narration", text: line, draft: true }));
     i++;
   }
 

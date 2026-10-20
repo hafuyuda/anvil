@@ -22,6 +22,7 @@ import {
   setModuleOrder,
   subscribeModuleOrder,
 } from "../lib/moduleOrder";
+import { useReducedMotion } from "../hooks/useReducedMotion";
 
 interface ModuleMeta {
   label: string;
@@ -45,6 +46,9 @@ const NARROW = 48;
 export function LeftNav() {
   const [hovered, setHovered] = useState(false);
   const [dragging, setDragging] = useState(false);
+  // 侧栏宽度动画改动的是 width，属于会触发重排的属性；
+  // 用户要求减少动效时直接跳变，不做逐帧插值。
+  const reducedMotion = useReducedMotion();
 
   const order = useSyncExternalStore(
     subscribeModuleOrder,
@@ -86,7 +90,7 @@ export function LeftNav() {
       onMouseLeave={() => setHovered(false)}
       style={{
         width,
-        transition: "width 150ms ease",
+        transition: reducedMotion ? "none" : "width 150ms ease",
         borderRight: "1px solid var(--border-subtle)",
         background: "var(--bg-panel)",
         padding: 8,

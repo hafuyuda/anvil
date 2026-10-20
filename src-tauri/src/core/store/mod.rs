@@ -9,6 +9,7 @@ pub mod manifest;
 pub mod pack;
 pub mod preset;
 pub mod project;
+pub mod refs;
 pub mod relations;
 pub mod scenarios;
 pub mod sessions;

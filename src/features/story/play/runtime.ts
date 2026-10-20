@@ -20,9 +20,16 @@ export interface RuntimeState {
   bgm: string | null;
   glue: boolean;
   ended: boolean;
+  /** 当前说话人立绘：由 say 行推导（speaker + emotion）。跨行保持。 */
+  portrait: { speaker: string; emotion?: string } | null;
+  /** 当前场景卡名：由 @scene 行或 knot 的 scene 字段推导。跨行保持。 */
+  sceneCard: string | null;
 }
 
-/** 回溯快照：推进产生的中间值（displayLine / choices / bg / bgm / ended）不入栈。 */
+/**
+ * 回溯快照：bg / bgm / displayLine / choices / portrait / sceneCard / ended
+ * 等「显示态」也一并入栈，使 back() 能精确还原上一停点（而非清屏）。
+ */
 export interface HistoryEntry {
   file: string | null;
   knot: string | null;
@@ -33,6 +40,10 @@ export interface HistoryEntry {
   choiceBodyEnd: number | null;
   gatherPc: number | null;
   glue: boolean;
+  displayLine: ScriptLine | null;
+  choices: { label: string; index: number }[];
+  portrait: { speaker: string; emotion?: string } | null;
+  sceneCard: string | null;
 }
 
 export interface StepResult {
@@ -157,6 +168,8 @@ export function createInitialState(args: {
     bgm: args.bgm ?? null,
     glue: false,
     ended: false,
+    portrait: null,
+    sceneCard: null,
   };
 }
 
@@ -174,6 +187,7 @@ export function continueStep(
   let { values, visited, displayLine, glue } = state;
   let { currentChoiceGroupStart, choiceBodyEnd, gatherPc } = state;
   let { bg, bgm } = state;
+  let { portrait, sceneCard } = state;
   const sfx: string[] = [];
   const rolls: AppliedEffect[] = [];
 
@@ -193,6 +207,8 @@ export function continueStep(
     bgm,
     glue,
     ended: false,
+    portrait,
+    sceneCard,
     ...overrides,
   });
 
@@ -233,11 +249,15 @@ export function continueStep(
     }
 
     switch (line.type) {
-      case "knot":
+      case "knot": {
         visited = { ...visited, [line.name]: (visited[line.name] ?? 0) + 1 };
         knot = line.name;
+        // knot 自带 scene 字段时（@scene 写在 knot 顶部），作为当前场景卡
+        const knotScene = script.knots[line.name]?.scene ?? null;
+        if (knotScene) sceneCard = knotScene;
         pc++;
         break;
+      }
 
       case "var":
         pc++;
@@ -286,6 +306,10 @@ export function continueStep(
         break;
 
       case "scene_ref":
+        sceneCard = line.cardName;
+        pc++;
+        break;
+
       case "actor_ref":
         pc++;
         break;
@@ -359,8 +383,13 @@ export function continueStep(
 
       default: {
         const resolved = resolveInline(line, values, visited);
-        displayLine = mergeGlue(glue, displayLine, resolved);
+        const merged = mergeGlue(glue, displayLine, resolved);
+        displayLine = merged;
         glue = false;
+        // say 行携带说话人+表情，更新当前立绘（其他类型保持上一立绘）
+        if (merged.type === "say") {
+          portrait = { speaker: merged.speaker, emotion: merged.portrait };
+        }
         return {
           state: snap({ pc: pc + 1, displayLine, glue }),
           sfx,

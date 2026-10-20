@@ -27,9 +27,10 @@ pub struct PresetDef {
     pub bytes: &'static [u8],
 }
 
-/// 内置预设已清空（schema 0.4 破坏性变更，旧预设包不兼容）。
-/// IPC 与 UI 骨架保留，后续可在此重新登记预设。
-pub const PRESETS: &[PresetDef] = &[];
+// 内置预设由 `build.rs` 从 `src-tauri/presets/<id>/` 目录压缩生成，
+// 注册为 `PRESETS`（见 `OUT_DIR/preset_bundles.rs`）。
+// 这样预设以可版本化的 0.4 项目目录形式维护，无需手写二进制 ZIP。
+include!(concat!(env!("OUT_DIR"), "/preset_bundles.rs"));
 
 pub fn list_presets() -> Vec<PresetInfo> {
     PRESETS
@@ -540,4 +541,61 @@ fn extract_bytes_to_temp(bytes: &[u8], dest: &Path) -> anyhow::Result<()> {
         std::fs::write(&out, &buf)?;
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// 守卫：预设注册表为空时，下面的循环不会执行，测试会「平凡通过」。
+    /// 这里显式锁定数量与 id，防止 build.rs 打包失败后无人察觉。
+    #[test]
+    fn builtin_presets_are_registered() {
+        let ids: Vec<&str> = PRESETS.iter().map(|p| p.id).collect();
+        let mut sorted = ids.clone();
+        sorted.sort_unstable();
+        assert_eq!(sorted, vec!["tcg", "ttrpg", "vn", "world"], "内置预设清单变了，请同步更新文档与断言");
+        for def in PRESETS {
+            assert!(!def.label.is_empty(), "预设 {} 缺 label", def.id);
+            assert!(!def.description.is_empty(), "预设 {} 缺 description", def.id);
+            assert!(!def.bytes.is_empty(), "预设 {} 的 zip 字节为空", def.id);
+        }
+    }
+
+    #[test]
+    fn builtin_presets_import_cleanly() {
+        assert!(!PRESETS.is_empty(), "没有内置预设，导入测试无意义");
+        for def in PRESETS {
+            let dir = std::env::temp_dir().join(format!(
+                "anvil_preset_test_{}",
+                uuid::Uuid::new_v4()
+            ));
+            std::fs::create_dir_all(&dir).unwrap();
+            let project = Project::open(&dir).expect("临时项目应可打开");
+            let r = project
+                .add_preset(def.id)
+                .unwrap_or_else(|e| panic!("预设 {} 导入失败: {e}", def.id));
+
+            assert!(r.imported_types > 0, "预设 {} 未导入任何卡类型", def.id);
+            assert!(r.imported_cards > 0, "预设 {} 未导入任何卡", def.id);
+
+            match def.id {
+                "ttrpg" => {
+                    assert!(r.imported_boards > 0, "ttrpg 应有棋盘");
+                    assert!(r.imported_sessions > 0, "ttrpg 应有会话");
+                }
+                "vn" => {
+                    assert!(r.imported_scenarios > 0, "vn 应有剧情");
+                }
+                "tcg" => {
+                    assert!(r.imported_card_groups > 0, "tcg 应有卡组");
+                }
+                "world" => {
+                    assert!(r.imported_relations > 0, "world 应有关系");
+                }
+                _ => {}
+            }
+            let _ = std::fs::remove_dir_all(&dir);
+        }
+    }
 }

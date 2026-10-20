@@ -179,6 +179,35 @@
   --chat-whisper-text: var(--fg-primary);
   --chat-system-text: var(--fg-muted);
   --chat-system-line: var(--border-subtle);
+
+  /* 帷幕：秘密消息（KP 独享）。各主题在 themes/presets 下逐个给出具体色值 */
+  --chat-secret-bg: #2a1f14;
+  --chat-secret-border: var(--accent-copper);
+  --chat-secret-text: #d08a5a;
+  --chat-secret-input-bg: #241a12;
+
+  /* 帷幕：揭示副本（公开给玩家的那一条） */
+  --chat-reveal-border: var(--accent-gold);
+  --chat-reveal-text: var(--accent-gold);
+
+  /* 掷骰判定色调 */
+  --chat-roll-good: #8fbf6a;
+  --chat-roll-bad: #e05a3a;
+  --chat-roll-warn: var(--accent-gold);
+
+  /* 先攻条 */
+  --initiative-bg: var(--bg-panel);
+  --initiative-border: var(--border-subtle);
+  --initiative-current-bg: var(--accent-gold);
+  --initiative-current-text: #1a1612;
+  --initiative-pc-accent: var(--accent-steel);
+  --initiative-npc-accent: var(--accent-copper);
+
+  /* 角色状态面板 */
+  --hp-bar-bg: var(--bg-surface);
+  --hp-bar-fill: #7aa85a;
+  --hp-bar-low: var(--danger);
+  --hp-bar-warn: var(--accent-gold);
 }
 
 * {
@@ -368,6 +397,28 @@ h4 {
   }
 }
 
+@keyframes vn-portrait-left-in {
+  from {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes vn-portrait-right-in {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 /* 闪卡覆盖层：结构定位在 index.css，颜色与动画交给各风格 impl CSS。
    .foil-overlay 通过 border-radius: inherit 跟随卡片圆角。 */
 .foil-overlay {
@@ -393,6 +444,85 @@ h4 {
   position: absolute;
   inset: 0;
   border-radius: inherit;
+}
+
+/* 闪卡倾斜：useCardTilt 把归一化指针坐标写进 --tilt-x / --tilt-y，
+   这里负责旋转。变量缺省为 0，所以没被 hook 碰过的元素姿态不变。
+   只对 data-tilt（闪卡外层容器）生效 —— 卡背、棋盘 token 不挂，
+   它们尺寸小，倾斜只会让文字发虚。 */
+[data-tilt] {
+  transform: perspective(700px)
+    rotateX(calc(var(--tilt-y, 0) * -7deg))
+    rotateY(calc(var(--tilt-x, 0) * 7deg));
+  transition: transform 120ms ease-out;
+  will-change: transform;
+}
+
+/* 倾斜时闪卡边缘提亮，配合已有的 shine 动画 */
+[data-tilt]:hover .foil-overlay__edge {
+  opacity: 0.9;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-tilt] {
+    transform: none;
+    transition: none;
+    will-change: auto;
+  }
+}
+
+/* 模块切换：淡入 + 轻微上移。只动 opacity 与 transform，不触发重排。
+   时长压在 150ms 以内 —— 模块切换是高频操作，再长就会觉得「慢了」。
+   注意这里不做退场：退场要先等动画放完才能卸载，反而让切换显得迟钝。 */
+.module-enter {
+  animation: module-enter-fade 140ms ease-out;
+}
+
+@keyframes module-enter-fade {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* 统一收口：系统在「减少动效」时，把所有装饰性动画一次性关掉。
+   必须排在上面各条动画规则之后 —— 同优先级下后写的才生效。
+   JS 侧（useReducedMotion）管的是那些写在 inline style 里、
+   CSS 覆盖不到的过渡。 */
+@media (prefers-reduced-motion: reduce) {
+  .module-enter {
+    animation: none;
+  }
+}
+
+/* 跑团三栏分隔条（react-resizable-panels 的 PanelResizeHandle）。
+   默认透明、悬停/拖拽时金线高亮。不写 transition —— 分隔器是即时跟手的，
+   过渡只会让它显得滞后，也避免与 reduced-motion 原则冲突。 */
+.session-resize-handle:hover > div,
+.session-resize-handle.is-active > div {
+  background: var(--accent-gold);
+  opacity: 1;
+}
+.session-resize-handle:hover,
+.session-resize-handle.is-active {
+  background: color-mix(in srgb, var(--accent-gold) 18%, transparent);
+}
+
+/* 检查器宽度拖拽条：平时只有一道若隐若现的线，
+   悬停或拖拽时现金线 —— 与会话布局的分隔条同一套视觉语言。
+   刻意不加 transition：拖拽要的是跟手，加了过渡反而滞后。 */
+.inspector-resize-handle:hover > div,
+.inspector-resize-handle.is-active > div {
+  background: var(--accent-gold);
+  opacity: 1;
+}
+.inspector-resize-handle:hover,
+.inspector-resize-handle.is-active {
+  background: color-mix(in srgb, var(--accent-gold) 18%, transparent);
 }
 
 /* tauri-plugin-frame 注入的标题栏覆盖层：

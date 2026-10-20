@@ -128,6 +128,7 @@ export interface ProjectState {
   setCardWallView: (v: CardWallView) => void;
   setCardGroupView: (v: string) => void;
   setInspectorWidth: (w: number) => void;
+  setInspectorCollapsed: (v: boolean) => void;
   toggleInspector: () => void;
   toggleCardSelection: (id: string) => void;
   selectCardsRange: (

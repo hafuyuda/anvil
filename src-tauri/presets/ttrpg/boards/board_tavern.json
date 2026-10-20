@@ -1,0 +1,58 @@
+{
+  "id": "board_tavern",
+  "name": "铁炉酒馆地图",
+  "width": 1200,
+  "height": 800,
+  "background": "tavern_bg.png",
+  "show_relations": true,
+  "tokens": [
+    {
+      "id": "tok_thorin",
+      "card_id": "card_thorin",
+      "x": 320,
+      "y": 400
+    },
+    {
+      "id": "tok_balin",
+      "card_id": "card_balin",
+      "x": 520,
+      "y": 430
+    },
+    {
+      "id": "tok_bombur",
+      "card_id": "card_bombur",
+      "x": 720,
+      "y": 450
+    },
+    {
+      "id": "tok_encounter",
+      "card_id": null,
+      "x": 900,
+      "y": 200,
+      "w": 140,
+      "h": 205,
+      "name_override": "遭遇堆",
+      "pile": {
+        "group_id": "group_encounter",
+        "label": "遭遇堆",
+        "remaining": [
+          "card_goblin",
+          "card_rat",
+          "card_smaug",
+          "card_bat",
+          "card_spider"
+        ],
+        "initial": [
+          "card_goblin",
+          "card_rat",
+          "card_smaug",
+          "card_bat",
+          "card_spider"
+        ],
+        "total": 5
+      }
+    }
+  ],
+  "created_at": 1700000000000,
+  "updated_at": 1700000000000
+}

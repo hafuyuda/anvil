@@ -1,0 +1,11 @@
+{
+  "id": "card_person_thorin",
+  "type_id": "type_person",
+  "name": "索林",
+  "values": {
+    "title": "矮人王",
+    "desc": "带领氏族夺回矿镇的国王。"
+  },
+  "created_at": 1700000000000,
+  "updated_at": 1700000000000
+}

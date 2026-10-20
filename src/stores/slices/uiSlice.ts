@@ -1,5 +1,10 @@
 import type { StateCreator } from "zustand";
 import type { ProjectState } from "./types";
+import {
+  clampInspectorWidth,
+  getInspectorPrefs,
+  saveInspectorPrefs,
+} from "../../lib/inspectorPrefs";
 
 type Slice = Pick<
   ProjectState,
@@ -26,6 +31,7 @@ type Slice = Pick<
   | "setCardGroupView"
   | "setCardWallView"
   | "setInspectorWidth"
+  | "setInspectorCollapsed"
   | "toggleInspector"
   | "toggleCardSelection"
   | "selectCardsRange"
@@ -42,7 +48,12 @@ type Slice = Pick<
 
 export const createUISlice: StateCreator<ProjectState, [], [], Slice> = (
   set,
-) => ({
+  get,
+) => {
+  // 宽度与折叠状态跨会话保留
+  const prefs = getInspectorPrefs();
+
+  return {
   selectedCardId: null,
   selectedTokenId: null,
   selectedEdgeId: null,
@@ -52,8 +63,8 @@ export const createUISlice: StateCreator<ProjectState, [], [], Slice> = (
   activeModule: "world",
   cardWallView: "card",
   cardGroupView: "grid",
-  inspectorWidth: 320,
-  inspectorCollapsed: false,
+  inspectorWidth: prefs.width,
+  inspectorCollapsed: prefs.collapsed,
   selectedCardIds: [],
   selectedTokenIds: [],
   currentScenarioId: null,
@@ -103,11 +114,22 @@ export const createUISlice: StateCreator<ProjectState, [], [], Slice> = (
   setCardWallView: (cardWallView) => set({ cardWallView }),
   setCardGroupView: (cardGroupView) => set({ cardGroupView }),
 
-  setInspectorWidth: (w) =>
-    set({ inspectorWidth: Math.max(200, Math.min(700, w)) }),
+  setInspectorWidth: (w) => {
+    const clamped = clampInspectorWidth(w);
+    set({ inspectorWidth: clamped });
+    saveInspectorPrefs({ width: clamped });
+  },
 
-  toggleInspector: () =>
-    set((s) => ({ inspectorCollapsed: !s.inspectorCollapsed })),
+  setInspectorCollapsed: (v) => {
+    set({ inspectorCollapsed: v });
+    saveInspectorPrefs({ collapsed: v });
+  },
+
+  toggleInspector: () => {
+    const next = !get().inspectorCollapsed;
+    set({ inspectorCollapsed: next });
+    saveInspectorPrefs({ collapsed: next });
+  },
 
   toggleCardSelection: (id) =>
     set((s) => {
@@ -178,4 +200,5 @@ export const createUISlice: StateCreator<ProjectState, [], [], Slice> = (
   setCurrentScenario: (currentScenarioId) =>
     set({ currentScenarioId, currentSceneId: null }),
   setCurrentScene: (currentSceneId) => set({ currentSceneId }),
-});
+  };
+};

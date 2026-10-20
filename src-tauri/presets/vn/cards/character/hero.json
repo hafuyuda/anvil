@@ -1,0 +1,12 @@
+{
+  "id": "card_hero",
+  "type_id": "type_character",
+  "name": "人类勇者",
+  "values": {
+    "portrait": "hero.png",
+    "portrait_smile": "hero.png",
+    "bio": "年轻的冒险者，听说矮人缺金子就来了。"
+  },
+  "created_at": 1700000000000,
+  "updated_at": 1700000000000
+}

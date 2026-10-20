@@ -1,0 +1,11 @@
+{
+  "id": "card_lair",
+  "type_id": "type_place",
+  "name": "巨龙巢穴",
+  "values": {
+    "region": "山腹",
+    "desc": "斯毛格的客厅，温控极差但金子管够。"
+  },
+  "created_at": 1700000000000,
+  "updated_at": 1700000000000
+}

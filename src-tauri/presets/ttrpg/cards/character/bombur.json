@@ -1,0 +1,22 @@
+{
+  "id": "card_bombur",
+  "type_id": "type_character",
+  "name": "邦伯",
+  "values": {
+    "race": "矮人",
+    "job": "御厨",
+    "alignment": "中立善良",
+    "hp": 26,
+    "max_hp": 26,
+    "ac": 13,
+    "str": 14,
+    "dex": 8,
+    "con": 16,
+    "int": 10,
+    "wis": 11,
+    "cha": 13,
+    "bio": "全镇最圆的中坚。名言：「金子不会自己挖自己，所以才有了我们——但饭总得有人做。」"
+  },
+  "created_at": 1700000000000,
+  "updated_at": 1700000000000
+}

@@ -1,0 +1,11 @@
+{
+  "id": "card_ale",
+  "type_id": "type_item",
+  "name": "陈年麦酒",
+  "values": {
+    "category": "消耗品",
+    "desc": "矮人从不说「这不可能」，只说「这得加钱」——麦酒除外，免费的不好喝。"
+  },
+  "created_at": 1700000000000,
+  "updated_at": 1700000000000
+}

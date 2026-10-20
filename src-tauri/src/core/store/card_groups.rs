@@ -42,6 +42,8 @@ impl Project {
     }
 
     pub fn delete_card_group(&self, id: &str) -> anyhow::Result<()> {
+        // 先摘掉棋盘/会话上用它做的卡盒，否则卡盒会指向一个不存在的卡组
+        self.purge_card_group_refs(id)?;
         let path = self.card_group_path(id);
         if path.exists() {
             std::fs::remove_file(&path)?;
@@ -49,17 +51,19 @@ impl Project {
         Ok(())
     }
 
-    /// 从所有卡组中移除指定卡 ID。删除卡片时调用。
-    pub fn remove_card_from_all_groups(&self, card_id: &str) -> anyhow::Result<()> {
+    /// 从所有卡组中移除指定卡 ID。返回实际移除的成员数。
+    pub fn remove_card_from_all_groups(&self, card_id: &str) -> anyhow::Result<usize> {
         let groups = self.load_card_groups()?;
+        let mut n = 0;
         for mut g in groups {
             let before = g.card_ids.len();
             g.card_ids.retain(|id| id != card_id);
             if g.card_ids.len() != before {
                 g.updated_at = crate::core::util::now_ms();
                 self.save_card_group(&g)?;
+                n += before - g.card_ids.len();
             }
         }
-        Ok(())
+        Ok(n)
     }
 }

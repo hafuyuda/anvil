@@ -1,0 +1,111 @@
+[
+  {
+    "id": "type_concept",
+    "name": "概念",
+    "color": "#7f8c8d",
+    "created_at": 1700000000000,
+    "updated_at": 1700000000000,
+    "fields": [
+      {
+        "key": "desc",
+        "label": "描述",
+        "ty": {
+          "kind": "rich_text"
+        },
+        "order": 0
+      }
+    ]
+  },
+  {
+    "id": "type_faction",
+    "name": "阵营",
+    "color": "#8e44ad",
+    "created_at": 1700000000000,
+    "updated_at": 1700000000000,
+    "fields": [
+      {
+        "key": "creed",
+        "label": "理念",
+        "ty": {
+          "kind": "rich_text"
+        },
+        "order": 0
+      },
+      {
+        "key": "color",
+        "label": "代表色",
+        "ty": {
+          "kind": "color"
+        },
+        "order": 0
+      }
+    ]
+  },
+  {
+    "id": "type_person",
+    "name": "人物",
+    "color": "#d9822b",
+    "created_at": 1700000000000,
+    "updated_at": 1700000000000,
+    "fields": [
+      {
+        "key": "title",
+        "label": "身份",
+        "ty": {
+          "kind": "text"
+        },
+        "order": 0
+      },
+      {
+        "key": "desc",
+        "label": "描述",
+        "ty": {
+          "kind": "rich_text"
+        },
+        "order": 10
+      }
+    ]
+  },
+  {
+    "id": "type_place",
+    "name": "地点",
+    "color": "#2980b9",
+    "created_at": 1700000000000,
+    "updated_at": 1700000000000,
+    "fields": [
+      {
+        "key": "desc",
+        "label": "描述",
+        "ty": {
+          "kind": "rich_text"
+        },
+        "order": 0
+      }
+    ]
+  },
+  {
+    "id": "type_event",
+    "name": "事件",
+    "color": "#c0392b",
+    "created_at": 1700000000000,
+    "updated_at": 1700000000000,
+    "fields": [
+      {
+        "key": "when",
+        "label": "时间",
+        "ty": {
+          "kind": "text"
+        },
+        "order": 0
+      },
+      {
+        "key": "desc",
+        "label": "描述",
+        "ty": {
+          "kind": "rich_text"
+        },
+        "order": 10
+      }
+    ]
+  }
+]

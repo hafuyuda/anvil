@@ -1,0 +1,5 @@
+{"id": "rel_b1", "from": "card_person_thorin", "to": "card_faction_dwarf", "kind": "rel_belongs", "created_at": 1700000000000}
+{"id": "rel_b2", "from": "card_place_ironhall", "to": "card_faction_dwarf", "kind": "rel_belongs", "created_at": 1700000000000}
+{"id": "rel_b3", "from": "card_concept_honor", "to": "card_faction_dwarf", "kind": "rel_belongs", "created_at": 1700000000000}
+{"id": "rel_o1", "from": "card_faction_dwarf", "to": "card_faction_elf", "kind": "rel_oppose", "created_at": 1700000000000}
+{"id": "rel_c1", "from": "card_event_awaken", "to": "card_person_thorin", "kind": "rel_cause", "created_at": 1700000000000}

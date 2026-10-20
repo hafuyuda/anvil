@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ipc, type Card, type CardType } from "../../../core/ipc";
 import { useOpenProject } from "../../../core/actions/useOpenProject";
 import { useProjectStore } from "../../../stores/projectStore";
 import { useDeleteUndo } from "../../../hooks/useDeleteUndo";
+import { useReducedMotion } from "../../../hooks/useReducedMotion";
 import { newId } from "../../../lib/id";
 import { nowMs } from "../../../lib/time";
 import { CardWallToolbar } from "./CardWallToolbar";
@@ -10,11 +11,28 @@ import { BulkActionBar } from "./BulkActionBar";
 import { CardGridView } from "./CardGridView";
 import { CardListView } from "./CardListView";
 import { useCardWallFilters } from "./useCardWallFilters";
+import { useCardWallFlip } from "./useCardWallFlip";
 import { AddToGroupDialog } from "../../card-groups/AddToGroupDialog";
 import { toast } from "../../../lib/toast";
-import { confirmDialog } from "../../../lib/confirm";
+import { confirmRefAwareDelete } from "../../../lib/refAwareDelete";
+import { reloadIntoStore } from "../../../core/actions/reloadIntoStore";
+import {
+  captureCardFootprint,
+  restoreCardFootprints,
+} from "../../../core/actions/entityUndo";
 import { runWithError } from "../../../lib/runWithError";
 import { PickerDialog } from "../../../components/overlay/PickerDialog";
+
+/**
+ * 首屏渲染多少张。再多就只渲染前面这些，下面挂「加载更多」。
+ *
+ * 不做真虚拟列表有两个原因：卡片高度相对固定但 GridCard 外层高度仍由
+ * CardFrame 决定，量不准；而限额 + 按需加载是既有交互，用户往上翻本来
+ * 就要点一下。更重要的是它是下面几项的前置 —— 翻牌双面 DOM、箔样倾斜
+ * 监听、FLIP 的 rect 测量，全都会把「每卡成本」乘上渲染数量。
+ */
+const RENDER_LIMIT = 240;
+const LOAD_STEP = 240;
 
 export function CardWall() {
   const {
@@ -48,6 +66,30 @@ export function CardWall() {
   const [typePickerOpen, setTypePickerOpen] = useState(false);
 
   const [addToGroupOpen, setAddToGroupOpen] = useState(false);
+
+  // ── 限额渲染 ──
+  // 筛选条件一变就回到默认限额：否则搜「龙」出来 3 张，
+  // 上一次加载的 2000 张会把它们埋在后面
+  const filterKey = [
+    filters.query,
+    filters.typeFilter,
+    filters.sortKey,
+    String(filters.sortAsc),
+    cardWallView,
+  ].join("|");
+  const [visibleCount, setVisibleCount] = useState(RENDER_LIMIT);
+  const [lastFilterKey, setLastFilterKey] = useState(filterKey);
+  if (filterKey !== lastFilterKey) {
+    setLastFilterKey(filterKey);
+    setVisibleCount(RENDER_LIMIT);
+  }
+  const rendered = filters.visible.slice(0, visibleCount);
+  const remaining = filters.visible.length - rendered.length;
+
+  // ── FLIP 过渡 ──
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const reducedMotion = useReducedMotion();
+  useCardWallFlip(scrollRef, filterKey, !reducedMotion);
 
   // ── 新建卡牌 ──
 
@@ -89,14 +131,13 @@ export function CardWall() {
     const cardsToDelete = (cards ?? []).filter((c) => ids.includes(c.id));
     if (cardsToDelete.length === 0) return;
 
-    if (
-      !(await confirmDialog({
-        message: `删除选中的 ${cardsToDelete.length} 张卡牌？可用 Ctrl+Z 撤销。`,
-        confirmLabel: "删除",
-        danger: true,
-      }))
-    )
-      return;
+    const clearMode = await confirmRefAwareDelete(
+      cardsToDelete.map((c) => ({ kind: "card" as const, id: c.id, name: c.name })),
+    );
+    if (!clearMode) return;
+
+    // 删除前给每张卡采集关系网足迹，撤销时整批放回去
+    const footprints = cardsToDelete.map((c) => captureCardFootprint(c.id));
 
     await runWithError(
       () =>
@@ -104,29 +145,17 @@ export function CardWall() {
           label: `删除 ${cardsToDelete.length} 张卡牌`,
           do: async () => {
             for (const c of cardsToDelete) {
-              await ipc.deleteCard(c.id);
+              await ipc.deleteCard(c.id, clearMode);
             }
-            const state = useProjectStore.getState();
-            const remaining = (state.cards ?? []).filter(
-              (c) => !ids.includes(c.id),
-            );
             useProjectStore.setState({
-              cards: remaining,
-              relations: (state.relations ?? []).filter(
-                (r) => !ids.includes(r.from) && !ids.includes(r.to),
-              ),
               selectedCardIds: [],
               selectedCardId: null,
             });
+            // 后端连带摘了棋子、卡盒、关系、卡组成员，store 要整体跟上
+            await reloadIntoStore();
           },
           restore: async () => {
-            for (const c of cardsToDelete) {
-              await ipc.saveCard(c);
-            }
-            const state = useProjectStore.getState();
-            useProjectStore.setState({
-              cards: [...(state.cards ?? []), ...cardsToDelete],
-            });
+            await restoreCardFootprints(footprints);
           },
         }),
       "删除失败",
@@ -226,6 +255,7 @@ export function CardWall() {
       </div>
 
       <div
+        ref={scrollRef}
         style={{
           flex: 1,
           minHeight: 0,
@@ -244,18 +274,33 @@ export function CardWall() {
           </p>
         ) : cardWallView === "card" ? (
           <CardGridView
-            cards={filters.visible}
+            cards={rendered}
             cardTypes={cardTypes}
             selectedCardIds={selectedCardIds}
             onCardClick={handleCardClick}
           />
         ) : (
           <CardListView
-            cards={filters.visible}
+            cards={rendered}
             typeName={(id) => typeMap.get(id)?.name ?? id.slice(0, 8)}
             selectedCardIds={selectedCardIds}
             onCardClick={handleCardClick}
           />
+        )}
+
+        {remaining > 0 && (
+          <button
+            className="btn btn-ghost"
+            onClick={() => setVisibleCount((n) => n + LOAD_STEP)}
+            style={{
+              display: "block",
+              margin: "16px auto 0",
+              fontSize: 12,
+              color: "var(--fg-secondary)",
+            }}
+          >
+            加载更多（还有 {remaining} 张未渲染）
+          </button>
         )}
       </div>
 

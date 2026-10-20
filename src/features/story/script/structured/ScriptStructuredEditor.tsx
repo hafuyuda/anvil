@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   DndContext,
   KeyboardSensor,
@@ -20,7 +20,7 @@ import { parseScript } from "../parser";
 import { serializeScript } from "../serializer";
 import { ScriptSceneSettings } from "./ScriptSceneSettings";
 import { ScriptLineCard } from "./ScriptLineCard";
-import type { ScriptFrontmatter, ScriptLine } from "../types";
+import type { ParsedScript, ScriptFrontmatter, ScriptLine } from "../types";
 
 interface Props {
   content: string;
@@ -43,9 +43,21 @@ export function ScriptStructuredEditor({
   onCursorLine,
   scrollToLine,
 }: Props) {
-  const parsed = useMemo(() => parseScript(content), [content]);
+  // 结构化编辑器持有自己的权威行列表，只在「外部」 content 变化时（文件切换 /
+  // 源码互编）才重新解析。这是关键：组件不再用 serialize→parse 往返来驱动自身
+  // 渲染，否则空字段 / 输入中途的退化文本（如空说话人的 `****：`）会被解析器
+  // 误判为旁白，导致「选什么类型都变旁白」的 bug。
+  const [parsed, setParsed] = useState<ParsedScript>(() => parseScript(content));
+  const lastEmittedRef = useRef<string>(content);
   const [focusIdx, setFocusIdx] = useState<number | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
+
+  // 仅当 content 不是我们自己的回写时才重新解析（兜底外部修改）
+  useEffect(() => {
+    if (content === lastEmittedRef.current) return;
+    setParsed(parseScript(content));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [content]);
 
   useEffect(() => {
     if (focusIdx === null) return;
@@ -68,16 +80,26 @@ export function ScriptStructuredEditor({
     }),
   );
 
+  function emit(next: ParsedScript) {
+    const c = serializeScript(next);
+    lastEmittedRef.current = c;
+    onChange(c);
+  }
+
   function updateFrontmatter(patch: Partial<ScriptFrontmatter>) {
     const fm: ScriptFrontmatter = { ...parsed.frontmatter, ...patch };
     for (const k of Object.keys(fm) as (keyof ScriptFrontmatter)[]) {
       if (fm[k] === undefined || fm[k] === null) delete fm[k];
     }
-    onChange(serializeScript({ ...parsed, frontmatter: fm }));
+    const next: ParsedScript = { ...parsed, frontmatter: fm };
+    setParsed(next);
+    emit(next);
   }
 
   function updateLines(lines: ScriptLine[]) {
-    onChange(serializeScript({ ...parsed, lines }));
+    const next: ParsedScript = { ...parsed, lines };
+    setParsed(next);
+    emit(next);
   }
 
   function handleDragEnd(event: DragEndEvent) {

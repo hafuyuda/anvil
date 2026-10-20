@@ -1,0 +1,14 @@
+{
+  "id": "card_golem",
+  "type_id": "type_card",
+  "name": "岩石傀儡",
+  "values": {
+    "cost": 5,
+    "atk": 4,
+    "def": 6,
+    "rarity": "稀有",
+    "desc": "慢，但很顶。"
+  },
+  "created_at": 1700000000000,
+  "updated_at": 1700000000000
+}

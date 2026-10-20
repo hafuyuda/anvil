@@ -1,0 +1,11 @@
+{
+  "id": "card_event_awaken",
+  "type_id": "type_event",
+  "name": "龙醒之年",
+  "values": {
+    "when": "第三纪",
+    "desc": "斯毛格占据矿坑，矮人踏上归乡路。"
+  },
+  "created_at": 1700000000000,
+  "updated_at": 1700000000000
+}

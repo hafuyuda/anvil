@@ -1,0 +1,10 @@
+{
+  "id": "card_concept_honor",
+  "type_id": "type_concept",
+  "name": "荣誉",
+  "values": {
+    "desc": "矮人氏族的核心价值：锤不离手，言出必行。"
+  },
+  "created_at": 1700000000000,
+  "updated_at": 1700000000000
+}

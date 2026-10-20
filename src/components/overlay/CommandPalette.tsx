@@ -1,27 +1,57 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Command } from "../../lib/commands";
+import { commandRegistry, type Command } from "../../lib/commands";
 import { toast } from "../../lib/toast";
+import { rankPaletteResults } from "../../features/commands/paletteRanking";
 
 interface Props {
   commands: Command[];
   onClose: () => void;
 }
 
+/** 动态结果源的防抖。与卡片墙的搜索一致。 */
+const SEARCH_DEBOUNCE_MS = 150;
+
 export function CommandPalette({ commands, onClose }: Props) {
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
+  const [dynamic, setDynamic] = useState<Command[]>([]);
   const listRef = useRef<HTMLDivElement | null>(null);
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return commands;
-    return commands.filter((c) => {
-      const haystack = [c.label, c.category, ...(c.keywords ?? [])]
-        .join(" ")
-        .toLowerCase();
-      return haystack.includes(q);
-    });
-  }, [commands, query]);
+  // 源在挂毁时注册一次，这里现取。不能放进 effect 的依赖里 ——
+  // listSources() 每次返回新数组，那会让 effect 无限重跑
+  const sources = useMemo(() => commandRegistry.listSources(), []);
+
+  // ── 动态结果（卡牌检索等）────────────────────────
+  // 防抖 + 竞态保护：旧请求晚回来不算数
+  useEffect(() => {
+    const q = query.trim();
+    if (!q || sources.length === 0) {
+      setDynamic([]);
+      return;
+    }
+    let stale = false;
+    const h = setTimeout(async () => {
+      const out: Command[] = [];
+      for (const s of sources) {
+        if (q.length < (s.minChars ?? 1)) continue;
+        try {
+          out.push(...(await s.search(q)));
+        } catch {
+          // 单个源失败不拖垮其他源
+        }
+      }
+      if (!stale) setDynamic(out);
+    }, SEARCH_DEBOUNCE_MS);
+    return () => {
+      stale = true;
+      clearTimeout(h);
+    };
+  }, [query, sources]);
+
+  const filtered = useMemo(
+    () => rankPaletteResults(commands, dynamic, query),
+    [commands, dynamic, query],
+  );
 
   useEffect(() => {
     setActiveIndex(0);
@@ -101,7 +131,7 @@ export function CommandPalette({ commands, onClose }: Props) {
           className="input"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="输入命令或搜索……"
+          placeholder="输入命令或搜索卡牌……"
           style={{
             border: "none",
             borderBottom: "1px solid var(--border-subtle)",
@@ -122,9 +152,10 @@ export function CommandPalette({ commands, onClose }: Props) {
                 textAlign: "center",
               }}
             >
-              没有匹配的命令
+              没有匹配的命令或卡牌
             </div>
           )}
+
           {filtered.map((cmd, i) => {
             const active = i === activeIndex;
             return (

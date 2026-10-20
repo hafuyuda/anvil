@@ -14,6 +14,17 @@ struct ExportData {
     variables: Vec<VariableDef>,
     /// 背景图路径 → data URL
     assets: BTreeMap<String, String>,
+    /// 说话人（卡名）→ 立绘 data URL。key 与剧本 `**说话人**` 的说话人匹配。
+    /// `default` 为 `portrait` 字段，`emotions` 为 `portrait_<表情>` 字段。
+    portraits: BTreeMap<String, ExportPortrait>,
+}
+
+#[derive(Serialize)]
+struct ExportPortrait {
+    /// `portrait` 字段的 data URL（无表情时回退）
+    default: Option<String>,
+    /// `portrait_<表情>` → data URL
+    emotions: BTreeMap<String, String>,
 }
 
 #[derive(Serialize)]
@@ -131,6 +142,36 @@ impl Project {
             .map(|(k, lit)| var_to_def(k, lit))
             .collect();
 
+        // 立绘：按卡名匹配说话人。约定与运行时一致——卡 values 的
+        // `portrait_<表情>` 为对应表情 image，`portrait` 为默认立绘。
+        let mut portraits: BTreeMap<String, ExportPortrait> = BTreeMap::new();
+        if let Ok(cards) = self.load_all_cards() {
+            for card in &cards {
+                let mut default = None;
+                let mut emotions: BTreeMap<String, String> = BTreeMap::new();
+                if let Some(serde_json::Value::String(p)) = card.values.get("portrait") {
+                    if let Ok(url) = self.read_image_data_url(p) {
+                        default = Some(url);
+                    }
+                }
+                for (k, v) in &card.values {
+                    if let Some(emotion) = k.strip_prefix("portrait_") {
+                        if let serde_json::Value::String(p) = v {
+                            if let Ok(url) = self.read_image_data_url(p) {
+                                emotions.insert(emotion.to_string(), url);
+                            }
+                        }
+                    }
+                }
+                if default.is_some() || !emotions.is_empty() {
+                    portraits.insert(
+                        card.name.clone(),
+                        ExportPortrait { default, emotions },
+                    );
+                }
+            }
+        }
+
         Ok(ExportData {
             scenario: ExportScenario {
                 name: scenario.name.clone(),
@@ -141,6 +182,7 @@ impl Project {
             knots,
             variables,
             assets,
+            portraits,
         })
     }
 
@@ -272,6 +314,13 @@ const HTML_TEMPLATE: &str = r##"<!DOCTYPE html>
     color: var(--accent); font-weight: 600; margin-right: 4px;
     font-family: Georgia, "Songti SC", serif;
   }
+  .line.say .avatar {
+    width: 44px; height: 44px; border-radius: 50%;
+    object-fit: cover; float: left; margin: 0 12px 4px 0;
+    border: 2px solid var(--accent);
+    background: var(--panel);
+  }
+  .line.say::after { content: ""; display: block; clear: both; }
   .line.bgm, .line.sfx {
     font-family: ui-monospace, monospace; font-size: 12px;
     color: var(--fg-muted); padding: 4px 8px;
@@ -620,9 +669,9 @@ function parseScript(src) {
     const jump = line.match(/^->\s*(.+)$/);
     if (jump) { out.push({ type: "jump", target: jump[1].trim() }); continue; }
 
-    const at = line.match(/^@(bg|bgm|sfx|scene|actor)\s+(.+)$/);
+    const at = line.match(/^@(bg|bgm|sfx|scene|actor)(?:\s+(.*))?$/);
     if (at) {
-      const kind = at[1], value = at[2].trim();
+      const kind = at[1], value = (at[2] || "").trim();
       if (kind === "bg") out.push({ type: "bg", image: value });
       else if (kind === "bgm" || kind === "sfx") out.push({ type: kind, file: value });
       else out.push({ type: kind === "scene" ? "scene_ref" : "actor_ref", cardName: value });
@@ -634,7 +683,9 @@ function parseScript(src) {
       continue;
     }
 
-    const say = line.match(/^\*\*([^*]+)\*\*(?:\s*[（(]([^）)]*)[）)])?\s*[:：]\s*(.*)$/);
+    /* **说话人**（表情）：文本 —— 允许空说话人、省略冒号，与解析器一致
+       （空说话人的对白 `****：` 不会退化为旁白）。 */
+    const say = line.match(/^\*\*([^*]*)\*\*(?:\s*[（(]([^）)]*)[）)])?\s*[:：]?\s*(.*)$/);
     if (say) {
       out.push(withInline({
         type: "say",
@@ -662,6 +713,7 @@ function parseScript(src) {
       continue;
     }
 
+    if (line === "*") { out.push({ type: "choice", label: "" }); continue; }
     const choice = line.match(/^\*\s+(.+)$/);
     if (choice) { out.push({ type: "choice", label: choice[1].trim() }); continue; }
 
@@ -1001,6 +1053,14 @@ function createLineEl(line) {
   const div = document.createElement("div");
   div.className = "line " + line.type;
   if (line.type === "say") {
+    const src = portraitFor(line.speaker, line.portrait);
+    if (src) {
+      const av = document.createElement("img");
+      av.className = "avatar";
+      av.src = src;
+      av.alt = "";
+      div.appendChild(av);
+    }
     const sp = document.createElement("span");
     sp.className = "speaker";
     sp.textContent = line.speaker + "：";
@@ -1015,6 +1075,14 @@ function createLineEl(line) {
     return { el: div, textEl: null };
   }
   return { el: div, textEl: div };
+}
+
+/* 说话人（卡名）+ 表情 → 立绘 data URL。与运行时 portraitLookup 一致。 */
+function portraitFor(speaker, emotion) {
+  const p = DATA.portraits && DATA.portraits[speaker];
+  if (!p) return null;
+  if (emotion && p.emotions && p.emotions[emotion]) return p.emotions[emotion];
+  return p.default || null;
 }
 
 function displayLine(line) {

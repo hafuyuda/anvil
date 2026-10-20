@@ -1,0 +1,9 @@
+{
+  "kind": "anvil-project",
+  "schema_version": "0.4",
+  "name": "矮人王与勇者",
+  "version": "0.1.0",
+  "description": "内置预设：视觉小说起点。",
+  "created_at": 1700000000000,
+  "updated_at": 1700000000000
+}

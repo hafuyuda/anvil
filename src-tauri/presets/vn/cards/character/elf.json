@@ -1,0 +1,12 @@
+{
+  "id": "card_elf",
+  "type_id": "type_character",
+  "name": "精灵大使",
+  "values": {
+    "portrait": "elf.png",
+    "portrait_smile": "elf.png",
+    "bio": "来自林地的外交官，对矮人的锤声颇有微词。"
+  },
+  "created_at": 1700000000000,
+  "updated_at": 1700000000000
+}

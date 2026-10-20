@@ -1,0 +1,18 @@
+{
+  "id": "card_smaug",
+  "type_id": "type_monster",
+  "name": "红龙斯毛格",
+  "values": {
+    "species": "龙",
+    "threat": "灭世",
+    "hp": 220,
+    "max_hp": 220,
+    "ac": 19,
+    "str": 23,
+    "dex": 12,
+    "con": 21,
+    "desc": "占了矿镇金子的老龙。矮人对它喊：「你头发长，见识短；你个子高，摔得惨！」——然后撒腿就跑。"
+  },
+  "created_at": 1700000000000,
+  "updated_at": 1700000000000
+}

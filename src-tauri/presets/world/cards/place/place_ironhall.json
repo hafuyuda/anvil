@@ -1,0 +1,10 @@
+{
+  "id": "card_place_ironhall",
+  "type_id": "type_place",
+  "name": "铁炉镇",
+  "values": {
+    "desc": "矮人氏族的故乡，以锻造闻名。"
+  },
+  "created_at": 1700000000000,
+  "updated_at": 1700000000000
+}

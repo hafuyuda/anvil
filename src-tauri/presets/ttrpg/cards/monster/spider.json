@@ -1,0 +1,14 @@
+{
+  "id": "card_spider",
+  "type_id": "type_monster",
+  "name": "织网蜘蛛",
+  "values": {
+    "species": "蜘蛛",
+    "threat": "中",
+    "hp": 11,
+    "max_hp": 11,
+    "desc": "网织得像矮人的账本，密不透风。矮人砍网比砍矿还费劲。"
+  },
+  "created_at": 1700000000000,
+  "updated_at": 1700000000000
+}

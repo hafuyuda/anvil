@@ -1,7 +1,13 @@
 import { useState } from "react";
-import type { ChatEventKind, ChatPayload } from "../../../core/ipc";
+import type {
+  ChatEventKind,
+  ChatPayload,
+  EventVisibility,
+  SessionViewMode,
+} from "../../../core/ipc";
 import { rollDice } from "../../../lib/dice";
 import { RollDialog } from "./RollDialog";
+import type { RuleSetId } from "../ruleset";
 
 interface AuthorOption {
   card_id: string | null;
@@ -11,26 +17,42 @@ interface AuthorOption {
 interface Props {
   authors: AuthorOption[];
   defaultAuthorId: string | null;
-  onSend: (kind: ChatEventKind, payload: ChatPayload) => void;
+  ruleSet: RuleSetId;
+  /** 玩家视图下输入仍可用 —— 视图是呈现过滤器，不是权限。 */
+  view: SessionViewMode;
+  onSend: (
+    kind: ChatEventKind,
+    payload: ChatPayload,
+    visibility: EventVisibility,
+  ) => void;
 }
 
-const KIND_LABELS: { kind: ChatEventKind; label: string; key: string }[] = [
-  { kind: "chat.say", label: "说", key: "say" },
-  { kind: "chat.action", label: "做", key: "action" },
-  { kind: "chat.roll", label: "掷", key: "roll" },
-  { kind: "chat.narration", label: "旁白", key: "narration" },
-  { kind: "chat.ooc", label: "场外", key: "ooc" },
-  { kind: "chat.whisper", label: "私聊", key: "whisper" },
+const KIND_LABELS: { kind: ChatEventKind; label: string }[] = [
+  { kind: "chat.say", label: "说" },
+  { kind: "chat.action", label: "做" },
+  { kind: "chat.roll", label: "掷" },
+  { kind: "chat.narration", label: "旁白" },
+  { kind: "chat.ooc", label: "场外" },
+  { kind: "chat.whisper", label: "私聊" },
 ];
 
-export function ChatInput({ authors, defaultAuthorId, onSend }: Props) {
+export function ChatInput({
+  authors,
+  defaultAuthorId,
+  ruleSet,
+  view,
+  onSend,
+}: Props) {
   const [authorId, setAuthorId] = useState<string | null>(defaultAuthorId);
   const [kind, setKind] = useState<ChatEventKind>("chat.say");
   const [text, setText] = useState("");
+  const [secret, setSecret] = useState(false);
   const [rollOpen, setRollOpen] = useState(false);
 
   const currentAuthor = authors.find((a) => a.card_id === authorId) ??
     authors[0] ?? { card_id: null, name: "KP" };
+
+  const visibility: EventVisibility = secret ? "secret" : "public";
 
   function send() {
     const content = text.trim();
@@ -40,35 +62,56 @@ export function ChatInput({ authors, defaultAuthorId, onSend }: Props) {
       const expr = content.slice(6).trim();
       const r = rollDice(expr);
       if (r) {
-        onSend("chat.roll", {
-          author_card_id: currentAuthor.card_id,
-          author_name: currentAuthor.name,
-          content: r.expr,
-          roll: { expr: r.expr, result: r.result, detail: r.detail },
-        });
+        onSend(
+          "chat.roll",
+          {
+            author_card_id: currentAuthor.card_id,
+            author_name: currentAuthor.name,
+            content: r.expr,
+            roll: {
+              expr: r.expr,
+              result: r.result,
+              detail: r.detail,
+              dropped: r.dropped,
+              natural: r.natural,
+              rule_set: ruleSet,
+            },
+          },
+          visibility,
+        );
         setText("");
         return;
       }
     }
 
-    onSend(kind, {
-      author_card_id: currentAuthor.card_id,
-      author_name: currentAuthor.name,
-      content,
-    });
+    onSend(
+      kind,
+      {
+        author_card_id: currentAuthor.card_id,
+        author_name: currentAuthor.name,
+        content,
+      },
+      visibility,
+    );
     setText("");
   }
 
   function handleRollResult(
-    roll: { expr: string; result: number; detail: number[] },
+    roll: Parameters<typeof onSend>[1]["roll"],
     note: string,
+    isSecret: boolean,
   ) {
-    onSend("chat.roll", {
-      author_card_id: currentAuthor.card_id,
-      author_name: currentAuthor.name,
-      content: note || roll.expr,
-      roll,
-    });
+    if (!roll) return;
+    onSend(
+      "chat.roll",
+      {
+        author_card_id: currentAuthor.card_id,
+        author_name: currentAuthor.name,
+        content: note || roll.expr,
+        roll,
+      },
+      isSecret ? "secret" : "public",
+    );
   }
 
   return (
@@ -80,8 +123,9 @@ export function ChatInput({ authors, defaultAuthorId, onSend }: Props) {
           display: "flex",
           flexDirection: "column",
           gap: 6,
-          background: "var(--bg-panel)",
+          background: secret ? "var(--chat-secret-input-bg)" : "var(--bg-panel)",
           flexShrink: 0,
+          transition: "background 0.12s",
         }}
       >
         <div
@@ -108,18 +152,32 @@ export function ChatInput({ authors, defaultAuthorId, onSend }: Props) {
 
           <div style={{ display: "flex", gap: 3 }}>
             {KIND_LABELS.map((k) => {
-              const active = kind === k.kind && k.kind !== "chat.roll";
+              // 「掷」是即时动作按钮，不是可驻留的消息种类
+              if (k.kind === "chat.roll") {
+                return (
+                  <button
+                    key={k.kind}
+                    className="btn"
+                    onClick={() => setRollOpen(true)}
+                    style={{
+                      padding: "4px 8px",
+                      fontSize: 12,
+                      background: "var(--bg-surface)",
+                      borderColor: "var(--border-default)",
+                      color: "var(--fg-secondary)",
+                    }}
+                    title="打开掷骰面板"
+                  >
+                    {k.label}
+                  </button>
+                );
+              }
+              const active = kind === k.kind;
               return (
                 <button
                   key={k.kind}
                   className="btn"
-                  onClick={() => {
-                    if (k.kind === "chat.roll") {
-                      setRollOpen(true);
-                    } else {
-                      setKind(k.kind);
-                    }
-                  }}
+                  onClick={() => setKind(k.kind)}
                   style={{
                     padding: "4px 8px",
                     fontSize: 12,
@@ -139,6 +197,33 @@ export function ChatInput({ authors, defaultAuthorId, onSend }: Props) {
               );
             })}
           </div>
+
+          <button
+            className="btn"
+            onClick={() => setSecret((v) => !v)}
+            style={{
+              padding: "4px 8px",
+              fontSize: 12,
+              background: secret
+                ? "var(--chat-secret-bg)"
+                : "var(--bg-surface)",
+              borderColor: secret
+                ? "var(--chat-secret-border)"
+                : "var(--border-default)",
+              color: secret
+                ? "var(--chat-secret-text)"
+                : "var(--fg-secondary)",
+              borderStyle: secret ? "dashed" : "solid",
+              fontWeight: secret ? 600 : 400,
+            }}
+            title={
+              secret
+                ? "秘密：只有 KP 视图能看到，可随时揭示"
+                : "公开：所有人都能看到"
+            }
+          >
+            {secret ? "秘密" : "公开"}
+          </button>
 
           <span
             style={{
@@ -163,14 +248,23 @@ export function ChatInput({ authors, defaultAuthorId, onSend }: Props) {
             }
           }}
           placeholder={
-            kind === "chat.narration"
-              ? "描述场景……（Shift+Enter 换行）"
-              : "输入消息……（Enter 发送，Shift+Enter 换行）"
+            secret
+              ? "秘密内容……（只有 KP 视图可见）"
+              : kind === "chat.narration"
+                ? "描述场景……（Shift+Enter 换行）"
+                : "输入消息……（Enter 发送，Shift+Enter 换行）"
           }
           style={{ minHeight: 60, resize: "vertical" }}
         />
 
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 6 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 6 }}>
+          <span style={{ fontSize: 11, color: "var(--fg-muted)" }}>
+            {view === "player"
+              ? "当前是玩家视图，发出的内容玩家可见"
+              : secret
+                ? "这条消息只有 KP 视图可见"
+                : "这条消息所有人可见"}
+          </span>
           <button
             className="btn btn-primary"
             onClick={send}
@@ -183,6 +277,8 @@ export function ChatInput({ authors, defaultAuthorId, onSend }: Props) {
 
       {rollOpen && (
         <RollDialog
+          ruleSet={ruleSet}
+          defaultSecret={secret}
           onRoll={handleRollResult}
           onClose={() => setRollOpen(false)}
         />

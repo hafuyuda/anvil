@@ -19,6 +19,9 @@ import type {
   ProjectStats,
   AudioMeta,
   ScriptHit,
+  EventVisibility,
+  RefHit,
+  RefClearMode,
 } from "./types";
 
 export const ipc = {
@@ -57,7 +60,8 @@ export const ipc = {
   // ── 卡牌 ──
   saveCard: (card: Card) => invoke<void>("save_card", { card }),
   listCards: () => invoke<Card[]>("list_cards"),
-  deleteCard: (id: string) => invoke<void>("delete_card", { id }),
+  deleteCard: (id: string, mode: RefClearMode = "remove") =>
+    invoke<void>("delete_card", { id, mode }),
   searchCards: (query: string, limit?: number) =>
     invoke<string[]>("search_cards", { query, limit }),
 
@@ -86,6 +90,18 @@ export const ipc = {
     invoke<void>("upsert_relation", { relation }),
   deleteRelation: (fromId: string, relationId: string) =>
     invoke<void>("delete_relation", { fromId, relationId }),
+
+  // ── 引用扫描（只报不改，真正的清理发生在删除命令里）──
+  scanCardRefs: (id: string) => invoke<RefHit[]>("scan_card_refs", { id }),
+  scanCardRefsBatch: (ids: string[]) =>
+    invoke<RefHit[]>("scan_card_refs_batch", { ids }),
+  scanBoardRefs: (id: string) => invoke<RefHit[]>("scan_board_refs", { id }),
+  scanCardGroupRefs: (id: string) =>
+    invoke<RefHit[]>("scan_card_group_refs", { id }),
+  scanCardTypeRefs: (id: string) =>
+    invoke<RefHit[]>("scan_card_type_refs", { id }),
+  scanDanglingRefs: () => invoke<RefHit[]>("scan_dangling_refs"),
+  purgeDanglingRefs: () => invoke<number>("purge_dangling_refs"),
 
   // ── 剧情 ──
   listScenarios: () => invoke<Scenario[]>("list_scenarios"),
@@ -120,7 +136,17 @@ export const ipc = {
     kind: string,
     payload: unknown,
     note?: string,
-  ) => invoke<void>("append_event", { sessionId, kind, payload, note }),
+    visibility?: EventVisibility,
+  ) =>
+    invoke<GameEvent>("append_event", {
+      sessionId,
+      kind,
+      payload,
+      note,
+      visibility,
+    }),
+  revealEvent: (sessionId: string, seq: number) =>
+    invoke<GameEvent>("reveal_event", { sessionId, seq }),
 
   // ── 主题 ──
   listThemes: () => invoke<Theme[]>("list_themes"),

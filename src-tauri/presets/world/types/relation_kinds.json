@@ -1,0 +1,28 @@
+[
+  {
+    "id": "rel_belongs",
+    "name": "属于",
+    "directed": true,
+    "inverse_name": "包含",
+    "color": "#2980b9",
+    "created_at": 1700000000000,
+    "updated_at": 1700000000000
+  },
+  {
+    "id": "rel_oppose",
+    "name": "对立",
+    "directed": false,
+    "color": "#c0392b",
+    "created_at": 1700000000000,
+    "updated_at": 1700000000000
+  },
+  {
+    "id": "rel_cause",
+    "name": "引发",
+    "directed": true,
+    "inverse_name": "源于",
+    "color": "#16a085",
+    "created_at": 1700000000000,
+    "updated_at": 1700000000000
+  }
+]

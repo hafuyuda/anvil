@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Board, GridConfig, Token } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
 
@@ -8,6 +8,17 @@ interface DragState {
   offsetX: number;
   offsetY: number;
   moved: boolean;
+}
+
+/**
+ * 拖拽时的落点预览：主 token 吸附后的所占格外框。
+ * 棋盘在 token 底下画一个虚线框，让「会落到哪一格」在松手前就可见。
+ */
+export interface DragPreview {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
 }
 
 interface Options {
@@ -216,10 +227,22 @@ export function useTokenDrag({
     dragging ? Object.keys(dragging.initialPositions) : [],
   );
 
+  /**
+   * 落点预览。只在开吸附时给 —— 不吸附就没有「对齐到某一格」可预览，
+   * 画个框反而只是噪音。
+   */
+  const dragPreview = useMemo<DragPreview | null>(() => {
+    if (!dragging || !grid.snap) return null;
+    const t = tokens.find((x) => x.id === dragging.primaryTokenId);
+    if (!t) return null;
+    return { x: t.x, y: t.y, w: t.w ?? 140, h: t.h ?? 205 };
+  }, [dragging, grid.snap, tokens]);
+
   return {
     containerRef,
     tokens,
     draggingIds,
+    dragPreview,
     onTokenPointerDown,
     onTokenDoubleClick,
     onPointerMove,

@@ -1,0 +1,36 @@
+[
+  {
+    "id": "rel_hostile",
+    "name": "敌对",
+    "directed": true,
+    "color": "#c0392b",
+    "created_at": 1700000000000,
+    "updated_at": 1700000000000
+  },
+  {
+    "id": "rel_ally",
+    "name": "同盟",
+    "directed": false,
+    "color": "#27ae60",
+    "created_at": 1700000000000,
+    "updated_at": 1700000000000
+  },
+  {
+    "id": "rel_vassal",
+    "name": "从属",
+    "directed": true,
+    "inverse_name": "统帅",
+    "color": "#8e44ad",
+    "created_at": 1700000000000,
+    "updated_at": 1700000000000
+  },
+  {
+    "id": "rel_located",
+    "name": "位于",
+    "directed": true,
+    "inverse_name": "包含",
+    "color": "#2980b9",
+    "created_at": 1700000000000,
+    "updated_at": 1700000000000
+  }
+]

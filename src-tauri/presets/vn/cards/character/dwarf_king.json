@@ -1,0 +1,12 @@
+{
+  "id": "card_dwarf_king",
+  "type_id": "type_character",
+  "name": "索林",
+  "values": {
+    "portrait": "dwarf_king.png",
+    "portrait_smile": "dwarf_king.png",
+    "bio": "矮人王。矮人三个愿望：1.金子 2.更多金子 3.一个装得下前两者的袋子。"
+  },
+  "created_at": 1700000000000,
+  "updated_at": 1700000000000
+}

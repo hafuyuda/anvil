@@ -1,0 +1,3 @@
+{"id": "rel_e1", "from": "card_fire", "to": "card_golem", "kind": "rel_evolve", "created_at": 1700000000000}
+{"id": "rel_e2", "from": "card_golem", "to": "card_dragon", "kind": "rel_evolve", "created_at": 1700000000000}
+{"id": "rel_c1", "from": "card_dragon", "to": "card_golem", "kind": "rel_counter", "created_at": 1700000000000}

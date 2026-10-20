@@ -27,6 +27,9 @@ export function RelationKindEditor({ relationKind }: Props) {
     },
     {
       undoLabel: "编辑关系类型",
+      resolveCurrent: () =>
+        useProjectStore.getState().relationKinds.find((k) => k.id === relationKind.id) ??
+        null,
       onDraftChange: (d) => {
         upsertRelationKind({ ...d, updated_at: nowMs() });
       },

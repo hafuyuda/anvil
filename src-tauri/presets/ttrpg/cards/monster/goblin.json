@@ -1,0 +1,18 @@
+{
+  "id": "card_goblin",
+  "type_id": "type_monster",
+  "name": "哥布林巡逻队",
+  "values": {
+    "species": "哥布林",
+    "threat": "中",
+    "hp": 15,
+    "max_hp": 15,
+    "ac": 14,
+    "str": 10,
+    "dex": 14,
+    "con": 12,
+    "desc": "偷金子的小贼。矮人衡量友情的标准：能一起喝几桶麦酒；衡量敌人的标准：能一起挨几斧。"
+  },
+  "created_at": 1700000000000,
+  "updated_at": 1700000000000
+}

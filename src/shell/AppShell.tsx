@@ -7,6 +7,7 @@ import { StatusBar } from "./StatusBar";
 import { useProjectStore } from "../stores/projectStore";
 import { useUIStore } from "../stores/uiStore";
 import { useKeyboard } from "../hooks/useKeyboard";
+import { useCardTilt } from "../hooks/useCardTilt";
 import { useCommands } from "../hooks/useCommands";
 import { useGlobalCommands } from "../features/commands/useGlobalCommands";
 import { CommandPalette } from "../components/overlay/CommandPalette";
@@ -17,6 +18,7 @@ import { ToastHost } from "../components/overlay/ToastHost";
 import { useAppSettings } from "../hooks/useAppSettings";
 import { applyFontScale } from "../lib/fontScale";
 import { ConfirmHost } from "../components/overlay/ConfirmHost";
+import { RefConfirmHost } from "../components/overlay/RefConfirmHost";
 import { SettingsPage } from "../features/settings/SettingsPage";
 import { MiniPlayer } from "../features/player/MiniPlayer";
 
@@ -30,6 +32,8 @@ export function AppShell() {
   const commands = useCommands();
   useGlobalCommands();
   useKeyboard();
+  // 闪卡倾斜：一个全局委托监听器，见 hook 注释
+  useCardTilt();
 
   const mergePackOpen = useUIStore((s) => s.mergePackOpen);
   const closeMergePack = useUIStore((s) => s.closeMergePack);
@@ -129,6 +133,8 @@ export function AppShell() {
       <ToastHost />
 
       <ConfirmHost />
+
+      <RefConfirmHost />
 
       {paletteOpen && (
         <CommandPalette commands={commands} onClose={closePalette} />

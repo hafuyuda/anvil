@@ -1,0 +1,14 @@
+{
+  "id": "card_rat",
+  "type_id": "type_monster",
+  "name": "洞穴巨鼠",
+  "values": {
+    "species": "鼠群",
+    "threat": "低",
+    "hp": 6,
+    "max_hp": 6,
+    "desc": "矿道里的常住民。矮人说：「它比我先到，可它没带锄头。」"
+  },
+  "created_at": 1700000000000,
+  "updated_at": 1700000000000
+}

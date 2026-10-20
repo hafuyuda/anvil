@@ -8,12 +8,16 @@ import { newId } from "../../lib/id";
 import { nowMs } from "../../lib/time";
 import { useDeleteUndo } from "../../hooks/useDeleteUndo";
 import { runWithError } from "../../lib/runWithError";
-import { confirmDialog } from "../../lib/confirm";
+import { confirmRefAwareDelete } from "../../lib/refAwareDelete";
+import { reloadIntoStore } from "../../core/actions/reloadIntoStore";
+import {
+  captureBoardFootprint,
+  restoreBoardFootprint,
+} from "../../core/actions/entityUndo";
 
 export function BoardList() {
   const boards = useProjectStore((s) => s.boards) ?? [];
   const upsertBoard = useProjectStore((s) => s.upsertBoard);
-  const removeBoard = useProjectStore((s) => s.removeBoard);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   async function addBoard() {
@@ -37,26 +41,24 @@ export function BoardList() {
   const deleteWithUndo = useDeleteUndo();
 
   async function handleDelete(s: Board) {
-    if (
-      !(await confirmDialog({
-        message: `删除「${s.name}」？可用 Ctrl+Z 撤销。`,
-        confirmLabel: "删除",
-        danger: true,
-      }))
-    )
-      return;
+    const clearMode = await confirmRefAwareDelete([
+      { kind: "board", id: s.id, name: s.name },
+    ]);
+    if (!clearMode) return;
+    // 后端会解绑拿它作战场的会话，撤销时要把绑定关系还回去
+    const footprint = captureBoardFootprint(s.id);
     await runWithError(
       () =>
         deleteWithUndo({
           label: "删除棋盘",
           do: async () => {
             await ipc.deleteBoard(s.id);
-            removeBoard(s.id);
             if (selectedId === s.id) setSelectedId(null);
+            // 后端顺手解绑了拿它作战场的会话，store 要整体跟上
+            await reloadIntoStore();
           },
           restore: async () => {
-            await ipc.upsertBoard(s);
-            upsertBoard(s);
+            if (footprint) await restoreBoardFootprint(footprint);
           },
         }),
       "删除失败",

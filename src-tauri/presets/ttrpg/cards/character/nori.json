@@ -1,0 +1,22 @@
+{
+  "id": "card_nori",
+  "type_id": "type_character",
+  "name": "诺力",
+  "values": {
+    "race": "矮人",
+    "job": "盗贼",
+    "alignment": "混乱中立",
+    "hp": 22,
+    "max_hp": 22,
+    "ac": 15,
+    "str": 11,
+    "dex": 17,
+    "con": 12,
+    "int": 13,
+    "wis": 12,
+    "cha": 14,
+    "bio": "手指比胡子还灵活。被问偷没偷时答：「矮人字典里没有『撤退』，那叫『战略后撤，顺便把金子带上』。」"
+  },
+  "created_at": 1700000000000,
+  "updated_at": 1700000000000
+}

@@ -155,4 +155,68 @@ describe("runtime", () => {
     const rich = continueStep(richState, files, knots, variables);
     expect(shown(rich)).toBe("你买得起。");
   });
+
+  it("立绘状态：say 行记录说话人+表情，跨 narration 保持", () => {
+    const { files, knots, variables, state } = boot([
+      [
+        "main.md",
+        [
+          "=== 对话",
+          "**艾琳**（愤怒）：你竟敢！",
+          "> 她转身离去。",
+        ].join("\n"),
+      ],
+    ]);
+
+    const say = continueStep(state, files, knots, variables);
+    expect(shown(say)).toBe("你竟敢！");
+    expect(say.state?.portrait).toEqual({ speaker: "艾琳", emotion: "愤怒" });
+
+    const narr = continueStep(say.state!, files, knots, variables);
+    expect(shown(narr)).toBe("她转身离去。");
+    // 旁白不改变当前立绘
+    expect(narr.state?.portrait).toEqual({ speaker: "艾琳", emotion: "愤怒" });
+  });
+
+  it("场景卡状态：@scene 与 knot scene 字段写入 sceneCard", () => {
+    const { files, knots, variables, state } = boot([
+      [
+        "main.md",
+        ["=== 酒馆", "@scene 酒馆大厅", "**老板**：欢迎光临。"].join("\n"),
+      ],
+    ]);
+
+    const atScene = continueStep(state, files, knots, variables);
+    expect(atScene.state?.sceneCard).toBe("酒馆大厅");
+    expect(atScene.state?.portrait).toEqual({ speaker: "老板", emotion: undefined });
+  });
+
+  it("回退恢复：HistoryEntry 含 displayLine，back 后显示上一句而非空白", () => {
+    const { files, knots, variables, state } = boot([
+      [
+        "main.md",
+        ["=== 序", "> 第一句。", "> 第二句。"].join("\n"),
+      ],
+    ]);
+
+    const first = continueStep(state, files, knots, variables);
+    expect(shown(first)).toBe("第一句。");
+    // 模拟推进时入栈：快照保存当前显示行
+    const snap = {
+      ...first.state!,
+      displayLine: first.state!.displayLine,
+      choices: first.state!.choices,
+      portrait: first.state!.portrait,
+      sceneCard: first.state!.sceneCard,
+    };
+    const second = continueStep(first.state!, files, knots, variables);
+    expect(shown(second)).toBe("第二句。");
+
+    // back：用快照还原（与 usePlayState.back 行为一致）
+    const restored = { ...snap, bg: second.state!.bg, bgm: second.state!.bgm, ended: false };
+    expect(restored.displayLine && "text" in restored.displayLine
+      ? restored.displayLine.text
+      : null,
+    ).toBe("第一句。");
+  });
 });

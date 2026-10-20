@@ -8,6 +8,7 @@ export function useKeyboard() {
   const undo = useProjectStore((s) => s.undo);
   const redo = useProjectStore((s) => s.redo);
   const setActiveModule = useProjectStore((s) => s.setActiveModule);
+  const toggleInspector = useProjectStore((s) => s.toggleInspector);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -35,6 +36,24 @@ export function useKeyboard() {
         return;
       }
 
+      // Ctrl+I 折叠 / 展开检查器
+      if (mod && !e.shiftKey && key === "i") {
+        // 输入框里 Ctrl+I 是斜体，别抢。其余快捷键一律接管。
+        const el = e.target as HTMLElement | null;
+        const tag = el?.tagName;
+        if (
+          tag === "INPUT" ||
+          tag === "TEXTAREA" ||
+          tag === "SELECT" ||
+          el?.isContentEditable
+        ) {
+          return;
+        }
+        e.preventDefault();
+        toggleInspector();
+        return;
+      }
+
       // Ctrl+1..5 切模块
       if (mod && key >= "1" && key <= "5") {
         e.preventDefault();
@@ -47,5 +66,5 @@ export function useKeyboard() {
 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [undo, redo, setActiveModule]);
+  }, [undo, redo, setActiveModule, toggleInspector]);
 }

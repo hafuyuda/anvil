@@ -14,13 +14,14 @@ export function CardListView({
   onCardClick,
 }: Props) {
   return (
-    <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-      {cards.map((c) => {
-        const active = selectedCardIds.includes(c.id);
-        return (
-          <li
-            key={c.id}
-            onClick={(e) => onCardClick(c, e)}
+      <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+        {cards.map((c) => {
+          const active = selectedCardIds.includes(c.id);
+          return (
+            <li
+              key={c.id}
+              data-card-id={c.id}
+              onClick={(e) => onCardClick(c, e)}
             style={{
               cursor: "pointer",
               padding: "6px 10px",

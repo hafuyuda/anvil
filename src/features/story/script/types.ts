@@ -8,7 +8,7 @@ export interface InlineCond {
 export type ScriptLine =
   | { type: "knot"; name: string }
   | { type: "var"; key: string; literal: string }
-  | { type: "narration"; text: string; inline?: InlineCond[] }
+  | { type: "narration"; text: string; inline?: InlineCond[]; draft?: boolean }
   | {
       type: "say";
       speaker: string;

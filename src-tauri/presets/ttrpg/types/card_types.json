@@ -1,0 +1,300 @@
+[
+  {
+    "id": "type_character",
+    "name": "角色",
+    "description": "PC 与 NPC。",
+    "color": "#d9822b",
+    "created_at": 1700000000000,
+    "updated_at": 1700000000000,
+    "fields": [
+      {
+        "key": "race",
+        "label": "种族",
+        "ty": {
+          "kind": "enum",
+          "options": [
+            "矮人",
+            "人类",
+            "精灵",
+            "半兽人",
+            "巨人",
+            "其他"
+          ]
+        },
+        "order": 0
+      },
+      {
+        "key": "job",
+        "label": "职业",
+        "ty": {
+          "kind": "text"
+        },
+        "order": 0
+      },
+      {
+        "key": "alignment",
+        "label": "阵营",
+        "ty": {
+          "kind": "enum",
+          "options": [
+            "守序善良",
+            "中立善良",
+            "混乱善良",
+            "守序中立",
+            "绝对中立",
+            "混乱中立",
+            "守序邪恶",
+            "中立邪恶",
+            "混乱邪恶"
+          ]
+        },
+        "order": 0
+      },
+      {
+        "key": "hp",
+        "label": "生命",
+        "ty": {
+          "kind": "number"
+        },
+        "group": "战斗",
+        "order": 1
+      },
+      {
+        "key": "max_hp",
+        "label": "最大生命",
+        "ty": {
+          "kind": "number"
+        },
+        "group": "战斗",
+        "order": 2
+      },
+      {
+        "key": "ac",
+        "label": "护甲",
+        "ty": {
+          "kind": "number"
+        },
+        "group": "战斗",
+        "order": 3
+      },
+      {
+        "key": "str",
+        "label": "力量",
+        "ty": {
+          "kind": "number"
+        },
+        "group": "属性",
+        "order": 4
+      },
+      {
+        "key": "dex",
+        "label": "敏捷",
+        "ty": {
+          "kind": "number"
+        },
+        "group": "属性",
+        "order": 5
+      },
+      {
+        "key": "con",
+        "label": "体质",
+        "ty": {
+          "kind": "number"
+        },
+        "group": "属性",
+        "order": 6
+      },
+      {
+        "key": "int",
+        "label": "智力",
+        "ty": {
+          "kind": "number"
+        },
+        "group": "属性",
+        "order": 7
+      },
+      {
+        "key": "wis",
+        "label": "感知",
+        "ty": {
+          "kind": "number"
+        },
+        "group": "属性",
+        "order": 8
+      },
+      {
+        "key": "cha",
+        "label": "魅力",
+        "ty": {
+          "kind": "number"
+        },
+        "group": "属性",
+        "order": 9
+      },
+      {
+        "key": "bio",
+        "label": "简介",
+        "ty": {
+          "kind": "rich_text"
+        },
+        "group": "背景",
+        "order": 10
+      }
+    ],
+    "allowed_relation_kinds": [
+      "rel_hostile",
+      "rel_ally",
+      "rel_vassal"
+    ]
+  },
+  {
+    "id": "type_place",
+    "name": "地点",
+    "color": "#2980b9",
+    "created_at": 1700000000000,
+    "updated_at": 1700000000000,
+    "fields": [
+      {
+        "key": "region",
+        "label": "区域",
+        "ty": {
+          "kind": "text"
+        },
+        "order": 0
+      },
+      {
+        "key": "desc",
+        "label": "描述",
+        "ty": {
+          "kind": "rich_text"
+        },
+        "order": 10
+      }
+    ]
+  },
+  {
+    "id": "type_monster",
+    "name": "怪物",
+    "color": "#c0392b",
+    "created_at": 1700000000000,
+    "updated_at": 1700000000000,
+    "fields": [
+      {
+        "key": "species",
+        "label": "种类",
+        "ty": {
+          "kind": "text"
+        },
+        "order": 0
+      },
+      {
+        "key": "threat",
+        "label": "威胁",
+        "ty": {
+          "kind": "enum",
+          "options": [
+            "低",
+            "中",
+            "高",
+            "灭世"
+          ]
+        },
+        "order": 0
+      },
+      {
+        "key": "hp",
+        "label": "生命",
+        "ty": {
+          "kind": "number"
+        },
+        "group": "战斗",
+        "order": 1
+      },
+      {
+        "key": "max_hp",
+        "label": "最大生命",
+        "ty": {
+          "kind": "number"
+        },
+        "group": "战斗",
+        "order": 2
+      },
+      {
+        "key": "ac",
+        "label": "护甲",
+        "ty": {
+          "kind": "number"
+        },
+        "group": "战斗",
+        "order": 3
+      },
+      {
+        "key": "str",
+        "label": "力量",
+        "ty": {
+          "kind": "number"
+        },
+        "group": "属性",
+        "order": 4
+      },
+      {
+        "key": "dex",
+        "label": "敏捷",
+        "ty": {
+          "kind": "number"
+        },
+        "group": "属性",
+        "order": 5
+      },
+      {
+        "key": "con",
+        "label": "体质",
+        "ty": {
+          "kind": "number"
+        },
+        "group": "属性",
+        "order": 6
+      },
+      {
+        "key": "desc",
+        "label": "描述",
+        "ty": {
+          "kind": "rich_text"
+        },
+        "order": 10
+      }
+    ]
+  },
+  {
+    "id": "type_item",
+    "name": "物品",
+    "color": "#8e44ad",
+    "created_at": 1700000000000,
+    "updated_at": 1700000000000,
+    "fields": [
+      {
+        "key": "category",
+        "label": "类别",
+        "ty": {
+          "kind": "enum",
+          "options": [
+            "武器",
+            "护甲",
+            "消耗品",
+            "传说",
+            "其他"
+          ]
+        },
+        "order": 0
+      },
+      {
+        "key": "desc",
+        "label": "描述",
+        "ty": {
+          "kind": "rich_text"
+        },
+        "order": 10
+      }
+    ]
+  }
+]

@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { type Token } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
 import { ScaledCardFrame } from "../../components/card/ScaledCardFrame";
-import { useDeleteUndo } from "../../hooks/useDeleteUndo";
 import { confirmDialog } from "../../lib/confirm";
 import { SectionLabel } from "../../components/ui/SectionLabel";
 import { EmptyState } from "../../components/ui/EmptyState";
@@ -76,8 +75,6 @@ export function TokenInspector({ token, onSave, onDelete, onClose }: Props) {
     setDirty(false);
   }
 
-  const deleteWithUndo = useDeleteUndo();
-
   async function handleDelete() {
     if (
       !(await confirmDialog({
@@ -87,16 +84,10 @@ export function TokenInspector({ token, onSave, onDelete, onClose }: Props) {
       }))
     )
       return;
-    await deleteWithUndo({
-      label: "删除 Token",
-      do: async () => {
-        await onDelete();
-        onClose();
-      },
-      restore: async () => {
-        await onSave(token);
-      },
-    });
+    // 撤销由 Inspector 负责 —— 它才持有棋盘 / 会话的上下文，
+    // 能把删掉的 token 按原位置合并回去
+    await onDelete();
+    onClose();
   }
 
   function jumpToCard() {

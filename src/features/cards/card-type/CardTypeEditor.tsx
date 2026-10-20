@@ -45,6 +45,9 @@ export function CardTypeEditor({ cardType }: Props) {
     {
       undoLabel: "编辑卡牌类型",
       autoSave: false,
+      resolveCurrent: () =>
+        useProjectStore.getState().cardTypes.find((t) => t.id === cardType.id) ??
+        null,
       onDraftChange: (d) => {
         upsertCardType({ ...d, updated_at: nowMs() });
       },

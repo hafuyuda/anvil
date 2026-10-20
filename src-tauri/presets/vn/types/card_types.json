@@ -1,0 +1,60 @@
+[
+  {
+    "id": "type_character",
+    "name": "角色",
+    "color": "#d9822b",
+    "created_at": 1700000000000,
+    "updated_at": 1700000000000,
+    "fields": [
+      {
+        "key": "portrait",
+        "label": "立绘",
+        "ty": {
+          "kind": "image"
+        },
+        "order": 0
+      },
+      {
+        "key": "portrait_smile",
+        "label": "微笑立绘",
+        "ty": {
+          "kind": "image"
+        },
+        "order": 0
+      },
+      {
+        "key": "bio",
+        "label": "简介",
+        "ty": {
+          "kind": "rich_text"
+        },
+        "order": 10
+      }
+    ]
+  },
+  {
+    "id": "type_scene",
+    "name": "场景",
+    "color": "#2980b9",
+    "created_at": 1700000000000,
+    "updated_at": 1700000000000,
+    "fields": [
+      {
+        "key": "background",
+        "label": "背景",
+        "ty": {
+          "kind": "image"
+        },
+        "order": 0
+      },
+      {
+        "key": "desc",
+        "label": "描述",
+        "ty": {
+          "kind": "rich_text"
+        },
+        "order": 10
+      }
+    ]
+  }
+]

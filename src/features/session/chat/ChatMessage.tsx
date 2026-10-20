@@ -1,5 +1,11 @@
-import { useState } from "react";
-import type { Card, CardType, GameEvent, ChatPayload } from "../../../core/ipc";
+import { memo, useState } from "react";
+import type {
+  Card,
+  CardType,
+  ChatPayload,
+  GameEvent,
+  SessionViewMode,
+} from "../../../core/ipc";
 import { isChatKind } from "../../../core/ipc";
 import {
   ActionMessage,
@@ -13,28 +19,49 @@ import { SystemLine } from "./ChatSystemLine";
 
 interface Props {
   event: GameEvent;
-  cards: Card[];
-  cardTypes: CardType[];
+  /** 卡牌查找表。整表建一次 Map，别让每条消息各扫一遍数组 */
+  cardMap: Map<string, Card>;
+  typeMap: Map<string, CardType>;
+  view: SessionViewMode;
   onEdit?: (event: GameEvent) => void;
   onDelete?: (event: GameEvent) => void;
+  onReveal?: (event: GameEvent) => void;
 }
 
-export function ChatMessage({
+function ChatMessageInner({
   event,
-  cards,
-  cardTypes,
+  cardMap,
+  typeMap,
+  view,
   onEdit,
   onDelete,
+  onReveal,
 }: Props) {
   const [hover, setHover] = useState(false);
+
+  const secret = (event.visibility ?? "public") === "secret";
+  const isReveal = event.kind === "chat.reveal";
+  const readOnly = view === "player";
 
   return (
     <div
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
-      style={{ position: "relative" }}
+      style={{
+        position: "relative",
+        // 秘密消息用虚线框 + 专属底色，一眼能从公开流里分出来
+        borderLeft: secret
+          ? "2px dashed var(--chat-secret-border)"
+          : isReveal
+            ? "2px solid var(--chat-reveal-border)"
+            : "2px solid transparent",
+        paddingLeft: secret || isReveal ? 8 : 0,
+        marginLeft: secret || isReveal ? -8 : 0,
+        borderRadius: "var(--radius-sm)",
+        background: secret ? "var(--chat-secret-bg)" : "transparent",
+      }}
     >
-      {(onEdit || onDelete) && hover && (
+      {!readOnly && (onEdit || onDelete) && hover && (
         <div
           style={{
             position: "absolute",
@@ -72,8 +99,70 @@ export function ChatMessage({
         </div>
       )}
 
-      {isChatKind(event.kind) ? (
-        <ChatBody event={event} cards={cards} cardTypes={cardTypes} />
+      {secret && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "2px 0 4px",
+          }}
+        >
+          <span
+            style={{
+              fontSize: 10,
+              padding: "1px 6px",
+              borderRadius: "var(--radius-sm)",
+              color: "var(--chat-secret-text)",
+              border: "1px dashed var(--chat-secret-border)",
+              letterSpacing: 0.5,
+            }}
+          >
+            秘密{event.revealed ? " · 已揭示" : ""}
+          </span>
+          {!event.revealed && !readOnly && onReveal && (
+            <button
+              className="btn"
+              onClick={() => onReveal(event)}
+              style={{ fontSize: 10, padding: "1px 6px" }}
+              title="把这条内容公开给玩家"
+            >
+              揭示
+            </button>
+          )}
+        </div>
+      )}
+
+      {isReveal && (
+        <div style={{ padding: "2px 0 4px" }}>
+          <span
+            style={{
+              fontSize: 10,
+              padding: "1px 6px",
+              borderRadius: "var(--radius-sm)",
+              color: "var(--chat-reveal-text)",
+              border: "1px solid var(--chat-reveal-border)",
+              letterSpacing: 0.5,
+            }}
+          >
+            揭示
+          </span>
+        </div>
+      )}
+
+      {isReveal ? (
+        <RevealBody
+          payload={event.payload as ChatPayload}
+          cardMap={cardMap}
+          typeMap={typeMap}
+        />
+      ) : isChatKind(event.kind) ? (
+        <ChatBody
+          kind={event.kind}
+          payload={event.payload as ChatPayload}
+          cardMap={cardMap}
+          typeMap={typeMap}
+        />
       ) : (
         <SystemLine event={event} />
       )}
@@ -81,28 +170,58 @@ export function ChatMessage({
   );
 }
 
-function ChatBody({
-  event,
-  cards,
-  cardTypes,
+/**
+ * memo 是必需的：新来一条消息会让整个列表重渲染，
+ * 没有 memo 时几百条旧消息会全部重新走一遍。
+ * 前提是调用方把 cardMap / typeMap 与三个回调都传稳定的引用。
+ */
+export const ChatMessage = memo(ChatMessageInner);
+
+/**
+ * chat.reveal 是秘密消息的公开副本。
+ * 它沿用原始种类渲染，玩家看到的就是一条普通消息 —— 只是位置在后、带揭示标记。
+ */
+function RevealBody({
+  payload,
+  cardMap,
+  typeMap,
 }: {
-  event: GameEvent;
-  cards: Card[];
-  cardTypes: CardType[];
+  payload: ChatPayload;
+  cardMap: Map<string, Card>;
+  typeMap: Map<string, CardType>;
 }) {
-  const payload = event.payload as ChatPayload;
+  return (
+    <ChatBody
+      kind={payload.revealed_kind ?? "chat.say"}
+      payload={payload}
+      cardMap={cardMap}
+      typeMap={typeMap}
+    />
+  );
+}
+
+function ChatBody({
+  kind,
+  payload,
+  cardMap,
+  typeMap,
+}: {
+  kind: string;
+  payload: ChatPayload;
+  cardMap: Map<string, Card>;
+  typeMap: Map<string, CardType>;
+}) {
   const authorName = payload.author_name ?? "未知";
   const authorCard = payload.author_card_id
-    ? (cards.find((c) => c.id === payload.author_card_id) ?? null)
+    ? (cardMap.get(payload.author_card_id) ?? null)
     : null;
   const authorType = authorCard
-    ? (cardTypes.find((t) => t.id === authorCard.type_id) ?? null)
+    ? (typeMap.get(authorCard.type_id) ?? null)
     : null;
   const color = authorType?.color ?? "var(--fg-secondary)";
-
   const cardId = payload.author_card_id ?? null;
 
-  switch (event.kind) {
+  switch (kind) {
     case "chat.say":
       return (
         <SayMessage

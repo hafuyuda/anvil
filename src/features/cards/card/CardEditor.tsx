@@ -8,7 +8,12 @@ import { CardDocEditor } from "./CardDocEditor";
 import { nowMs } from "../../../lib/time";
 import { useDeleteUndo } from "../../../hooks/useDeleteUndo";
 import { CropEditor } from "../card-type/CropEditor";
-import { confirmDialog } from "../../../lib/confirm";
+import { confirmRefAwareDelete } from "../../../lib/refAwareDelete";
+import { reloadIntoStore } from "../../../core/actions/reloadIntoStore";
+import {
+  captureCardFootprint,
+  restoreCardFootprint,
+} from "../../../core/actions/entityUndo";
 import { runWithError } from "../../../lib/runWithError";
 
 interface Props {
@@ -29,6 +34,10 @@ export function CardEditor({ card, cardType }: Props) {
     },
     {
       undoLabel: "编辑卡牌",
+      // 角色面板会往同一张卡写 HP。撤销时按键合并，
+      // 不把用户之后改的 HP 一起吞掉
+      resolveCurrent: () =>
+        useProjectStore.getState().cards.find((c) => c.id === card.id) ?? null,
       onDraftChange: (d) => {
         updateCard({ ...d, updated_at: nowMs() });
       },
@@ -38,25 +47,26 @@ export function CardEditor({ card, cardType }: Props) {
   const deleteWithUndo = useDeleteUndo();
 
   async function handleDelete() {
-    if (
-      !(await confirmDialog({
-        message: `确认删除卡牌「${card.name}」？可用 Ctrl+Z 撤销。`,
-        confirmLabel: "删除",
-        danger: true,
-      }))
-    )
-      return;
+    const clearMode = await confirmRefAwareDelete([
+      { kind: "card", id: card.id, name: card.name },
+    ]);
+    if (!clearMode) return;
+    // 删除前采集关系网足迹 —— 后端会连带摘掉棋子、卡盒、先攻、关系、
+    // 卡组成员，撤销时要把这些都按原位置放回去
+    const footprint = captureCardFootprint(card.id);
     await runWithError(
       () =>
         deleteWithUndo({
           label: "删除卡牌",
           do: async () => {
-            await ipc.deleteCard(card.id);
-            useProjectStore.getState().removeCard(card.id);
+            await ipc.deleteCard(card.id, clearMode);
+            // 卡没了，编辑器也没东西可编辑了
+            useProjectStore.getState().selectCard(null);
+            // 后端连带摘了棋子、卡盒、关系、卡组成员，store 要整体跟上
+            await reloadIntoStore();
           },
           restore: async () => {
-            await ipc.saveCard(card);
-            useProjectStore.getState().addCard(card);
+            if (footprint) await restoreCardFootprint(footprint);
           },
         }),
       "删除失败",

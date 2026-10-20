@@ -1,0 +1,22 @@
+{
+  "id": "card_balin",
+  "type_id": "type_character",
+  "name": "巴林",
+  "values": {
+    "race": "矮人",
+    "job": "副官",
+    "alignment": "守序善良",
+    "hp": 28,
+    "max_hp": 28,
+    "ac": 16,
+    "str": 15,
+    "dex": 12,
+    "con": 15,
+    "int": 13,
+    "wis": 14,
+    "cha": 12,
+    "bio": "索林最信任的老兵。口头禅：「年轻人，先喝一杯。矮人点菜从来只有肉、酒、肉、酒。」"
+  },
+  "created_at": 1700000000000,
+  "updated_at": 1700000000000
+}

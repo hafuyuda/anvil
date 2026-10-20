@@ -2,8 +2,8 @@ mod core;
 //mod features;
 
 use core::ipc::{
-    board_cmd::*, card_cmd::*, card_group_cmd::*, project_cmd::*, relation_cmd::*, scenario_cmd::*,
-    session_cmd::*, AppState,
+    board_cmd::*, card_cmd::*, card_group_cmd::*, project_cmd::*, refs_cmd::*, relation_cmd::*,
+    scenario_cmd::*, session_cmd::*, AppState,
 };
 use std::sync::Mutex;
 use tauri_plugin_frame::FramePluginBuilder;
@@ -83,8 +83,17 @@ pub fn run() {
             delete_session,
             list_events,
             append_event,
+            reveal_event,
             update_event,
             delete_event,
+            // refs
+            scan_card_refs,
+            scan_card_refs_batch,
+            scan_board_refs,
+            scan_card_group_refs,
+            scan_card_type_refs,
+            scan_dangling_refs,
+            purge_dangling_refs,
             // audio
             import_audio,
             delete_audio,

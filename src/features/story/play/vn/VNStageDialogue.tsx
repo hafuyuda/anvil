@@ -1,14 +1,17 @@
-import { useAppSettings } from "../../../../hooks/useAppSettings";
 import type { ScriptLine } from "../../script/types";
-import { useTypewriter } from "../useTypewriter";
 
-export function VNStageDialogue({
-  line,
-  onAdvance,
-}: {
+interface Props {
   line: ScriptLine;
+  /** 已显示的文本（由舞台层 useTypewriter 提升而来，保持一致） */
+  displayed: string;
+  /** 打字机是否已播完 */
+  done: boolean;
+  /** 立即显示完整文本 */
+  skip: () => void;
   onAdvance: () => void;
-}) {
+}
+
+export function VNStageDialogue({ line, displayed, done, skip, onAdvance }: Props) {
   // 防御：指令行不该出现在这里
   if (
     line.type === "bg" ||
@@ -26,17 +29,6 @@ export function VNStageDialogue({
   ) {
     return null;
   }
-
-  const text = line.text;
-  const { typewriterEnabled, typewriterNarration } = useAppSettings();
-
-  // 旁白默认不打字机（逐字反而慢）；全局设置可覆盖
-  const enabled =
-    line.type === "narration"
-      ? typewriterEnabled && typewriterNarration
-      : typewriterEnabled;
-
-  const { displayed, done, skip } = useTypewriter(text, { enabled });
 
   function handleClick() {
     if (!done) {

@@ -1,0 +1,22 @@
+{
+  "id": "card_dwalin",
+  "type_id": "type_character",
+  "name": "朵力",
+  "values": {
+    "race": "矮人",
+    "job": "卫士",
+    "alignment": "守序善良",
+    "hp": 31,
+    "max_hp": 31,
+    "ac": 17,
+    "str": 16,
+    "dex": 13,
+    "con": 16,
+    "int": 10,
+    "wis": 12,
+    "cha": 11,
+    "bio": "一脸凶相专吓哥布林。测试矿洞的方法：「扔块石头，『咣』是空的，『叮』是有矿，『啊』是有哥布林。」"
+  },
+  "created_at": 1700000000000,
+  "updated_at": 1700000000000
+}

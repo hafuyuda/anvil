@@ -1,0 +1,11 @@
+{
+  "id": "card_axe",
+  "type_id": "type_item",
+  "name": "矮人战斧",
+  "values": {
+    "category": "武器",
+    "desc": "比爷爷还老，仍能砍。铁匠：「这斧比你爷爷还老。」矮人：「所以呢？它还能砍。」"
+  },
+  "created_at": 1700000000000,
+  "updated_at": 1700000000000
+}

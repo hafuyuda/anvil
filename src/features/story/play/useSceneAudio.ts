@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { loadAsset } from "../../../lib/assetCache";
+import { useAppSettings } from "../../../hooks/useAppSettings";
 import {
   getPlayerState,
   pause as pausePlayer,
@@ -21,6 +22,7 @@ export function useSceneAudio(
 ) {
   const bgmRef = useRef<HTMLAudioElement | null>(null);
   const currentBgmRef = useRef<string | null>(null);
+  const settings = useAppSettings();
 
   // VN 接管：进入时暂停全局播放器，退出时恢复
   useEffect(() => {
@@ -62,12 +64,12 @@ export function useSceneAudio(
     void loadAsset(bgm).then((url) => {
       if (cancelled || !url) return;
       const audio = new Audio(url);
-      audio.loop = true;
+      audio.loop = settings.playerLoop;
       audio.volume = 0;
       void audio.play().catch(() => {
         // 浏览器可能因用户交互策略拒绝播放，静默
       });
-      fadeIn(audio, 150);
+      fadeIn(audio, 150, settings.playerVolume);
       bgmRef.current = audio;
     });
 
@@ -75,6 +77,11 @@ export function useSceneAudio(
       cancelled = true;
     };
   }, [bgm]);
+
+  // 全局音量变化时，实时调整正在播放的 bgm 音量
+  useEffect(() => {
+    if (bgmRef.current) bgmRef.current.volume = settings.playerVolume;
+  }, [settings.playerVolume]);
 
   // sfx 触发：sfxList 变化时，把列表里的音效全部播一遍
   useEffect(() => {
@@ -96,11 +103,11 @@ export function useSceneAudio(
   }, [sceneId, sfxList]);
 }
 
-function fadeIn(audio: HTMLAudioElement, ms: number) {
+function fadeIn(audio: HTMLAudioElement, ms: number, targetVolume = 1) {
   const start = performance.now();
   function tick() {
     const t = Math.min(1, (performance.now() - start) / ms);
-    audio.volume = t;
+    audio.volume = t * targetVolume;
     if (t < 1) requestAnimationFrame(tick);
   }
   requestAnimationFrame(tick);

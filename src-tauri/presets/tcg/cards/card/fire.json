@@ -1,0 +1,14 @@
+{
+  "id": "card_fire",
+  "type_id": "type_card",
+  "name": "烈焰小鬼",
+  "values": {
+    "cost": 2,
+    "atk": 3,
+    "def": 1,
+    "rarity": "普通",
+    "desc": "火元素的小跟班，脾气比个头大。"
+  },
+  "created_at": 1700000000000,
+  "updated_at": 1700000000000
+}

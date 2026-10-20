@@ -5,12 +5,16 @@ import { useOpenProject } from "../../core/actions/useOpenProject";
 import { useCreateProject } from "../../core/actions/useCreateProject";
 import { useExportPack } from "../../core/actions/useExportPack";
 import { useImportPack } from "../../core/actions/useImportPack";
+import { createCardResultSource } from "./cardResultSource";
 import { ipc } from "../../core/ipc";
 import { useUIStore } from "../../stores/uiStore";
 import { getRecentProjects } from "../../lib/recentProjects";
 import { openProjectAt } from "../../core/actions/openProjectAt";
 import { runWithError } from "../../lib/runWithError";
 import { resetModuleOrder } from "../../lib/moduleOrder";
+import { confirmDialog } from "../../lib/confirm";
+import { toast } from "../../lib/toast";
+import { reloadIntoStore } from "../../core/actions/reloadIntoStore";
 
 export function useGlobalCommands() {
   const openProjectHook = useOpenProject();
@@ -19,7 +23,6 @@ export function useGlobalCommands() {
   const importPackHook = useImportPack();
 
   const projectPath = useProjectStore((s) => s.projectPath);
-  const cards = useProjectStore((s) => s.cards) ?? [];
 
   // 用 ref 稳定函数引用，effect 不依赖它们
   const handlers = useRef({
@@ -32,9 +35,6 @@ export function useGlobalCommands() {
   handlers.current.createProject = createProjectHook;
   handlers.current.exportPack = exportPackHook;
   handlers.current.importPack = importPackHook;
-
-  // 卡牌指纹：id + name，只有在增删改名时才变
-  const cardsFingerprint = cards.map((c) => `${c.id}:${c.name}`).join("|");
 
   useEffect(() => {
     const disposers: (() => void)[] = [];
@@ -140,19 +140,7 @@ export function useGlobalCommands() {
         label: "刷新项目",
         category: "项目",
         keywords: ["refresh", "刷新"],
-        run: async () => {
-          const snap = await ipc.reloadProject();
-          useProjectStore.getState().refreshProject({
-            cards: snap.cards,
-            cardTypes: snap.card_types,
-            relationKinds: snap.relation_kinds,
-            relations: snap.relations,
-            scenarios: snap.scenarios,
-            boards: snap.boards,
-            sessions: snap.sessions,
-            cardGroups: snap.card_groups,
-          });
-        },
+        run: () => reloadIntoStore(),
       });
       reg({
         id: "project.close",
@@ -192,6 +180,38 @@ export function useGlobalCommands() {
       });
 
       reg({
+        id: "refs.purgeDangling",
+        label: "清理悬空引用",
+        category: "项目",
+        keywords: ["dangling", "refs", "悬空", "引用", "体检", "清理"],
+        run: async () => {
+          await runWithError(
+            async () => {
+              const hits = await ipc.scanDanglingRefs();
+              if (hits.length === 0) {
+                toast.info("没有发现悬空引用，项目是干净的。");
+                return;
+              }
+              const ok = await confirmDialog({
+                title: "清理悬空引用",
+                message:
+                  `发现 ${hits.length} 处指向不存在卡牌的引用` +
+                  `（棋盘 / 会话棋子、卡盒、先攻条目、关系、卡组成员）。\n` +
+                  `清理会把它们一并移除，且不可撤销。`,
+                confirmLabel: "清理",
+                danger: true,
+              });
+              if (!ok) return;
+              const n = await ipc.purgeDanglingRefs();
+              await reloadIntoStore();
+              toast.info(`已清理 ${n} 处悬空引用。`);
+            },
+            "清理失败",
+          );
+        },
+      });
+
+      reg({
         id: "player.open",
         label: "音频播放器",
         category: "播放",
@@ -200,20 +220,10 @@ export function useGlobalCommands() {
         run: () => useProjectStore.getState().setActiveModule("player"),
       });
 
-      // 快速打开卡牌
-      for (const c of cards) {
-        reg({
-          id: `open.card.${c.id}`,
-          label: c.name,
-          category: "打开卡牌",
-          keywords: [c.name],
-          run: () => {
-            const s = useProjectStore.getState();
-            s.setActiveModule("world");
-            s.selectCard(c.id);
-          },
-        });
-      }
+      // 卡牌检索：走结果源而不是「一张卡一条命令」。
+      // 后者在一万张卡的项目里是一万条注册加一万次 notify，
+      // 而且只匹配卡名 —— 字段值与文档正文完全搜不到。
+      disposers.push(commandRegistry.registerSource(createCardResultSource()));
     }
 
     // 打开最近项目（子菜单）
@@ -234,7 +244,8 @@ export function useGlobalCommands() {
     return () => {
       for (const d of disposers) d();
     };
-    // 依赖只有两个稳定值：projectPath 和 cards 指纹
+    // 只依赖 projectPath。卡牌检索走结果源，卡牌增删改名不触发重新注册 ——
+    // 此前这里依赖 cards 指纹，每改一张卡名就把全部命令注销重注册一遍
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectPath, cardsFingerprint]);
+  }, [projectPath]);
 }

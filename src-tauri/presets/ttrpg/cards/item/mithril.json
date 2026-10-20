@@ -1,0 +1,11 @@
+{
+  "id": "card_mithril",
+  "type_id": "type_item",
+  "name": "秘银锁子甲",
+  "values": {
+    "category": "护甲",
+    "desc": "轻得像谣言，硬得像矮人的脾气。"
+  },
+  "created_at": 1700000000000,
+  "updated_at": 1700000000000
+}

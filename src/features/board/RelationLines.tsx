@@ -25,6 +25,11 @@ export function RelationLines({
 }: Props) {
   const visibleKinds = board.visible_relation_kinds ?? [];
 
+  // 关系类型按 id 建索引。这个组件在拖拽时每帧都会重跑，
+  // 循环里再对每条关系线性找一次类型就是 O(R·K)。
+  const kindById = new Map<string, RelationKind>();
+  for (const k of relationKinds) kindById.set(k.id, k);
+
   // card_id → 该卡在画布上第一个 token
   const cardToToken = new Map<string, Token>();
   for (const t of tokens) {
@@ -45,8 +50,7 @@ export function RelationLines({
     if (!fromToken || !toToken) continue;
     if (fromToken.id === toToken.id) continue;
 
-    const kind = relationKinds.find((k) => k.id === r.kind);
-    const directed = kind?.directed ?? true;
+    const directed = kindById.get(r.kind)?.directed ?? true;
 
     let key: string;
     let a: Token;
@@ -88,7 +92,7 @@ export function RelationLines({
     const my = (y1 + y2) / 2;
 
     // 取第一条关系的颜色作为该组的颜色
-    const firstKind = relationKinds.find((k) => k.id === g.relations[0].kind);
+    const firstKind = kindById.get(g.relations[0].kind);
     const color = firstKind?.color ?? "var(--accent-gold)";
 
     const arrowEnd = g.directed ? "url(#rl-arrow)" : undefined;

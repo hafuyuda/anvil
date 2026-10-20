@@ -1,0 +1,9 @@
+{
+  "kind": "anvil-project",
+  "schema_version": "0.4",
+  "name": "矮人矿镇战役",
+  "version": "0.1.0",
+  "description": "内置预设：D&D 矮人主题跑团起点。",
+  "created_at": 1700000000000,
+  "updated_at": 1700000000000
+}

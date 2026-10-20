@@ -1,4 +1,5 @@
 import type { GameEvent } from "../../../core/ipc";
+import { formatStep, type BoardStepPayload } from "../boardRecord";
 
 export function SystemLine({ event }: { event: GameEvent }) {
   const text = systemText(event);
@@ -33,6 +34,10 @@ function systemText(event: GameEvent): string {
       return "会话结束";
     case "token.move":
       return `Token 变动（${payload.count ?? "?"} 个）`;
+    case "board.step": {
+      const text = formatStep(payload as BoardStepPayload);
+      return text || "棋盘变动";
+    }
     case "state.set": {
       const k = payload.key ?? "?";
       const v = payload.value;

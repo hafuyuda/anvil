@@ -8,7 +8,12 @@ import { GenerateByTypeDialog } from "./GenerateByTypeDialog";
 import { useDeleteUndo } from "../../hooks/useDeleteUndo";
 import { newId } from "../../lib/id";
 import { nowMs } from "../../lib/time";
-import { confirmDialog } from "../../lib/confirm";
+import { confirmRefAwareDelete } from "../../lib/refAwareDelete";
+import { reloadIntoStore } from "../../core/actions/reloadIntoStore";
+import {
+  captureGroupFootprint,
+  restoreGroupFootprint,
+} from "../../core/actions/entityUndo";
 import { runWithError } from "../../lib/runWithError";
 
 export function CardGroupList() {
@@ -16,7 +21,6 @@ export function CardGroupList() {
   const cards = useProjectStore((s) => s.cards) ?? [];
   const cardTypes = useProjectStore((s) => s.cardTypes) ?? [];
   const upsertCardGroup = useProjectStore((s) => s.upsertCardGroup);
-  const removeCardGroup = useProjectStore((s) => s.removeCardGroup);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const [newChoiceOpen, setNewChoiceOpen] = useState(false);
@@ -70,26 +74,24 @@ export function CardGroupList() {
   }
 
   async function handleDelete(g: CardGroup) {
-    if (
-      !(await confirmDialog({
-        message: `删除卡组「${g.name}」？可用 Ctrl+Z 撤销。`,
-        confirmLabel: "删除",
-        danger: true,
-      }))
-    )
-      return;
+    const clearMode = await confirmRefAwareDelete([
+      { kind: "card_group", id: g.id, name: g.name },
+    ]);
+    if (!clearMode) return;
+    // 后端会摘掉用它做的卡盒，撤销时要连卡盒一起放回去
+    const footprint = captureGroupFootprint(g.id);
     await runWithError(
       () =>
         deleteWithUndo({
           label: "删除卡组",
           do: async () => {
             await ipc.deleteCardGroup(g.id);
-            removeCardGroup(g.id);
             if (selectedId === g.id) setSelectedId(null);
+            // 后端顺手摘了用它做的卡盒，store 要整体跟上
+            await reloadIntoStore();
           },
           restore: async () => {
-            await ipc.upsertCardGroup(g);
-            upsertCardGroup(g);
+            if (footprint) await restoreGroupFootprint(footprint);
           },
         }),
       "删除失败",

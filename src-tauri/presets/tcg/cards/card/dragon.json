@@ -1,0 +1,14 @@
+{
+  "id": "card_dragon",
+  "type_id": "type_card",
+  "name": "红龙领主",
+  "values": {
+    "cost": 8,
+    "atk": 9,
+    "def": 9,
+    "rarity": "传说",
+    "desc": "山腹的主人，金子的收藏家。"
+  },
+  "created_at": 1700000000000,
+  "updated_at": 1700000000000
+}

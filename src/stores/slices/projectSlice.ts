@@ -96,5 +96,10 @@ export const createProjectSlice: StateCreator<ProjectState, [], [], Slice> = (
       selectedCardId: null,
       selectedTokenId: null,
       currentBoardId: null,
+      // 撤销栈是内存态且只对当前项目有意义。关掉项目不清的话，
+      // 打开另一个项目后按 Ctrl+Z 会拿上一个项目的恢复逻辑乱写。
+      undoStack: [],
+      redoStack: [],
+      pendingSaves: 0,
     }),
 });

@@ -32,6 +32,11 @@ export function CardGroupEditor({ group }: Props) {
     },
     {
       undoLabel: "编辑卡组",
+      // 卡片墙可以往同一个卡组加卡。撤销时按键合并，
+      // 不把用户之后加进来的卡吞掉
+      resolveCurrent: () =>
+        useProjectStore.getState().cardGroups.find((g) => g.id === group.id) ??
+        null,
       onDraftChange: (d) => {
         upsertCardGroup({ ...d, updated_at: nowMs() });
       },

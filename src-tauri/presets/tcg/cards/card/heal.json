@@ -1,0 +1,14 @@
+{
+  "id": "card_heal",
+  "type_id": "type_card",
+  "name": "圣光治愈",
+  "values": {
+    "cost": 3,
+    "atk": 0,
+    "def": 0,
+    "rarity": "稀有",
+    "desc": "回血的法术，不扛伤。"
+  },
+  "created_at": 1700000000000,
+  "updated_at": 1700000000000
+}

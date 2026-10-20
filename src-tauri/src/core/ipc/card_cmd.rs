@@ -18,10 +18,16 @@ pub fn list_cards(state: State<AppState>) -> Result<Vec<Card>, String> {
 }
 
 #[tauri::command]
-pub fn delete_card(state: State<AppState>, id: String) -> Result<(), String> {
+pub fn delete_card(
+    state: State<AppState>,
+    id: String,
+    // "remove" = 一并移除引用它的棋子；"detach" = 保留棋子但断开指针。缺省 remove。
+    mode: Option<String>,
+) -> Result<(), String> {
     let guard = state.project.lock().unwrap();
     let p = guard.as_ref().ok_or("no project open")?;
-    p.delete_card(&id).map_err(|e| e.to_string())
+    let mode = crate::core::store::refs::ClearMode::from_str_opt(mode.as_deref());
+    p.delete_card(&id, mode).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -59,6 +65,15 @@ pub fn upsert_card_type(state: State<AppState>, card_type: CardType) -> Result<(
 pub fn delete_card_type(state: State<AppState>, id: String) -> Result<(), String> {
     let guard = state.project.lock().unwrap();
     let p = guard.as_ref().ok_or("no project open")?;
+    // 卡没有类型就渲染不出来，所以最后一道防线放在后端：
+    // 还有卡在用的类型不允许删，宁可让用户先改类型。
+    let using = p.scan_card_type_refs(&id).map_err(|e| e.to_string())?;
+    if !using.is_empty() {
+        return Err(format!(
+            "还有 {} 张卡在使用这个类型，先删除或改类型。",
+            using.len()
+        ));
+    }
     let mut types = p.load_card_types().map_err(|e| e.to_string())?;
     let before = types.len();
     types.retain(|t| t.id != id);

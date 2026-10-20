@@ -1,0 +1,11 @@
+{
+  "id": "card_forest",
+  "type_id": "type_scene",
+  "name": "精灵林地",
+  "values": {
+    "background": "forest_bg.png",
+    "desc": "高树与微光，精灵在此慢条斯理地议事。"
+  },
+  "created_at": 1700000000000,
+  "updated_at": 1700000000000
+}

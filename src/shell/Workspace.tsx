@@ -213,41 +213,56 @@ export function Workspace() {
         overflow: "hidden",
       }}
     >
-      {activeModule === "world" && (
-        <ErrorBoundary>
-          <CardWall />
-        </ErrorBoundary>
-      )}
-      {activeModule === "types" && (
-        <ErrorBoundary>
-          <CardTypeList />
-        </ErrorBoundary>
-      )}
-      {activeModule === "story" && (
-        <ErrorBoundary>
-          <ScenarioList />
-        </ErrorBoundary>
-      )}
-      {activeModule === "board" && (
-        <ErrorBoundary>
-          <BoardList />
-        </ErrorBoundary>
-      )}
-      {activeModule === "cardGroups" && (
-        <ErrorBoundary>
-          <CardGroupList />
-        </ErrorBoundary>
-      )}
-      {activeModule === "session" && (
-        <ErrorBoundary>
-          <SessionList />
-        </ErrorBoundary>
-      )}
-      {activeModule === "player" && (
-        <ErrorBoundary>
-          <PlayerView />
-        </ErrorBoundary>
-      )}
+      {/*
+        模块内容按 activeModule 加 key：切模块时整个子树重新挂载，
+        于是入场动画每次切换都会重放。
+        注意模块本身本来就是条件渲染（切走即卸载），加 key 不额外丢状态。
+      */}
+      <div key={activeModule} className="module-enter" style={MODULE_HOST}>
+        {activeModule === "world" && (
+          <ErrorBoundary>
+            <CardWall />
+          </ErrorBoundary>
+        )}
+        {activeModule === "types" && (
+          <ErrorBoundary>
+            <CardTypeList />
+          </ErrorBoundary>
+        )}
+        {activeModule === "story" && (
+          <ErrorBoundary>
+            <ScenarioList />
+          </ErrorBoundary>
+        )}
+        {activeModule === "board" && (
+          <ErrorBoundary>
+            <BoardList />
+          </ErrorBoundary>
+        )}
+        {activeModule === "cardGroups" && (
+          <ErrorBoundary>
+            <CardGroupList />
+          </ErrorBoundary>
+        )}
+        {activeModule === "session" && (
+          <ErrorBoundary>
+            <SessionList />
+          </ErrorBoundary>
+        )}
+        {activeModule === "player" && (
+          <ErrorBoundary>
+            <PlayerView />
+          </ErrorBoundary>
+        )}
+      </div>
     </div>
   );
 }
+
+const MODULE_HOST: React.CSSProperties = {
+  flex: 1,
+  minHeight: 0,
+  minWidth: 0,
+  display: "flex",
+  flexDirection: "column",
+};

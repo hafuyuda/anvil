@@ -1,0 +1,13 @@
+{
+  "id": "group_starter",
+  "name": "新手牌组",
+  "description": "预组的起手牌组。",
+  "card_ids": [
+    "card_fire",
+    "card_golem",
+    "card_dragon",
+    "card_heal"
+  ],
+  "created_at": 1700000000000,
+  "updated_at": 1700000000000
+}

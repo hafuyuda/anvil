@@ -1,0 +1,11 @@
+{
+  "id": "card_faction_elf",
+  "type_id": "type_faction",
+  "name": "精灵议会",
+  "values": {
+    "creed": "长歌与林，岁月为友。",
+    "color": "#27ae60"
+  },
+  "created_at": 1700000000000,
+  "updated_at": 1700000000000
+}

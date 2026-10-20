@@ -1,0 +1,14 @@
+{
+  "id": "card_bat",
+  "type_id": "type_monster",
+  "name": "洞顶蝙蝠",
+  "values": {
+    "species": "蝙蝠",
+    "threat": "低",
+    "hp": 5,
+    "max_hp": 5,
+    "desc": "倒挂着看你。矮人扔石头：「咣」是石头，「吱」是它醒了。"
+  },
+  "created_at": 1700000000000,
+  "updated_at": 1700000000000
+}

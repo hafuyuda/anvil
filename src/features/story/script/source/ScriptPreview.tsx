@@ -105,6 +105,16 @@ function PreviewLine({ line }: { line: ParsedScript["lines"][number] }) {
         </div>
       );
     case "narration":
+      // 草稿（未识别语法）：标成「草稿」而非误导性的「旁白」，
+      // 与结构化编辑器一致（空行只是空输入、不会变旁白）。
+      if (line.draft) {
+        return (
+          <div style={{ ...rowStyle, borderLeftColor: "var(--warning)" }}>
+            <span style={labelStyle}>草稿</span>
+            <span style={{ color: "var(--fg-muted)" }}>{line.text}</span>
+          </div>
+        );
+      }
       return (
         <div style={rowStyle}>
           <span style={labelStyle}>旁白</span>

@@ -1,0 +1,8 @@
+{"id": "rel_balin", "from": "card_balin", "to": "card_thorin", "kind": "rel_vassal", "created_at": 1700000000000}
+{"id": "rel_nori", "from": "card_nori", "to": "card_thorin", "kind": "rel_ally", "created_at": 1700000000000}
+{"id": "rel_dwalin", "from": "card_dwalin", "to": "card_thorin", "kind": "rel_vassal", "created_at": 1700000000000}
+{"id": "rel_dain", "from": "card_dain", "to": "card_thorin", "kind": "rel_ally", "created_at": 1700000000000}
+{"id": "rel_smaug", "from": "card_smaug", "to": "card_tavern", "kind": "rel_hostile", "created_at": 1700000000000}
+{"id": "rel_goblin", "from": "card_goblin", "to": "card_mine", "kind": "rel_hostile", "created_at": 1700000000000}
+{"id": "rel_mine", "from": "card_mine", "to": "card_tavern", "kind": "rel_located", "created_at": 1700000000000}
+{"id": "rel_lair", "from": "card_lair", "to": "card_mine", "kind": "rel_located", "created_at": 1700000000000}

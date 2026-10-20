@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Scenario } from "../../../core/ipc";
 import { usePlayState } from "./usePlayState";
 import { VariablePanel } from "./panels/VariablePanel";
 import { VNStage } from "./vn/VNStage";
+import { SceneCard } from "./SceneCard";
 import { useSceneAudio } from "./useSceneAudio";
 
 interface Props {
@@ -27,9 +28,15 @@ export function PlayView({ scenario }: Props) {
     currentSfx,
     choices,
     currentLine,
+    lastRolls,
     ended,
     isEnding,
     endingName,
+    portrait,
+    portraitLookup,
+    cards,
+    currentSceneCard,
+    duplicates,
     advance,
     choose,
     back,
@@ -40,6 +47,36 @@ export function PlayView({ scenario }: Props) {
 
   const [showVariables, setShowVariables] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [showScene, setShowScene] = useState(false);
+
+  // 键盘操作：Space/Enter 推进，1-9 选择选项；输入框聚焦时不拦截
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const el = e.target as HTMLElement | null;
+      if (
+        el &&
+        (el.tagName === "INPUT" ||
+          el.tagName === "TEXTAREA" ||
+          el.isContentEditable)
+      ) {
+        return;
+      }
+      if (e.key === " " || e.key === "Enter") {
+        if (currentLine && choices.length === 0 && !ended) {
+          e.preventDefault();
+          advance();
+        }
+      } else if (/^[1-9]$/.test(e.key)) {
+        const idx = Number(e.key) - 1;
+        if (choices.length > 0 && idx < choices.length) {
+          e.preventDefault();
+          choose(idx);
+        }
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [advance, choose, choices, ended, currentLine]);
 
   if (loading) {
     return (
@@ -94,7 +131,32 @@ export function PlayView({ scenario }: Props) {
         onChoose={choose}
         scenarioName={scenario.name}
         knot={currentKnot}
+        portrait={portrait}
+        portraitLookup={portraitLookup}
       />
+
+      {/* 重名 knot 警示 */}
+      {duplicates.length > 0 && (
+        <div
+          style={{
+            position: "absolute",
+            top: 12,
+            left: 12,
+            right: 220,
+            zIndex: 10,
+            padding: "6px 12px",
+            background: "var(--bg-panel)",
+            border: "1px solid var(--warning)",
+            borderRadius: "var(--radius-md)",
+            color: "var(--warning)",
+            fontSize: 11,
+            boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
+          }}
+        >
+          重名 knot（后者覆盖前者，跳转可能指向非预期目标）：
+          {duplicates.map((d) => `「${d}」`).join("、")}
+        </div>
+      )}
 
       {/* 右上角工具栏 */}
       <div
@@ -110,7 +172,19 @@ export function PlayView({ scenario }: Props) {
         <button
           className="btn"
           onClick={() => {
+            setShowScene((v) => !v);
+            setShowVariables(false);
+            setShowHistory(false);
+          }}
+          style={{ fontSize: 11 }}
+        >
+          场景
+        </button>
+        <button
+          className="btn"
+          onClick={() => {
             setShowVariables((v) => !v);
+            setShowScene(false);
             setShowHistory(false);
           }}
           style={{ fontSize: 11 }}
@@ -122,6 +196,7 @@ export function PlayView({ scenario }: Props) {
           onClick={() => {
             setShowHistory((v) => !v);
             setShowVariables(false);
+            setShowScene(false);
           }}
           style={{ fontSize: 11 }}
         >
@@ -164,6 +239,38 @@ export function PlayView({ scenario }: Props) {
             onResetVars={resetVars}
             history={history.map((h) => h.knot ?? "")}
           />
+        </div>
+      )}
+
+      {/* 场景信息浮层（复用已写好的 SceneCard 组件） */}
+      {showScene && (
+        <div
+          style={{
+            position: "absolute",
+            top: 48,
+            right: 12,
+            width: 300,
+            maxHeight: "70vh",
+            overflowY: "auto",
+            background: "var(--bg-panel)",
+            border: "1px solid var(--border-default)",
+            borderRadius: "var(--radius-md)",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
+            padding: 12,
+            zIndex: 20,
+          }}
+        >
+          {currentSceneCard ? (
+            <SceneCard
+              card={currentSceneCard}
+              cards={cards}
+              lastRolls={lastRolls}
+            />
+          ) : (
+            <div style={{ fontSize: 12, color: "var(--fg-muted)" }}>
+              当前无场景卡（用 @scene 场景卡名 标记）
+            </div>
+          )}
         </div>
       )}
 

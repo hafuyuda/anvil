@@ -1,0 +1,59 @@
+[
+  {
+    "id": "type_card",
+    "name": "卡牌",
+    "color": "#16a085",
+    "created_at": 1700000000000,
+    "updated_at": 1700000000000,
+    "fields": [
+      {
+        "key": "cost",
+        "label": "费用",
+        "ty": {
+          "kind": "number"
+        },
+        "order": 0
+      },
+      {
+        "key": "atk",
+        "label": "攻击",
+        "ty": {
+          "kind": "number"
+        },
+        "group": "数值",
+        "order": 0
+      },
+      {
+        "key": "def",
+        "label": "防御",
+        "ty": {
+          "kind": "number"
+        },
+        "group": "数值",
+        "order": 0
+      },
+      {
+        "key": "rarity",
+        "label": "稀有度",
+        "ty": {
+          "kind": "enum",
+          "options": [
+            "普通",
+            "稀有",
+            "史诗",
+            "传说"
+          ]
+        },
+        "order": 0
+      },
+      {
+        "key": "desc",
+        "label": "描述",
+        "ty": {
+          "kind": "rich_text"
+        },
+        "order": 10
+      }
+    ]
+  }
+]

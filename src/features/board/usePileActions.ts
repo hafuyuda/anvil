@@ -1,14 +1,22 @@
 import type { Token } from "../../core/ipc";
 import { newId } from "../../lib/id";
 
+/** 卡盒动作的语义标签。棋盘不需要它，会话靠它写牌谱。 */
+export type PileActionKind = "draw" | "shuffle" | "reset";
+
+export interface PileAction {
+  kind: PileActionKind;
+  pile_token_id: string;
+}
+
 interface Args {
   /** 当前所有 token，用于读取 pile 状态、计算新布局 */
   tokens: Token[];
   /**
    * 应用新的 token 列表。调用方负责落盘 + 更新 store + 记撤销栈。
-   * label 会展示在撤销按钮上。
+   * label 会展示在撤销按钮上，action 说明这次是什么卡盒动作。
    */
-  applyTokens: (next: Token[], label: string) => Promise<void>;
+  applyTokens: (next: Token[], label: string, action?: PileAction) => Promise<void>;
   /** 棋盘尺寸。省略则不检查边界 */
   bounds?: { width: number; height: number };
 }
@@ -116,7 +124,10 @@ export function usePileActions({ tokens, applyTokens, bounds }: Args) {
       ...newTokens,
     ];
 
-    await applyTokens(next, `抽 ${drawn.length} 张牌`);
+    await applyTokens(next, `抽 ${drawn.length} 张牌`, {
+      kind: "draw",
+      pile_token_id: pileTokenId,
+    });
   }
 
   async function shufflePile(pileTokenId: string) {
@@ -135,7 +146,10 @@ export function usePileActions({ tokens, applyTokens, bounds }: Args) {
     };
 
     const next = tokens.map((t) => (t.id === pileTokenId ? updatedPile : t));
-    await applyTokens(next, "洗牌");
+    await applyTokens(next, "洗牌", {
+      kind: "shuffle",
+      pile_token_id: pileTokenId,
+    });
   }
 
   async function resetPile(pileTokenId: string) {
@@ -148,7 +162,10 @@ export function usePileActions({ tokens, applyTokens, bounds }: Args) {
     };
 
     const next = tokens.map((t) => (t.id === pileTokenId ? updatedPile : t));
-    await applyTokens(next, "重置卡盒");
+    await applyTokens(next, "重置卡盒", {
+      kind: "reset",
+      pile_token_id: pileTokenId,
+    });
   }
 
   return { drawFromPile, shufflePile, resetPile };

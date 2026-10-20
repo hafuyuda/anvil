@@ -32,6 +32,8 @@ export function CardGridView({
           foil
           selected={selectedCardIds.includes(c.id)}
           onClick={(e) => onCardClick(c, e)}
+          // FLIP 过渡靠这个属性找元素、对位置
+          wrapperProps={{ "data-card-id": c.id }}
         />
       ))}
     </CardGrid>

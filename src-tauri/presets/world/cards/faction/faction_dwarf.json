@@ -1,0 +1,11 @@
+{
+  "id": "card_faction_dwarf",
+  "type_id": "type_faction",
+  "name": "矮人氏族",
+  "values": {
+    "creed": "金子与锤，山即故乡。",
+    "color": "#d9822b"
+  },
+  "created_at": 1700000000000,
+  "updated_at": 1700000000000
+}

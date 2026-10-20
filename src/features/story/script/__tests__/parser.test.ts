@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { parseScript } from "../parser";
 import { serializeScript } from "../serializer";
+import type { ScriptLine } from "../types";
 
 describe("parser", () => {
   it("新语法往返：parse → serialize → parse，lines 逐项相等", () => {
@@ -137,5 +138,51 @@ VAR has_key = false
     expect(parsed.knots["铁匠铺"].pc).toBe(0);
     expect(parsed.knots["铁匠铺.夜"].pc).toBe(2);
     expect(parsed.lines[2]).toEqual({ type: "knot", name: "铁匠铺.夜" });
+  });
+
+  it("退化空字段往返：类型不丢失（修复「选什么类型都变旁白」）", () => {
+    const cases: ScriptLine[] = [
+      { type: "say", speaker: "", text: "" },
+      { type: "action", text: "" },
+      { type: "choice", label: "" },
+      { type: "bg", image: "" },
+      { type: "actor_ref", cardName: "" },
+    ];
+    const src = serializeScript({
+      frontmatter: {},
+      lines: cases,
+      knots: {},
+      vars: [],
+      choiceGroups: {},
+    });
+    const got = parseScript(src).lines;
+    expect(got.map((l) => l.type)).toEqual([
+      "say",
+      "action",
+      "choice",
+      "bg",
+      "actor_ref",
+    ]);
+  });
+
+  it("序列化退化形 `****：` 解析回 say 而非旁白", () => {
+    const [got] = parseScript("****：").lines;
+    expect(got.type).toBe("say");
+    expect(got).toMatchObject({ type: "say", speaker: "", text: "" });
+  });
+
+  it("未识别语法标为草稿 narration，真实旁白不标 draft", () => {
+    // 半截语法（无闭合 `**`、无 `>` 前缀）→ 回退为 narration 且 draft
+    const halfway = parseScript("**布洛").lines;
+    expect(halfway[0]).toMatchObject({
+      type: "narration",
+      text: "**布洛",
+      draft: true,
+    });
+
+    // 明确写的旁白 `> 文本` 不是草稿
+    const real = parseScript("> 炉火噼啪").lines;
+    expect(real[0]).toMatchObject({ type: "narration", text: "炉火噼啪" });
+    expect((real[0] as { draft?: boolean }).draft).toBeUndefined();
   });
 });

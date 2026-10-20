@@ -1,0 +1,11 @@
+{
+  "id": "card_mine",
+  "type_id": "type_place",
+  "name": "深岩矿坑",
+  "values": {
+    "region": "地下",
+    "desc": "金子的老家。矮人考古学只有一句话：挖得更深。"
+  },
+  "created_at": 1700000000000,
+  "updated_at": 1700000000000
+}

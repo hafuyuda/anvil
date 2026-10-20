@@ -37,6 +37,10 @@ export function ScenarioInspector() {
     },
     {
       undoLabel: "编辑剧情",
+      resolveCurrent: () =>
+        useProjectStore
+          .getState()
+          .scenarios.find((s) => s.id === (scenario?.id ?? "")) ?? null,
       onDraftChange: (d) => {
         if (!d.id) return;
         upsertScenario({ ...d, updated_at: nowMs() });

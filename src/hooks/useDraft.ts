@@ -3,6 +3,7 @@ import { useProjectStore } from "../stores/projectStore";
 import { registerFlusher } from "../lib/saveRegistry";
 import { useAppSettings } from "./useAppSettings";
 import { makeUndoId } from "../lib/id";
+import { mergeEntity } from "../lib/undoMerge";
 
 interface HasId {
   id: string;
@@ -13,6 +14,14 @@ interface Options<T> {
   autoSaveDelay?: number;
   undoLabel?: string;
   onDraftChange?: (draft: T) => void;
+  /**
+   * 撤销 / 重做时读取「当前」实体。
+   *
+   * 不提供时，恢复直接把动作前的快照写回去 —— 那样用户在保存之后通过
+   * 别的面板做的改动（比如在角色面板改 HP、从卡片墙往卡组加卡）会被
+   * 旧快照吞掉。提供时改走合并：只回滚本次改动碰过的键。
+   */
+  resolveCurrent?: () => T | null;
 }
 
 export function useDraft<T extends HasId>(
@@ -28,6 +37,8 @@ export function useDraft<T extends HasId>(
   const delay = options?.autoSaveDelay ?? appSettings.autoSaveDelayMs;
   const label = options?.undoLabel ?? "编辑";
   const onDraftChange = options?.onDraftChange;
+  const resolveCurrentRef = useRef(options?.resolveCurrent);
+  resolveCurrentRef.current = options?.resolveCurrent;
 
   const saveRef = useRef(save);
   saveRef.current = save;
@@ -95,18 +106,23 @@ export function useDraft<T extends HasId>(
     }
     const result = await doSave(after);
     if (result !== false) {
+      // 恢复走合并：以 store 当前状态为底，只回滚本次改动碰过的键。
+      // 拿不到当前值（实体被删了）才整体写回快照。
+      const resolve = () => resolveCurrentRef.current?.() ?? null;
       pushUndo({
         id: makeUndoId(),
         label,
         undo: async () => {
           baselineRef.current = before;
           setDraft(before);
-          await saveRef.current(before);
+          const cur = resolve();
+          await saveRef.current(cur ? mergeEntity(before, after, cur) : before);
         },
         redo: async () => {
           baselineRef.current = after;
           setDraft(after);
-          await saveRef.current(after);
+          const cur = resolve();
+          await saveRef.current(cur ? mergeEntity(after, before, cur) : after);
         },
       });
       baselineRef.current = after;
