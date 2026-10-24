@@ -15,7 +15,7 @@ interface Props {
 export function PickerDialog({ title, options, onPick, onClose }: Props) {
   return (
     <Modal title={title} onClose={onClose}>
-      <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+      <ul className="list-reset">
         {options.length === 0 && (
           <li style={{ color: "var(--fg-muted)", fontSize: 12, padding: 8 }}>
             没有可选项

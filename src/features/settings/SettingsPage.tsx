@@ -193,7 +193,7 @@ export function SettingsPage() {
         </div>
 
         {/* 主体 */}
-        <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
+        <div className="fill">
           {/* 左：分类 */}
           <div
             style={{

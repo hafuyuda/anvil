@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { clamp } from "../../lib/math";
-import { Modal } from "../../components/ui/Modal";
+import { Modal, Stack } from "../../components/ui";
 import type { PileData } from "../../core/ipc";
 
 interface Props {
@@ -68,7 +68,7 @@ export function PileDrawDialog({
         </>
       }
     >
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <Stack gap="var(--sp-6)">
         <div
           style={{
             padding: "10px 14px",
@@ -157,7 +157,7 @@ export function PileDrawDialog({
             卡盒空了。点「重置」恢复。
           </div>
         )}
-      </div>
+      </Stack>
     </Modal>
   );
 }

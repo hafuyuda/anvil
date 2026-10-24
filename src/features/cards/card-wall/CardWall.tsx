@@ -358,7 +358,7 @@ export function CardWall() {
         }}
       >
         {filters.visible.length === 0 ? (
-          <p style={{ color: "var(--fg-muted)", fontSize: 12 }}>
+          <p className="muted">
             没有匹配的卡牌
           </p>
         ) : cardWallView === "card" ? (

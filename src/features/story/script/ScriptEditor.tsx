@@ -240,7 +240,7 @@ export function ScriptEditor({ scenarioId, entryKnot }: Props) {
       : null;
 
   return (
-    <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
+    <div className="fill">
       <ScriptFileTree
         files={files}
         currentFile={currentFile}
@@ -290,7 +290,7 @@ export function ScriptEditor({ scenarioId, entryKnot }: Props) {
             {currentFile ?? "（无文件）"}
           </span>
           {currentKnotName && (
-            <span style={{ fontSize: 12, color: "var(--fg-muted)" }}>
+            <span className="muted">
               › {currentKnotName}
             </span>
           )}

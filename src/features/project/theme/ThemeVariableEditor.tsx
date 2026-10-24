@@ -17,7 +17,7 @@ export function ThemeVariableEditor({
   onUpdateVar,
 }: Props) {
   return (
-    <div style={{ flex: 1, minWidth: 0 }}>
+    <div className="grow">
       <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
         <input
           className="input"

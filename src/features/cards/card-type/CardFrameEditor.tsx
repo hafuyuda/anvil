@@ -166,7 +166,6 @@ export function CardFrameEditor({
                         : values.filter((k) => k !== f.key);
                       patchBinding(slot.key, { values: next });
                     }}
-                    style={{ accentColor: "var(--accent-gold)" }}
                   />
                   {f.label}（{f.key}）
                 </label>

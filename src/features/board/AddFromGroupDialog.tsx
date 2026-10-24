@@ -110,7 +110,7 @@ export function AddFromGroupDialog({ onClose, onImport }: Props) {
                     opacity: validCount === 0 ? 0.55 : 1,
                   }}
                 >
-                  <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="grow">
                     <div
                       style={{
                         fontSize: 13,

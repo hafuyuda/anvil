@@ -161,10 +161,7 @@ export function ScenarioEditor({ scenario }: Props) {
             }}
           >
             <span
-              style={{
-                fontSize: 12,
-                color: "var(--fg-muted)",
-              }}
+              className="muted"
             >
               预览 · {scenario.name}
             </span>
@@ -177,7 +174,7 @@ export function ScenarioEditor({ scenario }: Props) {
               关闭（Esc）
             </button>
           </div>
-          <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
+          <div className="fill">
             <PlayView scenario={scenario} />
           </div>
         </div>

@@ -239,7 +239,7 @@ export function CardTypeEditor({ cardType }: Props) {
             </div>
 
             {draft.fields.some((f) => f.deprecated) && (
-              <details style={{ fontSize: 12, color: "var(--fg-muted)" }}>
+              <details className="muted">
                 <summary>已废弃字段（数据保留）</summary>
                 <ul>
                   {draft.fields

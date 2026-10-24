@@ -239,7 +239,7 @@ export function SessionEditor({ session }: Props) {
         onSelectGroup={(groupId) => void savePatch({ group_id: groupId })}
       />
 
-      <div ref={splitRef} style={{ flex: 1, minHeight: 0, display: "flex" }}>
+      <div ref={splitRef} className="fill">
         {chatCollapsed ? (
           <div
             style={{

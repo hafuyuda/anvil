@@ -397,7 +397,7 @@ export function PlayerView() {
           style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 12 }}
         >
           {loading && (
-            <div style={{ fontSize: 12, color: "var(--fg-muted)" }}>
+            <div className="muted">
               加载中…
             </div>
           )}

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { ipc } from "../../core/ipc";
+import { EmptyState } from "../../components/ui";
 import { useProjectStore } from "../../stores/projectStore";
 import { useSyncExternalStore } from "react";
 import {
@@ -171,22 +172,11 @@ export function AssetsTab() {
       </div>
 
       {loading && (
-        <div style={{ fontSize: 12, color: "var(--fg-muted)" }}>加载中…</div>
+        <div className="muted">加载中…</div>
       )}
 
       {!loading && images.length === 0 && (
-        <div
-          style={{
-            padding: 24,
-            textAlign: "center",
-            color: "var(--fg-muted)",
-            fontSize: 12,
-            border: "1px dashed var(--border-default)",
-            borderRadius: "var(--radius-md)",
-          }}
-        >
-          还没有图片。点「导入图片」开始。
-        </div>
+        <EmptyState>还没有图片。点「导入图片」开始。</EmptyState>
       )}
 
       <div

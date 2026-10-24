@@ -37,7 +37,6 @@ export function VariableRow({ def, value, onChange }: Props) {
             type="checkbox"
             checked={Boolean(value)}
             onChange={(e) => onChange(e.target.checked)}
-            style={{ accentColor: "var(--accent-gold)" }}
           />
           {String(Boolean(value))}
         </label>

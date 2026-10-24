@@ -90,7 +90,6 @@ export function ScriptSceneSettings({ frontmatter, onChange }: Props) {
           onChange={(e) =>
             onChange({ is_ending: e.target.checked || undefined })
           }
-          style={{ accentColor: "var(--accent-gold)" }}
         />
         是结局
       </label>

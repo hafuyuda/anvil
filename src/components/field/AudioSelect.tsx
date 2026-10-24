@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { ipc } from "../../core/ipc";
-import { Modal } from "../ui/Modal";
+import { EmptyState, Modal } from "../ui";
 import { invalidateAsset, loadAsset } from "../../lib/assetCache";
 import { useRef } from "react";
 import { runWithError } from "../../lib/runWithError";
@@ -242,22 +242,11 @@ function AudioPickerDialog({
       />
 
       {loading && (
-        <div style={{ fontSize: 12, color: "var(--fg-muted)" }}>加载中…</div>
+        <div className="muted">加载中…</div>
       )}
 
       {!loading && items.length === 0 && (
-        <div
-          style={{
-            padding: 24,
-            textAlign: "center",
-            color: "var(--fg-muted)",
-            fontSize: 12,
-            border: "1px dashed var(--border-default)",
-            borderRadius: "var(--radius-md)",
-          }}
-        >
-          还没有音频。点「+ 导入音频」开始。
-        </div>
+        <EmptyState>还没有音频。点「+ 导入音频」开始。</EmptyState>
       )}
 
       {!loading && items.length > 0 && filtered.length === 0 && (

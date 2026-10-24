@@ -147,7 +147,7 @@ export function DocLibrary() {
   }
 
   return (
-    <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
+    <div className="fill">
       <div
         style={{
           width: 240,

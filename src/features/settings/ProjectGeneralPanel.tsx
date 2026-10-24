@@ -48,7 +48,7 @@ export function ProjectGeneralPanel() {
 
   if (!draft) {
     return (
-      <div style={{ color: "var(--fg-muted)", fontSize: 12 }}>读取中…</div>
+      <div className="muted">读取中…</div>
     );
   }
 

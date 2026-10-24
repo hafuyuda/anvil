@@ -36,6 +36,41 @@
   --radius-md: 4px;
   --radius-lg: 6px;
 
+  /* ── 版式 token ──────────────────────────────────────────────
+     间距与字号按真实使用分布取值（见 scripts/audit-ui-tokens.mjs）。
+     命名后缀即像素值，不用记序号：--sp-4 就是 4px。
+
+     这两组刻意**不进主题文件** —— 主题只管配色，版式不随主题变。
+     ThemeDef.variables 是覆盖式 Record，缺失项自然回落到这里的 :root。
+     改版式只改这一处；改配色只改主题。两者互不干扰。 */
+
+  /* 间距（档位取自审计：8/6/4/12/2 占 gap 的 87%，其余按 padding 分布补齐） */
+  --sp-0: 0;
+  --sp-1: 2px;
+  --sp-2: 4px;
+  --sp-3: 6px;
+  --sp-4: 8px;
+  --sp-5: 10px;
+  --sp-6: 12px;
+  --sp-8: 16px;
+  --sp-10: 20px;
+  --sp-12: 24px;
+  --sp-16: 32px;
+
+  /* 字号（12=239 处、11=183、10=80、13=48，四档覆盖 96%） */
+  --fs-xs: 10px;
+  --fs-sm: 11px;
+  --fs-md: 12px;
+  --fs-lg: 13px;
+  --fs-xl: 14px;
+  --fs-2xl: 16px;
+  --fs-3xl: 20px;
+
+  /* 行高：信息密集工具，正文偏紧 */
+  --lh-tight: 1.3;
+  --lh-normal: 1.5;
+  --lh-loose: 1.6;
+
   /* 阴影 */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
 
@@ -250,6 +285,60 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   overscroll-behavior: none;
+}
+
+/* 表单控件强调色统一走主题金 —— 此前 18 处内联 accentColor 各写一遍，
+   加一个控件就要再抄一次。主题换了这里自动跟着换。 */
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--accent-gold);
+}
+
+/* ============ 布局与文本工具类 ============
+   与语义组件（src/components/ui/）的分工：
+     纯样式、无结构 → 用类；有结构或有行为 → 用组件。
+   类的价值在于替换内联样式时成本最低：style={{...}} → className，
+   不引入新的 JSX 嵌套。空态、分区标题这类带结构的仍是组件。
+
+   两条约束：
+   1. 这里的类只能用 token，不许出现裸像素 —— 否则「改一处换全站」失效，
+      又会退回逐个改 150 个文件的状态。
+   2. 类只提供最通用的默认（flex 方向、对齐），gap / padding 之类的具体值
+      仍用 style 增量覆盖。不搞 .row-gap-4 / .row-gap-8 这种排列组合爆炸。 */
+
+/* 布局。
+   注意：这里没有 .row / .stack —— flex 容器几乎总带 gap，而 gap 值有
+   4/6/8/12 四种，做成 .row-gap-4 / .row-gap-8 会排列组合爆炸。
+   带参数的布局用组件 <Row gap={8}> / <Stack gap={4}>，见 components/ui。 */
+.grow {
+  flex: 1;
+  min-width: 0;
+}
+.fill {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+/* 文本 */
+.muted {
+  color: var(--fg-muted);
+  font-size: var(--fs-md);
+}
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nowrap {
+  white-space: nowrap;
+}
+
+/* 列表重置 */
+.list-reset {
+  list-style: none;
+  padding: 0;
+  margin: 0;
 }
 
 /* ============ 通用控件 ============ */

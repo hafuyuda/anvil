@@ -124,7 +124,6 @@ export function GenerateByTypeDialog({
                   checked={checked}
                   disabled={disabled}
                   onChange={() => toggle(t.id)}
-                  style={{ accentColor: "var(--accent-gold)" }}
                 />
                 <span
                   style={{
@@ -190,7 +189,6 @@ export function GenerateByTypeDialog({
                 type="radio"
                 checked={mode === "append"}
                 onChange={() => setMode("append")}
-                style={{ accentColor: "var(--accent-gold)" }}
               />
               追加到现有内容
             </label>
@@ -208,7 +206,6 @@ export function GenerateByTypeDialog({
                 type="radio"
                 checked={mode === "replace"}
                 onChange={() => setMode("replace")}
-                style={{ accentColor: "var(--accent-gold)" }}
               />
               替换现有内容
               {mode === "replace" && (

@@ -169,7 +169,7 @@ export function CardEditor({ card, cardType }: Props) {
       {tab === "fields" && (
         <>
           {visibleFields.length === 0 && (
-            <p style={{ color: "var(--fg-muted)", fontSize: 12 }}>
+            <p className="muted">
               该类型还没有字段，去「类型」里添加
             </p>
           )}

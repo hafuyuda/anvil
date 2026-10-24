@@ -180,7 +180,7 @@ export function CommandPalette({ commands, onClose }: Props) {
                     : "2px solid transparent",
                 }}
               >
-                <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="grow">
                   <div
                     style={{
                       fontSize: 13,

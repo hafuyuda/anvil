@@ -74,7 +74,7 @@ export function AddPresetDialog({ onClose }: Props) {
                 </span>
               )}
             </div>
-            <div style={{ fontSize: 12, color: "var(--fg-muted)" }}>
+            <div className="muted">
               {p.description}
             </div>
           </button>

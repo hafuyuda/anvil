@@ -91,7 +91,7 @@ export function ScenarioInspector() {
   }, [scenario?.id]);
 
   if (!scenario) {
-    return <p style={{ color: "var(--fg-muted)", fontSize: 12 }}>未选中剧情</p>;
+    return <p className="muted">未选中剧情</p>;
   }
 
   return (

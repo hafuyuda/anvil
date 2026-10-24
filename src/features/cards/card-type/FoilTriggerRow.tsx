@@ -112,7 +112,7 @@ export function FoilTriggerRow({
                   </div>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                     {options.length === 0 && (
-                      <span style={{ fontSize: 12, color: "var(--fg-muted)" }}>
+                      <span className="muted">
                         该字段没有选项
                       </span>
                     )}
@@ -139,7 +139,6 @@ export function FoilTriggerRow({
                                 foil_values: values.filter((x) => x !== o),
                               });
                           }}
-                          style={{ accentColor: "var(--accent-gold)" }}
                         />
                         {o}
                       </label>

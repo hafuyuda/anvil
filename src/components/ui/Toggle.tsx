@@ -28,7 +28,6 @@ export function Toggle({ label, checked, onChange, gap = 4, disabled }: Props) {
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
         disabled={disabled}
-        style={{ accentColor: "var(--accent-gold)" }}
       />
       {label}
     </label>

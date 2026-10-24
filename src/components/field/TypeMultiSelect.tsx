@@ -26,7 +26,7 @@ export function TypeMultiSelect({ label, allTypes, value, onChange }: Props) {
       </div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
         {allTypes.length === 0 && (
-          <span style={{ fontSize: 12, color: "var(--fg-muted)" }}>
+          <span className="muted">
             暂无类型
           </span>
         )}
@@ -49,7 +49,6 @@ export function TypeMultiSelect({ label, allTypes, value, onChange }: Props) {
                 if (e.target.checked) onChange([...value, t.id]);
                 else onChange(value.filter((x) => x !== t.id));
               }}
-              style={{ accentColor: "var(--accent-gold)" }}
             />
             {t.name}
           </label>

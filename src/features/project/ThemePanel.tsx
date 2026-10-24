@@ -152,7 +152,7 @@ export function ThemePanel({ manifestThemeId, onChangeThemeId }: Props) {
         </button>
       </div>
 
-      <div style={{ fontSize: 12, color: "var(--fg-muted)" }}>
+      <div className="muted">
         当前项目主题：
         <select
           className="select"
@@ -184,7 +184,7 @@ export function ThemePanel({ manifestThemeId, onChangeThemeId }: Props) {
         {/* 左：主题列表 */}
         <div style={{ minWidth: 180 }}>
           <SectionLabel>内置</SectionLabel>
-          <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+          <ul className="list-reset">
             {BUILTIN_THEMES.map((t) => (
               <ThemeItem
                 key={t.id}
@@ -200,7 +200,7 @@ export function ThemePanel({ manifestThemeId, onChangeThemeId }: Props) {
           <SectionLabel style={{ marginTop: 12 }}>
             项目主题（{themes.length}）
           </SectionLabel>
-          <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+          <ul className="list-reset">
             {themes.length === 0 && (
               <li
                 style={{

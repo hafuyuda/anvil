@@ -99,7 +99,6 @@ export function FieldInput({
             type="checkbox"
             checked={Boolean(value)}
             onChange={(e) => onChange(e.target.checked)}
-            style={{ accentColor: "var(--accent-gold)" }}
           />
           {Boolean(value) ? "是" : "否"}
         </label>,
@@ -178,7 +177,6 @@ export function FieldInput({
                     e.target.checked ? [...arr, o] : arr.filter((x) => x !== o),
                   );
                 }}
-                style={{ accentColor: "var(--accent-gold)" }}
               />
               {o}
             </label>

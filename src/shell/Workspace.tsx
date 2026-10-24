@@ -155,7 +155,7 @@ export function Workspace() {
                     >
                       ◆
                     </span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="grow">
                       <div
                         style={{
                           color: "var(--fg-primary)",

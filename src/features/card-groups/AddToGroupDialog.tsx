@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ipc, type CardGroup } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
-import { Modal } from "../../components/ui/Modal";
+import { EmptyState, Modal } from "../../components/ui";
 import { newId } from "../../lib/id";
 import { nowMs } from "../../lib/time";
 import { toast } from "../../lib/toast";
@@ -165,18 +165,7 @@ export function AddToGroupDialog({ cardIds, onClose, onDone }: Props) {
       ) : (
         <>
           {cardGroups.length === 0 && (
-            <div
-              style={{
-                padding: 24,
-                textAlign: "center",
-                color: "var(--fg-muted)",
-                fontSize: 12,
-                border: "1px dashed var(--border-default)",
-                borderRadius: "var(--radius-md)",
-              }}
-            >
-              还没有卡组。点「+ 新建卡组」创建一个。
-            </div>
+            <EmptyState>还没有卡组。点「+ 新建卡组」创建一个。</EmptyState>
           )}
 
           {cardGroups.length > 0 && (
@@ -223,7 +212,7 @@ export function AddToGroupDialog({ cardIds, onClose, onDone }: Props) {
                       (e.currentTarget as HTMLElement).style.background = "";
                     }}
                   >
-                    <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="grow">
                       <div
                         style={{
                           fontSize: 13,

@@ -80,7 +80,7 @@ export function BoardReplayView({ board, events, onExit }: Props) {
           flexShrink: 0,
         }}
       >
-        <span style={{ fontSize: 12, color: "var(--fg-muted)" }}>回放</span>
+        <span className="muted">回放</span>
         <button className="btn" onClick={() => setStep(Math.max(0, step - 1))}>
           上一步
         </button>

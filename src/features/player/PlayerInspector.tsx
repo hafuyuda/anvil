@@ -29,7 +29,7 @@ export function PlayerInspector() {
 
   if (!player.current) {
     return (
-      <div style={{ fontSize: 12, color: "var(--fg-muted)" }}>
+      <div className="muted">
         从左侧选一首曲目开始播放
       </div>
     );

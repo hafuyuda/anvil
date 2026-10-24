@@ -72,7 +72,7 @@ export function RelationFilterDialog({
         }}
       >
         {relationKinds.length === 0 && (
-          <div style={{ fontSize: 12, color: "var(--fg-muted)" }}>
+          <div className="muted">
             项目里还没有关系类型
           </div>
         )}
@@ -97,7 +97,6 @@ export function RelationFilterDialog({
               type="checkbox"
               checked={local.includes(k.id)}
               onChange={() => toggle(k.id)}
-              style={{ accentColor: "var(--accent-gold)" }}
             />
             <span
               style={{

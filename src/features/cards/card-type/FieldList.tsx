@@ -57,7 +57,7 @@ export function FieldList({ allFields, onUpdate, onRemove, onReorder }: Props) {
   }
 
   if (visibleFields.length === 0) {
-    return <p style={{ color: "var(--fg-muted)", fontSize: 12 }}>还没有字段</p>;
+    return <p className="muted">还没有字段</p>;
   }
 
   return (

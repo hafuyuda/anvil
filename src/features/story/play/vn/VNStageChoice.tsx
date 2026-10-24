@@ -31,7 +31,7 @@ export function VNStageChoice({
       </div>
 
       {choices.length === 0 && (
-        <div style={{ fontSize: 12, color: "var(--fg-muted)" }}>
+        <div className="muted">
           没有可走的选项
         </div>
       )}

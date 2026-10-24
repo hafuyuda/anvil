@@ -139,7 +139,7 @@ function Entry({
         }}
       >
         <Avatar name={card.name} color={accent} />
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div className="grow">
           <div
             style={{
               fontSize: 12,

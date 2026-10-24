@@ -52,7 +52,6 @@ export function MergePackIncludeList({
                 if (e.target.checked) onChange([...selected, it.id]);
                 else onChange(selected.filter((x) => x !== it.id));
               }}
-              style={{ accentColor: "var(--accent-gold)" }}
             />
             {it.name}
           </label>

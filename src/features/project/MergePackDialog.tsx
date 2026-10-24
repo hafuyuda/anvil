@@ -184,14 +184,14 @@ export function MergePackDialog({ onClose }: Props) {
             padding: "24px 0",
           }}
         >
-          <div style={{ fontSize: 12, color: "var(--fg-muted)" }}>
+          <div className="muted">
             选择一个 .anvilpack 文件合并进当前项目
           </div>
           <button className="btn btn-primary" onClick={pickPack}>
             选择资源包
           </button>
           {loading && (
-            <div style={{ fontSize: 12, color: "var(--fg-muted)" }}>
+            <div className="muted">
               读取中…
             </div>
           )}
@@ -274,7 +274,6 @@ export function MergePackDialog({ onClose }: Props) {
               type="checkbox"
               checked={typesOnly}
               onChange={(e) => setTypesOnly(e.target.checked)}
-              style={{ accentColor: "var(--accent-gold)" }}
             />
             只导入类型，不导入卡片、关系、剧情等
           </label>

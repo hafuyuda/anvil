@@ -756,23 +756,69 @@ if (!r.ok) return;
 
 ---
 
-## 9. UI 小组件
+## 9. UI 分层：token → 类 → 组件
 
-重复样式抽成语义化组件：
+写 UI 时按顺序往下选，**能用上一层就别造下一层**：
 
-| 组件                           | 用途                                        |
+| 层                        | 放什么                                              | 例子                                             |
+| ------------------------- | --------------------------------------------------- | ------------------------------------------------ |
+| **token**（`index.css` `:root`） | 间距 `--sp-*`、字号 `--fs-*`、行高 `--lh-*`、圆角、颜色 | `gap: "var(--sp-4)"`、`fontSize: "var(--fs-sm)"` |
+| **CSS 类**（`index.css` 工具类段） | 无参数、纯样式的组合                                | `.grow` `.fill` `.muted` `.truncate` `.list-reset` |
+| **组件**（`components/ui/`）       | 带参数，或有结构 / 有行为                           | `<Stack gap>` `<Row>` `<EmptyState>` `<SectionLabel>` |
+
+判断标准很简单：**这个模式需不需要参数？**
+不带参数 → 类（`flex:1, minWidth:0` → `.grow`）；
+带参数 → 组件（flex 容器几乎都带 `gap`，而 gap 有 4/6/8/12 四种，
+做成 `.stack-gap-4` 会排列组合爆炸，所以是 `<Stack gap={...}>`）。
+
+### 9.1 版式 token 不进主题
+
+`--sp-*` / `--fs-*` 定义在 `index.css` 的 `:root`，**不写进任何主题预设**。
+主题只管配色：§21 的 `ThemeDef.variables` 是覆盖式 `Record`，缺失项自然回落到
+`:root`。于是改版式只改一处，改配色只改主题，互不干扰。
+
+档位不是拍脑袋定的，取自 `scripts/audit-ui-tokens.mjs` 对真实内联样式的统计
+（字号 12px 239 处、11px 183 处、10px 80 处、13px 48 处，四档覆盖 96%）。
+
+### 9.2 三条硬规则
+
+1. **工具类和组件内部只能用 token**，不许出现裸像素 —— 否则「改一处换全站」
+   失效，又会退回逐个改上百个文件的状态。
+2. **不要为「将来可能用」建类**。审计脚本会把无人使用的类报成死代码。
+   建了就得用，用了才算数。
+3. **内联样式不是禁止，是要有意识**。一次性、无重复的位置写内联完全没问题；
+   复制粘贴第三遍时，就该抽了。
+
+### 9.3 已有的通用件
+
+| 件                             | 用途                                        |
 | ------------------------------ | ------------------------------------------- |
 | `<SectionLabel variant="...">` | 区块小标题（三档：section / block / field） |
 | `<EmptyState>`                 | 虚线框空状态                                |
+| `<Stack>` / `<Row>`            | 带 gap 的 flex 容器                         |
 | `<Toggle>`                     | checkbox + label                            |
-| `<LabeledBlock>`               | SectionLabel + 内容包裹                     |
+| `<Modal>` / `<SaveInput>`      | 弹窗 / 带保存的输入                         |
+| `useContextMenu()`             | 右键菜单                                    |
 
-规则：
+统一从 `components/ui` 这个 barrel 导入，不要写深路径
+（`from "../../components/ui"` 而不是 `"../../components/ui/EmptyState"`）——
+组件建了没人用的一大原因就是导入太麻烦。
 
-- **只抽高一致性、高频的样式**
-- **`Mono` 不抽** —— 绝大多数是 input 的 inline style
-- **`LabeledInput` 不抽** —— 各处差异大于共性
-- **`Divider` 不抽** —— 常与 flex 布局耦合
+### 9.4 明确不抽的
+
+- **`Mono` 不抽** —— 79 处 `fontFamily: var(--font-mono)` 几乎全是 input 的
+  inline style，抽出来反而多一层间接。
+- **`LabeledInput` 不抽** —— 各处差异大于共性。
+- **`Divider` 不抽** —— 常与 flex 布局耦合。
+
+### 9.5 防漂移闸门
+
+两个零依赖脚本，改完 UI 跑一遍：
+
+- `node scripts/audit-ui-tokens.mjs` —— 统计裸数值，报告 token 覆盖率
+  （当前：间距 96.5%、字号 98.5%），`--strict` 可接 CI。
+- `node scripts/apply-ui-classes.mjs` —— 把语义等价的内联样式替换成类。
+  只做**完全等价**的替换，多一个属性都不换，宁可漏不可错。
 
 ---
 

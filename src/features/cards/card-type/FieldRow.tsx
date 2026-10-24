@@ -119,7 +119,6 @@ export function FieldRow({
               type="checkbox"
               checked={field.required}
               onChange={(e) => onChange({ required: e.target.checked })}
-              style={{ accentColor: "var(--accent-gold)" }}
             />
             必填
           </label>

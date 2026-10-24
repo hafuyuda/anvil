@@ -94,7 +94,7 @@ export function SayMessage({
   return (
     <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
       <Avatar name={authorName} color={color} cardId={cardId} />
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div className="grow">
         <NameLine name={authorName} color={color} />
         <Bubble>{payload.content}</Bubble>
       </div>
@@ -118,7 +118,7 @@ export function ActionMessage({
   return (
     <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
       <Avatar name={authorName} color={color} cardId={cardId} />
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div className="grow">
         <NameLine name={authorName} color={color} />
         <div
           style={{

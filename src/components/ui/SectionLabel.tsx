@@ -7,13 +7,26 @@ interface Props {
   style?: React.CSSProperties;
 }
 
+/** 尺寸走 index.css 的版式 token —— 改版式只改那一处，改配色只改主题。 */
 const VARIANT_STYLES: Record<
   Variant,
-  { fontSize: number; letterSpacing: number; marginBottom: number }
+  { fontSize: string; letterSpacing: number; marginBottom: string }
 > = {
-  section: { fontSize: 10, letterSpacing: 1, marginBottom: 4 },
-  block: { fontSize: 10, letterSpacing: 1, marginBottom: 8 },
-  field: { fontSize: 11, letterSpacing: 0.5, marginBottom: 4 },
+  section: {
+    fontSize: "var(--fs-xs)",
+    letterSpacing: 1,
+    marginBottom: "var(--sp-2)",
+  },
+  block: {
+    fontSize: "var(--fs-xs)",
+    letterSpacing: 1,
+    marginBottom: "var(--sp-4)",
+  },
+  field: {
+    fontSize: "var(--fs-sm)",
+    letterSpacing: 0.5,
+    marginBottom: "var(--sp-2)",
+  },
 };
 
 export function SectionLabel({ children, variant = "section", style }: Props) {

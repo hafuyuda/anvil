@@ -278,7 +278,7 @@ export function ScriptLineCard({
         )}
 
         {line.type === "bgm" && (
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="grow">
             <AudioSelect
               value={line.file || null}
               onChange={(v) => onChange({ ...line, file: v ?? "" })}
@@ -288,7 +288,7 @@ export function ScriptLineCard({
         )}
 
         {line.type === "sfx" && (
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="grow">
             <AudioSelect
               value={line.file || null}
               onChange={(v) => onChange({ ...line, file: v ?? "" })}

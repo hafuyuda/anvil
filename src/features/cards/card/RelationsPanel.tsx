@@ -209,10 +209,10 @@ export function RelationsPanel({ card }: Props) {
         )}
 
         {outgoing.length === 0 && !adding && (
-          <div style={{ fontSize: 12, color: "var(--fg-muted)" }}>无</div>
+          <div className="muted">无</div>
         )}
 
-        <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+        <ul className="list-reset">
           {outgoing.map((r) => renderRow(r, "out"))}
         </ul>
       </div>
@@ -231,9 +231,9 @@ export function RelationsPanel({ card }: Props) {
           指向本卡（{incoming.length}）
         </div>
         {incoming.length === 0 && (
-          <div style={{ fontSize: 12, color: "var(--fg-muted)" }}>无</div>
+          <div className="muted">无</div>
         )}
-        <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+        <ul className="list-reset">
           {incoming.map((r) => renderRow(r, "in"))}
         </ul>
       </div>

@@ -44,7 +44,7 @@ export function VariablePanel({
           变量
         </div>
         {variables.length === 0 && (
-          <div style={{ fontSize: 12, color: "var(--fg-muted)" }}>无</div>
+          <div className="muted">无</div>
         )}
         {variables.map((v) => (
           <VariableRow

@@ -16,7 +16,7 @@ export function CardListView({
   onCardContextMenu,
 }: Props) {
   return (
-      <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+      <ul className="list-reset">
         {cards.map((c) => {
           const active = selectedCardIds.includes(c.id);
           return (
@@ -45,7 +45,7 @@ export function CardListView({
           >
             <span style={{ flex: 1 }}>
               {c.name}{" "}
-              <span style={{ color: "var(--fg-muted)", fontSize: 12 }}>
+              <span className="muted">
                 · {typeName(c.type_id)}
               </span>{" "}
               <span

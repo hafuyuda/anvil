@@ -3,8 +3,7 @@ import { type Token } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
 import { ScaledCardFrame } from "../../components/card/ScaledCardFrame";
 import { confirmDialog } from "../../lib/confirm";
-import { SectionLabel } from "../../components/ui/SectionLabel";
-import { EmptyState } from "../../components/ui/EmptyState";
+import { EmptyState, SectionLabel, Stack } from "../../components/ui";
 
 interface Props {
   token: Token;
@@ -104,7 +103,7 @@ export function TokenInspector({ token, onSave, onDelete, onClose }: Props) {
     : null;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <Stack gap="var(--sp-6)">
       {linkedCard && linkedCardType ? (
         <div
           style={{
@@ -252,10 +251,7 @@ export function TokenInspector({ token, onSave, onDelete, onClose }: Props) {
                 step={1}
                 value={normalizeForSlider(draft.rotation)}
                 onChange={(e) => update({ rotation: Number(e.target.value) })}
-                style={{
-                  flex: 1,
-                  accentColor: "var(--accent-gold)",
-                }}
+                style={{ flex: 1 }}
               />
               <input
                 className="input"
@@ -305,14 +301,12 @@ export function TokenInspector({ token, onSave, onDelete, onClose }: Props) {
               type="checkbox"
               checked={draft.visible}
               onChange={(e) => update({ visible: e.target.checked })}
-              style={{ accentColor: "var(--accent-gold)" }}
             />
             可见
             <input
               type="checkbox"
               checked={draft.face_down === true}
               onChange={(e) => update({ face_down: e.target.checked })}
-              style={{ accentColor: "var(--accent-gold)" }}
             />
             扣着（显示卡背）
           </label>
@@ -341,7 +335,7 @@ export function TokenInspector({ token, onSave, onDelete, onClose }: Props) {
           </div>
         </div>
       </div>
-    </div>
+    </Stack>
   );
 }
 

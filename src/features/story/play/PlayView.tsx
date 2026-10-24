@@ -260,7 +260,7 @@ export function PlayView({ scenario }: Props) {
               lastRolls={lastRolls}
             />
           ) : (
-            <div style={{ fontSize: 12, color: "var(--fg-muted)" }}>
+            <div className="muted">
               当前无场景卡（用 @scene 场景卡名 标记）
             </div>
           )}
@@ -297,7 +297,7 @@ export function PlayView({ scenario }: Props) {
             历史
           </div>
           {history.length === 0 && (
-            <div style={{ fontSize: 12, color: "var(--fg-muted)" }}>无</div>
+            <div className="muted">无</div>
           )}
           <ul
             style={{

@@ -1,4 +1,5 @@
 import type { Card, CardType } from "../../core/ipc";
+import { EmptyState } from "../../components/ui";
 import { getCardGroupView } from "./views/registry";
 
 interface Props {
@@ -20,18 +21,7 @@ export function CardGroupCards({
 }: Props) {
   if (cardIds.length === 0) {
     return (
-      <div
-        style={{
-          padding: 24,
-          textAlign: "center",
-          color: "var(--fg-muted)",
-          fontSize: 12,
-          border: "1px dashed var(--border-default)",
-          borderRadius: "var(--radius-md)",
-        }}
-      >
-        还没有卡牌。点「+ 添加卡牌」开始。
-      </div>
+      <EmptyState>还没有卡牌。点「+ 添加卡牌」开始。</EmptyState>
     );
   }
 

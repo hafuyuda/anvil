@@ -275,7 +275,7 @@ export function ScriptSourceEditor({
         </div>
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
+      <div className="fill">
         <div
           style={{
             flex: 1,

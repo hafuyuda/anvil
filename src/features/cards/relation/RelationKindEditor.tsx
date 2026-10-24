@@ -123,7 +123,6 @@ export function RelationKindEditor({ relationKind }: Props) {
             type="checkbox"
             checked={draft.directed}
             onChange={(e) => update({ directed: e.target.checked })}
-            style={{ accentColor: "var(--accent-gold)" }}
           />
           有向
         </label>

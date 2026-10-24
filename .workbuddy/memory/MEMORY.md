@@ -11,12 +11,25 @@
   别再以「加个规则集」的形式把判定加回来 —— 判定要读卡读状态，属规则引擎，越过项目边界。
 - 剧本系统是自己手写的 ink 风格语言 + 运行时（parser.ts / play/runtime.ts），非真 ink；@scene/@actor 卡引用是差异化核心。
 
-## UI 层现状（2026-10-25 量化，谈「重新设计」前先看这个）
-- **1298 处 `style={{}}` 内联样式，散在 150 个 tsx 文件（占 168 个的 89%）**；
-  `src/components/ui/` 只有 7 个语义组件；`index.css` 605 行。
-- 结论：**瓶颈不是视觉风格，是没有中间层**。任何重新设计都要逐个改 150 个文件。
-  配色变量体系其实已建好 5 套主题（`--bg-app`/`--accent-gold`/`--border-*`），
-  问题是没人用它们，样式全写死在组件里。
+## UI 分层约定（2026-10-25 建立，见 DESIGN.md §9）
+- **三层，按顺序往下选**：token（`--sp-*` 间距 / `--fs-*` 字号 / `--lh-*` 行高，
+  在 `index.css` `:root`）→ CSS 类（无参数纯样式：`.grow .fill .muted .truncate .list-reset`）
+  → 组件（带参数或有结构：`<Stack gap>` `<Row>` `<EmptyState>` `<SectionLabel>`）。
+- **判断标准**：需不需要参数？不带参数 → 类；带参数 → 组件。
+  flex 容器几乎都带 gap 且值有 4/6/8/12 四种，做成 `.stack-gap-4` 会排列组合爆炸，所以要组件。
+- **版式 token 不进主题预设**：主题只管配色（`ThemeDef.variables` 覆盖式，缺失回落 `:root`）。
+  于是改版式只改一处、改配色只改主题，互不干扰。
+- **工具类和组件内部只能用 token**，不许裸像素 —— 否则「改一处换全站」失效。
+- **不要为「将来可能用」建类**：审计脚本会报成死代码。建了就得用。
+  已因此删掉 `.row/.stack/.spacer/.secondary/.mono/.title-font/.badge`
+  （它们的重复块都夹带其他属性，无精确匹配点）。
+- **组件统一从 `components/ui` barrel 导入**，别写深路径 —— 导入麻烦是组件没人用的主因之一。
+- 两个闸门脚本：`audit-ui-tokens.mjs`（token 覆盖率，现 96.5%/98.5%，`--strict` 接 CI）、
+  `apply-ui-classes.mjs`（**只做完全等价的替换，多一个属性都不换**）。
+- 教训：`style={{` 的括号计数要从第一个 `{` 起（偏移 6 不是 7），
+  早期版本少算一层导致 52 处残留 `}`，靠 tsc 才发现。已写进脚本注释。
+- **改 UI 前先 grep `src/index.css` 确认类名与 CSS 变量存在** —— 已踩过两次
+  （`className="ts"`、`var(--warning-fg)` 都不存在；警告色变量叫 `--warning`）。
 - 参考对象（用户问过）：骨架 Obsidian/VS Code、画布 Figma、多视图 Notion、
   卡面 MTG Arena、气质 BG3/魂系（只学气质不学布局）、信息架构 World Anvil/Kanka。
 - **改 UI 前先 grep `src/index.css` 确认类名与 CSS 变量存在** —— 已踩过两次

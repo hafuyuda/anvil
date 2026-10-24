@@ -49,7 +49,7 @@ export function StatsTab() {
 
   if (loading || !stats) {
     return (
-      <div style={{ fontSize: 12, color: "var(--fg-muted)" }}>读取中…</div>
+      <div className="muted">读取中…</div>
     );
   }
 

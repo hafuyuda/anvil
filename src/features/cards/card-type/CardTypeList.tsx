@@ -51,7 +51,7 @@ export function CardTypeList() {
         </TabButton>
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
+      <div className="fill">
         {subTab === "card" ? <CardTypeSection /> : <RelationKindList />}
       </div>
     </div>
