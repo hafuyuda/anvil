@@ -1036,8 +1036,9 @@ knot 名）、变量只读面板（VAR 行解析）、当前 knot 信息（@scen
 1. **delta 只在 `src/features/board/delta.ts` 里构造。** 散在各调用点手写必然漏字段，
    而漏了不报错 —— 用户拖到第 40 步才发现棋盘不对，那时无从查起。
 2. **回放引擎 `src/features/board/engine/` 是纯函数**，依赖闭包不得出现 DOM /
-   React / IPC / store（与剧本引擎 §16.4 同源）—— 它要能打进导出件、也要能在
-   安卓端壳里跑。
+   React / IPC / store（与剧本引擎 §16.4 同源）—— 它要能打进导出件。
+   1.0 只做 Windows 端（安卓端不在 1.0 范围），但这条约束不打折：
+   一旦掺进 React，导出件就得再写一遍回放，两份实现必然漂移。
 3. **缺 delta 必须显式降级，不许假装完整。** `replayAt` 返回 `degraded` 与
    `missingSteps`，UI 要把它显示出来。`isConsistent()` 比对回放终点与
    `board.tokens`，不一致说明有产生方漏记事件 —— 那是代码 bug。

@@ -57,8 +57,10 @@
   与剧本引擎 §16.4 同源，因为要打进导出件、也要在安卓端壳里跑。
 - `usePileActions` 的四个动作都返回 `PileResult{placed,pileAfter}` 就是为了记 delta，
   别改成返回 void。
-- 平台决策（用户 2026-10-24）：**Windows + 安卓端阅读器**，安卓走 Tauri Android 原生应用，
-  回放视觉用 SVG 示意图（不渲染卡面）。安卓壳阻塞在 Android SDK/NDK 未装。
+- **平台决策（用户 2026-10-24，已更新）：1.0 只做 Windows，安卓端暂不考虑、略过。**
+  别再提安卓方案（SDK/NDK 未装、Tauri 无 mobile 配置是次要原因，主因是 1.0 范围收敛）。
+  回放视觉用 SVG 示意图（不渲染卡面）。
+- 引擎的纯函数约束仍然成立（为了导出件，不是为了安卓）—— 见 replay.ts 注释。
 
 ## 棋盘模块（0.4.x 增强，见 DESIGN.md §13）
 - **落子历史（牌谱）已落地**：存在棋盘自己的 `boards/<id>/events.jsonl`，

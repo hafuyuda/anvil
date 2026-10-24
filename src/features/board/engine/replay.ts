@@ -16,7 +16,9 @@ import type {
  * 量级下仍是毫秒级，不值得为此把事件体积放大到每步一份全量 token。
  *
  * 硬约束（与剧本引擎 §16.4 同源）：本文件及其依赖闭包不得出现 DOM、
- * React、IPC、store —— 它要被打包进导出件，也要能在安卓端壳里跑。
+ * React、IPC、store —— 它要被打包进导出件（单文件 HTML），也才能让
+ * 面板与导出件共用同一份语义。1.0 只做 Windows，但这条约束不打折：
+ * 一旦掺进 React，导出件就得再写一遍回放，两份实现必然漂移。
  */
 
 type Payload = Record<string, unknown> | null | undefined;
