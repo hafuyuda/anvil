@@ -48,6 +48,18 @@
   会话 = `{ id, name, group_id, state }`，队伍来自卡组，事件只剩 6 种 chat.* + `session.start`。
 - **会话不持有任何实体**：只通过 `group_id` 引用卡组。删卡走「卡组成员」这一路，删卡组必须解绑会话队伍。
 
+## 牌谱回放（0.4.x 起，见 DESIGN.md §13「牌谱回放」小节）
+- **0.4.0 之前落的牌谱不可回放**：payload 只有 `token_ids`/`count`/`summary`，
+  缺坐标与快照。信息已丢，补不回来 —— 回放时走 `degraded` + `missingSteps`，不许假装完整。
+- **delta 只在 `src/features/board/delta.ts` 构造**。新增事件产生方必须调它，
+  别手写 payload —— 漏字段不报错，用户拖到第 40 步才发现棋盘不对。
+- 引擎 `src/features/board/engine/` 是**纯函数**闭包（无 DOM/React/IPC/store），
+  与剧本引擎 §16.4 同源，因为要打进导出件、也要在安卓端壳里跑。
+- `usePileActions` 的四个动作都返回 `PileResult{placed,pileAfter}` 就是为了记 delta，
+  别改成返回 void。
+- 平台决策（用户 2026-10-24）：**Windows + 安卓端阅读器**，安卓走 Tauri Android 原生应用，
+  回放视觉用 SVG 示意图（不渲染卡面）。安卓壳阻塞在 Android SDK/NDK 未装。
+
 ## 棋盘模块（0.4.x 增强，见 DESIGN.md §13）
 - **落子历史（牌谱）已落地**：存在棋盘自己的 `boards/<id>/events.jsonl`，
   复用会话那套 JSONL 机制和同一个 `Event` 形状（不再需要从 sessionId 泛化）。
