@@ -21,13 +21,22 @@
   于是改版式只改一处、改配色只改主题，互不干扰。
 - **工具类和组件内部只能用 token**，不许裸像素 —— 否则「改一处换全站」失效。
 - **不要为「将来可能用」建类**：审计脚本会报成死代码。建了就得用。
-  已因此删掉 `.row/.stack/.spacer/.secondary/.mono/.title-font/.badge`
-  （它们的重复块都夹带其他属性，无精确匹配点）。
 - **组件统一从 `components/ui` barrel 导入**，别写深路径 —— 导入麻烦是组件没人用的主因之一。
-- 两个闸门脚本：`audit-ui-tokens.mjs`（token 覆盖率，现 96.5%/98.5%，`--strict` 接 CI）、
-  `apply-ui-classes.mjs`（**只做完全等价的替换，多一个属性都不换**）。
+- 三个闸门脚本：`audit-ui-tokens.mjs`（token 覆盖率，现 96.4%/98.8%，`--strict` 接 CI）、
+  `audit-ui-dup.mjs`（重复内联块聚类，指出下一批该抽什么）、
+  `apply-ui-classes.mjs`（**只做完全等价的替换**；命中已有字面 className 时并进去，
+  `className={…}` 表达式跳过）。
 - 教训：`style={{` 的括号计数要从第一个 `{` 起（偏移 6 不是 7），
   早期版本少算一层导致 52 处残留 `}`，靠 tsc 才发现。已写进脚本注释。
+- **教训（更贵的一条）**：偏移 6 修好后 `raw` 会把内层 `}` 带进来，`norm()` 必须剥掉它，
+  否则**全表匹配 0 处且无任何报错**。曾据此误判「`.mono/.secondary/.spacer` 没有精确匹配点」
+  而把三个类删了 —— 2026-10-25 已补回（命中 6/5/4 处）。
+  **脚本报「0」先怀疑脚本，别先下产品结论。**
+- **外壳观感层（2026-10-25 建，见 DESIGN §9.5）**：顶栏/侧栏/状态栏/菜单/列表的观感
+  只在 `index.css` 的 `.topbar .nav .nav-item .menu .menu-item .statusbar .status-action
+  .panel .list-item .btn-sm` 里定义一次，组件不再各写内联。
+  hover 态从 `onMouseEnter` 手改 style 下沉到 CSS `:hover`；
+  全局 `:focus-visible` 金环（不含 input —— 它已有 border-color 指示）。
 - **改 UI 前先 grep `src/index.css` 确认类名与 CSS 变量存在** —— 已踩过两次
   （`className="ts"`、`var(--warning-fg)` 都不存在；警告色变量叫 `--warning`）。
 - 参考对象（用户问过）：骨架 Obsidian/VS Code、画布 Figma、多视图 Notion、

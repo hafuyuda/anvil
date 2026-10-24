@@ -208,9 +208,8 @@ export function CardEditor({ card, cardType }: Props) {
               保存
             </button>
             <button
-              className="btn btn-danger"
+              className="btn btn-danger spacer"
               onClick={handleDelete}
-              style={{ marginLeft: "auto" }}
             >
               删除
             </button>

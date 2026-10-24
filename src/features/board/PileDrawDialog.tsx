@@ -116,7 +116,7 @@ export function PileDrawDialog({
             抽牌数量
           </span>
           <input
-            className="input"
+            className="input mono"
             type="number"
             min={1}
             max={Math.max(1, remaining)}
@@ -126,7 +126,6 @@ export function PileDrawDialog({
               if (e.key === "Enter") handleDraw();
             }}
             disabled={!canDraw}
-            style={{ fontFamily: "var(--font-mono)" }}
           />
           <div
             style={{

@@ -74,11 +74,10 @@ export function ProjectGeneralPanel() {
 
       <Field label="版本">
         <input
-          className="input"
+          className="input mono"
           value={draft.version}
           onChange={(e) => update({ version: e.target.value })}
           placeholder="0.1.0"
-          style={{ fontFamily: "var(--font-mono)" }}
         />
       </Field>
 

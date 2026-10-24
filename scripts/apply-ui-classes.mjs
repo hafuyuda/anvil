@@ -44,6 +44,9 @@ const DROP_LINE = [
  * 每条的类定义都与指纹严格等价（见 index.css 工具类段）。
  */
 const EXACT_CLASS = [
+  /* 小号按钮：底栏、行内动作常见的 11px + 2/8 内边距。
+     命中时若标签已有 className（.btn / .btn btn-ghost …）就并进去。 */
+  { cls: "btn-sm", fp: 'fontSize:11,padding:"2px8px"' },
   { cls: "grow", fp: 'flex:1,minWidth:0' },
   { cls: "fill", fp: 'flex:1,minHeight:0,display:"flex"' },
   { cls: "list-reset", fp: 'listStyle:"none",padding:0,margin:0' },
@@ -72,9 +75,29 @@ const SET_CLASS = [
     cls: "grow",
     props: ["flex:1", "minWidth:0"],
   },
+  /* 「弹性 + 截断」：列表里的主文本那一列几乎都是这五条一起出现。
+     两个类叠加正好等价于它 —— 拆成两条规则会各自匹配不上（都多属性），
+     所以作为一条组合规则写在这里。 */
+  {
+    cls: "grow truncate",
+    props: [
+      "flex:1",
+      "minWidth:0",
+      'overflow:"hidden"',
+      'textOverflow:"ellipsis"',
+      'whiteSpace:"nowrap"',
+    ],
+  },
 ];
 
-const norm = (s) => s.replace(/\s+/g, "").replace(/,$/, "");
+/**
+ * 归一化成指纹。
+ * 末尾那个 `}` 必须剥掉：块扫描从 `style=` 后的第一个 `{` 起计数（偏移 6），
+ * 这样收尾时 j 停在外层 `}`，raw 就会把内层 `}` 一起带进来。
+ * 不剥的话每条指纹都得写成 `flex:1,minWidth:0}`，且 splitProps 会多出一个
+ * 空片段让条数对不上 —— 表现是全表匹配 0 处，很隐蔽。
+ */
+const norm = (s) => s.replace(/\s+/g, "").replace(/,$/, "").replace(/\}$/, "");
 
 /** 把样式块拆成顶层属性数组。值里带逗号的复杂值（boxShadow 等）会拆错，
  *  所以只对属性数很少的块用，且要求拆出的条数与目标一致。 */
@@ -175,8 +198,32 @@ for (const f of files) {
       continue;
     }
     const tag = out.slice(start, end + 1);
+
+    // 已有字面 className → 合并进去（.btn .btn-sm 这类叠加态）。
+    // 只有一个 className 属性时后者会静默覆盖前者，所以必须合并而不是新增。
+    // className={…} 表达式无法安全改写，跳过交给人工。
+    const lit = /className="([^"]*)"/.exec(tag);
+    if (lit) {
+      if (lit[1].split(/\s+/).includes(cls)) {
+        // 已经有这个类，只需删掉多余的内联块
+        out = out.slice(0, b.start) + out.slice(b.end);
+        changed++;
+        byRule.set(`→ .${cls}（已存在，删内联）`, (byRule.get(`→ .${cls}（已存在，删内联）`) ?? 0) + 1);
+        continue;
+      }
+      // 一步到位：先从标签里摘掉 style 块（连它前面的缩进空白一起），
+      // 再把类并进已有的 className。分两步做会因为字符串长度变化而错位。
+      let s = b.start - start;
+      while (s > 0 && /\s/.test(tag[s - 1])) s--;
+      const tagNew = tag.slice(0, s) + tag.slice(b.end - start);
+      const merged = `className="${lit[1]} ${cls}"`;
+      out = out.slice(0, start) + tagNew.replace(lit[0], merged) + out.slice(end + 1);
+      changed++;
+      byRule.set(`→ .${cls}（合并）`, (byRule.get(`→ .${cls}（合并）`) ?? 0) + 1);
+      continue;
+    }
     if (tag.includes("className")) {
-      conflicts.push(`已有 className，跳过：${tag.replace(/\s+/g, " ").slice(0, 60)}`);
+      conflicts.push(`className 是表达式，跳过：${tag.replace(/\s+/g, " ").slice(0, 60)}`);
       continue;
     }
 

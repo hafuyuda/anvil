@@ -162,10 +162,9 @@ export function CardDocEditor({ cardId, onSaved, onOpenPage }: Props) {
         <div style={{ flex: 1 }} />
         {onOpenPage && (
           <button
-            className="btn btn-ghost"
+            className="btn btn-ghost btn-sm"
             onClick={onOpenPage}
             title="在文档模块中打开"
-            style={{ fontSize: 11, padding: "2px 8px" }}
           >
             ⤢ 全屏
           </button>

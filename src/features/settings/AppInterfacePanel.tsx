@@ -29,7 +29,7 @@ export function AppInterfacePanel() {
             update({ fontScale: v });
             applyFontScale(v);
           }}
-          style={{ width: "100%", accentColor: "var(--accent-gold)" }}
+          style={{ width: "100%" }}
         />
       </Field>
     </div>

@@ -126,13 +126,7 @@ export function EntityListLayout<T extends Item>({
                 }}
               >
                 <span
-                  style={{
-                    flex: 1,
-                    minWidth: 0,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
+                  className="grow truncate"
                 >
                   {renderItem(item)}
                 </span>

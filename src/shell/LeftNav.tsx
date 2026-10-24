@@ -16,6 +16,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { SectionLabel } from "../components/ui";
 import { useProjectStore, type ModuleKey } from "../stores/projectStore";
 import {
   getModuleOrder,
@@ -87,23 +88,22 @@ export function LeftNav() {
 
   return (
     <div
+      className="nav"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
         width,
         transition: reducedMotion ? "none" : "width 150ms ease",
-        borderRight: "1px solid var(--border-subtle)",
-        background: "var(--bg-panel)",
-        padding: 8,
-        display: "flex",
-        flexDirection: "column",
-        gap: 2,
-        fontSize: 13,
-        flexShrink: 0,
-        overflow: "hidden",
       }}
     >
-      {!collapsed && <SectionLabel>模块</SectionLabel>}
+      {!collapsed && (
+        <SectionLabel
+          variant="block"
+          style={{ paddingLeft: "var(--sp-5)", marginTop: "var(--sp-4)" }}
+        >
+          模块
+        </SectionLabel>
+      )}
 
       <DndContext
         sensors={sensors}
@@ -130,7 +130,12 @@ export function LeftNav() {
 
       {!collapsed && (
         <>
-          <SectionLabel>概览</SectionLabel>
+          <SectionLabel
+            variant="block"
+            style={{ paddingLeft: "var(--sp-5)" }}
+          >
+            概览
+          </SectionLabel>
           <Stat label="卡牌" value={cards.length} />
           <Stat label="关系" value={relations.length} />
           <Stat label="类型" value={cardTypes.length} />
@@ -164,36 +169,17 @@ function SortableNavItem({
 
   const meta = MODULE_META[moduleKey];
 
+  // 只有 dnd 的实时状态留在内联里，观感全部交给 .nav-item（index.css）
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
-    position: "relative",
     zIndex: isDragging ? 10 : 1,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: collapsed ? "center" : "flex-start",
-    gap: 8,
-    width: "100%",
-    padding: collapsed ? "6px 0" : "6px 10px",
-    border: "none",
-    borderLeft: active
-      ? "2px solid var(--accent-gold)"
-      : "2px solid transparent",
-    borderRadius: 0,
-    background: active ? "var(--bg-raised)" : "transparent",
-    color: disabled
-      ? "var(--fg-muted)"
-      : active
-        ? "var(--fg-primary)"
-        : "var(--fg-secondary)",
-    cursor: disabled ? "not-allowed" : "pointer",
-    fontWeight: active ? 600 : 400,
-    fontSize: 13,
-    fontFamily: "inherit",
-    whiteSpace: "nowrap",
-    overflow: "hidden",
   };
+
+  const cls = ["nav-item", active && "is-active", collapsed && "is-collapsed"]
+    .filter(Boolean)
+    .join(" ");
 
   const title = meta.shortcut ? `${meta.label} · ${meta.shortcut}` : meta.label;
 
@@ -202,6 +188,7 @@ function SortableNavItem({
       ref={setNodeRef}
       {...attributes}
       {...listeners}
+      className={cls}
       onClick={onClick}
       disabled={disabled}
       title={title}
@@ -215,35 +202,9 @@ function SortableNavItem({
   );
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <div
-      style={{
-        fontSize: 10,
-        color: "var(--fg-muted)",
-        textTransform: "uppercase",
-        letterSpacing: 1,
-        padding: "8px 8px 4px",
-        whiteSpace: "nowrap",
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
 function Stat({ label, value }: { label: string; value: number }) {
   return (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        padding: "2px 10px",
-        color: "var(--fg-secondary)",
-        fontSize: 12,
-        whiteSpace: "nowrap",
-      }}
-    >
+    <div className="nav-stat">
       <span>{label}</span>
       <span
         style={{ color: "var(--fg-primary)", fontFamily: "var(--font-mono)" }}

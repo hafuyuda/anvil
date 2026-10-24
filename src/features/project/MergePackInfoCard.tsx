@@ -26,7 +26,7 @@ export function MergePackInfoCard({
       >
         {inspection.manifest.name}
       </div>
-      <div style={{ color: "var(--fg-secondary)" }}>
+      <div className="secondary">
         {inspection.total_cards} 张卡 · {inspection.total_relations} 条关系 ·{" "}
         {inspection.card_types.length} 个类型
       </div>

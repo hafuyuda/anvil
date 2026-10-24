@@ -697,13 +697,7 @@ function CollectionRow(props: {
         }}
       />
       <span
-        style={{
-          flex: 1,
-          minWidth: 0,
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-        }}
+        className="grow truncate"
       >
         {props.label}
       </span>

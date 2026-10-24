@@ -164,11 +164,10 @@ export function EventEditorDialog({ event, onSave, onClose }: Props) {
               骰子表达式
             </span>
             <input
-              className="input"
+              className="input mono"
               value={rollExpr}
               onChange={(e) => setRollExpr(e.target.value)}
               placeholder="例如：1d20+3"
-              style={{ fontFamily: "var(--font-mono)" }}
             />
           </label>
 
@@ -209,11 +208,10 @@ export function EventEditorDialog({ event, onSave, onClose }: Props) {
                 骰子明细（逗号分隔）
               </span>
               <input
-                className="input"
+                className="input mono"
                 value={rollDetail}
                 onChange={(e) => setRollDetail(e.target.value)}
                 placeholder="例如：17, 3, 12"
-                style={{ fontFamily: "var(--font-mono)" }}
               />
             </label>
           </div>

@@ -88,9 +88,8 @@ export function StatsTab() {
           刷新统计
         </button>
         <button
-          className="btn"
+          className="btn spacer"
           onClick={handleExportDiagnostics}
-          style={{ marginLeft: "auto" }}
           title="导出当前状态供问题诊断"
         >
           导出诊断信息
@@ -151,7 +150,7 @@ function Row({ label, value }: { label: string; value: number }) {
         fontSize: 12,
       }}
     >
-      <span style={{ color: "var(--fg-secondary)" }}>{label}</span>
+      <span className="secondary">{label}</span>
       <span
         style={{
           color: "var(--fg-primary)",

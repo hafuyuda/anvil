@@ -82,9 +82,8 @@ export function BoardHistoryPanel({ events, onDelete, onClose }: Props) {
           {events.length} 条
         </span>
         <button
-          className="btn btn-icon"
+          className="btn btn-icon spacer"
           onClick={onClose}
-          style={{ marginLeft: "auto" }}
           title="收起"
         >
           ×

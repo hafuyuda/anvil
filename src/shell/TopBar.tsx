@@ -81,91 +81,25 @@ export function TopBar() {
     : "未打开项目";
 
   return (
-    <div
-      style={{
-        height: "var(--topbar-h)",
-        display: "flex",
-        alignItems: "center",
-        padding: "0 12px",
-        borderBottom: "1px solid var(--border-subtle)",
-        background: "var(--bg-panel)",
-        gap: 8,
-        fontSize: 13,
-        flexShrink: 0,
-        paddingRight: "calc(12px + var(--tauri-frame-controls-width, 138px))",
-      }}
-    >
+    <div className="topbar">
       {/* 项目菜单 */}
       <div ref={menuRef} style={{ position: "relative" }}>
         <button
+          className={menuOpen ? "menu-trigger is-open" : "menu-trigger"}
           onClick={() => setMenuOpen((v) => !v)}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "4px 10px",
-            border: "1px solid transparent",
-            borderRadius: "var(--radius-sm)",
-            background: menuOpen ? "var(--bg-raised)" : "transparent",
-            color: "var(--fg-primary)",
-            cursor: "pointer",
-            fontFamily: "inherit",
-            fontSize: 13,
-          }}
-          onMouseEnter={(e) => {
-            if (!menuOpen) {
-              (e.currentTarget as HTMLElement).style.background =
-                "var(--bg-surface)";
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (!menuOpen) {
-              (e.currentTarget as HTMLElement).style.background = "transparent";
-            }
-          }}
         >
-          <strong
-            style={{
-              color: "var(--accent-gold)",
-              fontFamily: "var(--font-title)",
-              fontSize: 15,
-              letterSpacing: 1,
-            }}
-          >
-            Anvil
-          </strong>
+          <strong className="brand-mark">Anvil</strong>
           <span style={{ color: "var(--border-default)" }}>·</span>
-          <span
-            style={{
-              color: "var(--fg-secondary)",
-              maxWidth: 220,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
+          <span className="truncate" style={{ color: "var(--fg-secondary)", maxWidth: 220 }}>
             {projectName}
           </span>
-          <span style={{ color: "var(--fg-muted)", fontSize: 10 }}>▾</span>
+          <span style={{ color: "var(--fg-muted)", fontSize: "var(--fs-xs)" }}>
+            ▾
+          </span>
         </button>
 
         {menuOpen && (
-          <div
-            style={{
-              position: "absolute",
-              top: "calc(100% + 4px)",
-              left: 0,
-              width: 220,
-              background: "var(--bg-panel)",
-              border: "1px solid var(--border-default)",
-              borderRadius: "var(--radius-md)",
-              boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
-              padding: 4,
-              zIndex: 1000,
-              display: "flex",
-              flexDirection: "column",
-            }}
-          >
+          <div className="menu">
             <MenuItem
               label={projectPath ? "切换项目…" : "打开项目…"}
               onClick={() => {
@@ -284,36 +218,14 @@ function MenuItem({
   danger?: boolean;
   disabled?: boolean;
 }) {
-  const [hover, setHover] = useState(false);
+  const cls = ["menu-item", danger && "is-danger"].filter(Boolean).join(" ");
   return (
     <button
+      className={cls}
+      disabled={disabled}
       onClick={() => {
         if (disabled) return;
         onClick();
-      }}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      style={{
-        display: "block",
-        width: "100%",
-        textAlign: "left",
-        padding: "6px 10px",
-        border: "none",
-        borderRadius: "var(--radius-sm)",
-        background:
-          hover && !disabled
-            ? danger
-              ? "color-mix(in srgb, var(--danger) 20%, transparent)"
-              : "var(--bg-raised)"
-            : "transparent",
-        color: disabled
-          ? "var(--fg-muted)"
-          : danger
-            ? "var(--danger)"
-            : "var(--fg-primary)",
-        cursor: disabled ? "not-allowed" : "pointer",
-        fontFamily: "inherit",
-        fontSize: 13,
       }}
     >
       {label}
@@ -322,13 +234,5 @@ function MenuItem({
 }
 
 function Divider() {
-  return (
-    <div
-      style={{
-        height: 1,
-        background: "var(--border-subtle)",
-        margin: "4px 6px",
-      }}
-    />
-  );
+  return <div className="menu-sep" />;
 }

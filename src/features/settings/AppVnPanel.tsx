@@ -25,7 +25,7 @@ export function AppVnPanel() {
           step={5}
           value={draft.typewriterSpeed}
           onChange={(e) => update({ typewriterSpeed: Number(e.target.value) })}
-          style={{ width: "100%", accentColor: "var(--accent-gold)" }}
+          style={{ width: "100%" }}
         />
       </Field>
 

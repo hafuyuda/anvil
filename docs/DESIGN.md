@@ -763,7 +763,7 @@ if (!r.ok) return;
 | 层                        | 放什么                                              | 例子                                             |
 | ------------------------- | --------------------------------------------------- | ------------------------------------------------ |
 | **token**（`index.css` `:root`） | 间距 `--sp-*`、字号 `--fs-*`、行高 `--lh-*`、圆角、颜色 | `gap: "var(--sp-4)"`、`fontSize: "var(--fs-sm)"` |
-| **CSS 类**（`index.css` 工具类段） | 无参数、纯样式的组合                                | `.grow` `.fill` `.muted` `.truncate` `.list-reset` |
+| **CSS 类**（`index.css` 工具类段） | 无参数、纯样式的组合                                | `.grow` `.fill` `.muted` `.truncate` `.list-reset` `.mono` `.secondary` `.spacer` `.btn-sm` |
 | **组件**（`components/ui/`）       | 带参数，或有结构 / 有行为                           | `<Stack gap>` `<Row>` `<EmptyState>` `<SectionLabel>` |
 
 判断标准很简单：**这个模式需不需要参数？**
@@ -806,19 +806,57 @@ if (!r.ok) return;
 
 ### 9.4 明确不抽的
 
-- **`Mono` 不抽** —— 79 处 `fontFamily: var(--font-mono)` 几乎全是 input 的
-  inline style，抽出来反而多一层间接。
 - **`LabeledInput` 不抽** —— 各处差异大于共性。
-- **`Divider` 不抽** —— 常与 flex 布局耦合。
+- **`Divider` 不抽** —— 常与 flex 布局耦合（顶栏菜单里的分隔线例外，
+  它跟着 `.menu` 走，见 §9.5）。
+- ~~**`Mono` 不抽**~~ —— 这条已作废。当初的判断建立在「匹配数为 0」之上，
+  而那是 `apply-ui-classes.mjs` 的解析 bug 造成的假象（见 §9.6）。
+  修好后 `.mono` 精确命中 6 处，已作为类收进工具类段。
 
-### 9.5 防漂移闸门
+### 9.5 外壳观感层：顶栏 / 侧栏 / 状态栏 / 菜单 / 列表
 
-两个零依赖脚本，改完 UI 跑一遍：
+**观感只定义一次。** 顶栏多高、导航项悬停是什么颜色、菜单阴影多深 —— 这些
+值此前散在各组件的内联样式里，Hover 甚至要靠 `useState` 在 JS 里改 `style`。
+后果是「导航项有没有悬停态」这种问题没有唯一答案，只能逐个文件翻。
+
+现在 `index.css` 有一组外壳类统一承载：
+
+| 类                                | 管什么                                       |
+| --------------------------------- | -------------------------------------------- |
+| `.topbar` / `.statusbar` / `.nav` | 三条栏：高度、边框、背景、内边距            |
+| `.nav-item`（+ `.is-active` / `.is-collapsed`） | 导航项：激活金条、悬停、收起态居中 |
+| `.menu` / `.menu-item` / `.menu-sep` | 下拉菜单：层级、悬停、危险项              |
+| `.panel` / `.list-item`           | 带边框列表容器与行（首页最近项目等）        |
+| `.btn-sm` / `.mono` / `.secondary` / `.spacer` | 尺寸、字体、颜色的单点定义      |
+
+配套的两条**新增**交互规则（此前完全没有，不是等价搬迁）：
+
+- **`:focus-visible` 金环**：`button / a / select / [role=button] / [tabindex]`
+  键盘聚焦时给 2px 金描边。这是个八成操作靠键盘的信息密集工具，之前 Tab 过去
+  看不出落点。文本输入例外 —— 它们已有 `border-color` 指示焦点，再加一圈是噪声。
+- **悬停态下沉到 CSS**：`.nav-item:hover` / `.list-item:hover` / `.menu-item:hover`
+  取代了原来 `onMouseEnter` 里手改 `style` 的写法，顺带去掉两个 `useState`。
+
+激活指示条用 `border-left: 2px solid transparent` 占位、激活时只换颜色 ——
+不这么做，文字会在选中瞬间横移 2px。
+
+### 9.6 防漂移闸门
+
+三个零依赖脚本，改完 UI 跑一遍：
 
 - `node scripts/audit-ui-tokens.mjs` —— 统计裸数值，报告 token 覆盖率
-  （当前：间距 96.5%、字号 98.5%），`--strict` 可接 CI。
+  （当前：间距 96.4%、字号 98.8%），`--strict` 可接 CI。
+- `node scripts/audit-ui-dup.mjs` —— 按「重复的内联样式块」聚类，
+  指出下一批该抽的是什么（当前：省略号 25、分区标题 23、弹性+截断 19）。
 - `node scripts/apply-ui-classes.mjs` —— 把语义等价的内联样式替换成类。
   只做**完全等价**的替换，多一个属性都不换，宁可漏不可错。
+  命中时若标签已有字面 `className`，会把类**并进去**（`.btn` → `.btn btn-sm`）；
+  `className={…}` 表达式改不动，跳过交给人工。
+
+**踩过的坑**：块扫描从 `style=` 后的**第一个** `{` 起计数（偏移 6，不是 7）。
+偏移 7 会停在内层 `}`，替换后残留一个 `}`；偏移 6 收尾正确，但块内容会把内层
+`}` 一起带进来，归一化时必须剥掉末尾的 `}`。**两种偏移都会让全表匹配 0 处**，
+表现为「脚本跑完什么都没改」——很安静，别当成「已经没有可改的了」。
 
 ---
 
@@ -877,7 +915,8 @@ if (!r.ok) return;
   - （有项目时）导出资源包 / 合并资源包 / 刷新项目 / 关闭项目
 - **中**：拖拽区（`data-tauri-drag-region`，双击可最大化）
 - **右**：搜索框（点击打开命令面板，显示 `Ctrl+K`）、设置按钮
-- **右侧预留**：`paddingRight: calc(12px + var(--tauri-frame-controls-width, 138px))` 给窗口按钮留位
+- **右侧预留**：给窗口按钮留位（`calc(var(--sp-6) + var(--tauri-frame-controls-width, 138px))`）
+- **观感**（高度 / 边框 / 背景 / 留位 / 菜单层）由 `.topbar` 等外壳类统一定义，见 §9.5
 
 撤销 / 重做 / 保存状态**不在顶栏**，在底栏。
 
@@ -888,6 +927,7 @@ if (!r.ok) return;
 - **悬停或拖拽时展开**：180px
 - **可拖拽排序**，顺序持久化到 `localStorage`（`anvil.leftNavOrder`）
 - 底部「概览」：卡牌 / 关系 / 类型计数
+- 观感走 `.nav` / `.nav-item`：激活项是左侧 2px 金条 + 提亮，**悬停有反馈**（见 §9.5）
 
 ### 检查器（Inspector）
 

@@ -213,7 +213,7 @@ function PreviewLine({ line }: { line: ParsedScript["lines"][number] }) {
         <div style={{ ...rowStyle, borderLeftColor: "var(--accent-steel)" }}>
           <span style={labelStyle}>汇合</span>
           {line.text ? (
-            <span style={{ color: "var(--fg-secondary)" }}>{line.text}</span>
+            <span className="secondary">{line.text}</span>
           ) : (
             <span style={{ color: "var(--fg-muted)" }}>选项在此汇合</span>
           )}

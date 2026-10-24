@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Row, SectionLabel, Stack } from "../components/ui";
 import { useProjectStore } from "../stores/projectStore";
 import { useOpenProject } from "../core/actions/useOpenProject";
 import { useCreateProject } from "../core/actions/useCreateProject";
@@ -42,139 +43,83 @@ export function Workspace() {
 
   if (!projectPath) {
     return (
-      <div
+      <Stack
+        align="center"
+        justify="center"
+        gap="var(--sp-8)"
         style={{
           flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 20,
           color: "var(--fg-secondary)",
           background: "var(--bg-app)",
-          padding: 24,
+          padding: "var(--sp-12)",
           overflow: "auto",
         }}
       >
-        <div
-          style={{
-            fontSize: 22,
-            fontFamily: "var(--font-title)",
-            color: "var(--accent-gold)",
-            letterSpacing: 3,
-          }}
-        >
-          Anvil
-        </div>
-        <div
-          style={{
-            fontSize: 12,
-            color: "var(--fg-muted)",
-            marginTop: -12,
-          }}
-        >
+        <div className="welcome-brand">Anvil</div>
+        <div className="muted">
           铁砧。世界观、剧情、棋盘、跑团，都在一张卡上。
         </div>
 
-        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+        <Row gap="var(--sp-4)">
           <button
             className="btn btn-primary"
             onClick={createProject}
-            style={{ padding: "8px 20px", fontSize: 13 }}
+            style={{
+              padding: "var(--sp-4) var(--sp-10)",
+              fontSize: "var(--fs-lg)",
+            }}
           >
             新建项目
           </button>
           <button
             className="btn"
             onClick={openProject}
-            style={{ padding: "8px 20px", fontSize: 13 }}
+            style={{
+              padding: "var(--sp-4) var(--sp-10)",
+              fontSize: "var(--fs-lg)",
+            }}
           >
             打开已有项目
           </button>
-        </div>
+        </Row>
 
         {recent.length > 0 && (
           <div
             style={{
               width: "100%",
               maxWidth: 480,
-              marginTop: 24,
+              marginTop: "var(--sp-8)",
             }}
           >
-            <div
-              style={{
-                fontSize: 10,
-                color: "var(--fg-muted)",
-                textTransform: "uppercase",
-                letterSpacing: 1,
-                marginBottom: 8,
-                paddingLeft: 4,
-              }}
+            <SectionLabel
+              variant="block"
+              style={{ paddingLeft: "var(--sp-2)" }}
             >
               最近项目
-            </div>
-            <div
-              style={{
-                border: "1px solid var(--border-subtle)",
-                borderRadius: "var(--radius-md)",
-                background: "var(--bg-panel)",
-                overflow: "hidden",
-              }}
-            >
-              {recent.map((p, i) => {
+            </SectionLabel>
+            <div className="panel">
+              {recent.map((p) => {
                 const name = p.split(/[\\/]/).pop() ?? p;
                 return (
-                  <div
-                    key={p}
-                    onClick={() => handleOpenRecent(p)}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 10,
-                      padding: "8px 12px",
-                      cursor: "pointer",
-                      borderBottom:
-                        i < recent.length - 1
-                          ? "1px solid var(--border-subtle)"
-                          : "none",
-                      fontSize: 13,
-                    }}
-                    onMouseEnter={(e) => {
-                      (e.currentTarget as HTMLElement).style.background =
-                        "var(--bg-surface)";
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLElement).style.background = "";
-                    }}
-                  >
+                  <div key={p} className="list-item" onClick={() => handleOpenRecent(p)}>
                     <span
-                      style={{
-                        color: "var(--accent-gold)",
-                        fontSize: 11,
-                      }}
+                      style={{ color: "var(--accent-gold)", fontSize: "var(--fs-sm)" }}
                     >
                       ◆
                     </span>
                     <div className="grow">
                       <div
-                        style={{
-                          color: "var(--fg-primary)",
-                          fontWeight: 500,
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
+                        className="truncate"
+                        style={{ color: "var(--fg-primary)", fontWeight: 500 }}
                       >
                         {name}
                       </div>
                       <div
+                        className="truncate"
                         style={{
-                          fontSize: 10,
+                          fontSize: "var(--fs-xs)",
                           color: "var(--fg-muted)",
                           fontFamily: "var(--font-mono)",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
                         }}
                       >
                         {p}
@@ -185,8 +130,8 @@ export function Workspace() {
                       onClick={(e) => handleRemove(p, e)}
                       title="从最近项目移除"
                       style={{
-                        fontSize: 12,
-                        padding: "1px 6px",
+                        fontSize: "var(--fs-md)",
+                        padding: "0 var(--sp-3)",
                         color: "var(--fg-muted)",
                       }}
                     >
@@ -198,7 +143,7 @@ export function Workspace() {
             </div>
           </div>
         )}
-      </div>
+      </Stack>
     );
   }
 

@@ -42,51 +42,45 @@ export function BoardBottomBar({
       </span>
       {onConnect && (
         <button
-          className="btn"
+          className="btn btn-sm"
           onClick={onConnect}
-          style={{ fontSize: 11, padding: "2px 8px" }}
         >
           连线
         </button>
       )}
       {onFlip && (
         <button
-          className="btn"
+          className="btn btn-sm"
           onClick={onFlip}
-          style={{ fontSize: 11, padding: "2px 8px" }}
         >
           翻转
         </button>
       )}
       {onBringToFront && (
         <button
-          className="btn"
+          className="btn btn-sm"
           onClick={onBringToFront}
-          style={{ fontSize: 11, padding: "2px 8px" }}
         >
           置顶
         </button>
       )}
       {onSendToBack && (
         <button
-          className="btn"
+          className="btn btn-sm"
           onClick={onSendToBack}
-          style={{ fontSize: 11, padding: "2px 8px" }}
         >
           置底
         </button>
       )}
       <button
-        className="btn"
+        className="btn btn-sm"
         onClick={onClear}
-        style={{ fontSize: 11, padding: "2px 8px" }}
       >
         取消
       </button>
       <button
-        className="btn btn-danger"
+        className="btn btn-danger btn-sm"
         onClick={onDelete}
-        style={{ fontSize: 11, padding: "2px 8px" }}
       >
         删除
       </button>

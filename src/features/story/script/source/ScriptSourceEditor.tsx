@@ -261,14 +261,14 @@ export function ScriptSourceEditor({
         {"~ 变量 = 值"} · {"<>"}
         <div style={{ color: "var(--fg-muted)", fontSize: 10 }}>
           结构行：
-          <span style={{ color: "var(--fg-secondary)" }}>
+          <span className="secondary">
             {" "}
             === knot 名 · VAR 变量 = 值 · * 选项 · - 汇合
           </span>
         </div>
         <div style={{ color: "var(--fg-muted)", fontSize: 10 }}>
           说话人按名字匹配项目中的卡。立绘从卡的{" "}
-          <span style={{ color: "var(--fg-secondary)" }}>
+          <span className="secondary">
             portrait_&lt;表情&gt;
           </span>{" "}
           image 字段读取。

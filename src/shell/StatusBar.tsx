@@ -11,20 +11,7 @@ export function StatusBar() {
   const redo = useProjectStore((s) => s.redo);
 
   return (
-    <div
-      style={{
-        height: "var(--statusbar-h)",
-        display: "flex",
-        alignItems: "center",
-        padding: "0 12px",
-        borderTop: "1px solid var(--border-subtle)",
-        background: "var(--bg-panel)",
-        gap: 12,
-        fontSize: 11,
-        color: "var(--fg-muted)",
-        flexShrink: 0,
-      }}
-    >
+    <div className="statusbar">
       <span>
         卡牌 <Mono>{cards.length}</Mono>
       </span>
@@ -36,18 +23,18 @@ export function StatusBar() {
         <>
           <Sep />
           <button
+            className="status-action"
             onClick={() => void undo()}
             disabled={undoStack.length === 0}
             title="撤销 Ctrl+Z"
-            style={iconBtnStyle(undoStack.length === 0)}
           >
             ↶ <Mono>{undoStack.length}</Mono>
           </button>
           <button
+            className="status-action"
             onClick={() => void redo()}
             disabled={redoStack.length === 0}
             title="重做 Ctrl+Shift+Z"
-            style={iconBtnStyle(redoStack.length === 0)}
           >
             ↷ <Mono>{redoStack.length}</Mono>
           </button>
@@ -65,28 +52,14 @@ export function StatusBar() {
         </>
       )}
 
-      <div style={{ flex: 1 }} />
+      <div className="grow" />
       {projectPath && (
-        <span style={{ fontFamily: "var(--font-mono)" }}>{projectPath}</span>
+        <span className="truncate mono">
+          {projectPath}
+        </span>
       )}
     </div>
   );
-}
-
-function iconBtnStyle(disabled: boolean): React.CSSProperties {
-  return {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 4,
-    padding: "1px 6px",
-    border: "none",
-    background: "transparent",
-    color: disabled ? "var(--fg-muted)" : "var(--fg-secondary)",
-    cursor: disabled ? "not-allowed" : "pointer",
-    fontFamily: "inherit",
-    fontSize: 11,
-    opacity: disabled ? 0.5 : 1,
-  };
 }
 
 function Sep() {

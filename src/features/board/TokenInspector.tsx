@@ -326,9 +326,8 @@ export function TokenInspector({ token, onSave, onDelete, onClose }: Props) {
               {dirty ? "保存" : "已保存"}
             </button>
             <button
-              className="btn btn-danger"
+              className="btn btn-danger spacer"
               onClick={handleDelete}
-              style={{ marginLeft: "auto" }}
             >
               删除
             </button>

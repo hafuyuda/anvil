@@ -84,11 +84,10 @@ export function FieldRow({
             placeholder="显示名"
           />
           <input
-            className="input"
+            className="input mono"
             value={field.key}
             onChange={(e) => onChange({ key: e.target.value })}
             placeholder="key"
-            style={{ fontFamily: "var(--font-mono)" }}
           />
           <select
             className="select"

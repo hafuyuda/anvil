@@ -240,13 +240,7 @@ export function DocLibrary() {
                   ●
                 </span>
                 <span
-                  style={{
-                    flex: 1,
-                    minWidth: 0,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
+                  className="grow truncate"
                 >
                   {card.name}
                 </span>

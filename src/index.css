@@ -73,6 +73,8 @@
 
   /* 阴影 */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  /* 浮层（菜单、下拉、弹出面板）—— 比 shadow-md 高一级，压住底下的内容 */
+  --shadow-pop: 0 8px 24px rgba(0, 0, 0, 0.5);
 
   /* 材质 / 纹理（纯 CSS 渐变，不引图片，可被主题覆盖） */
   --tex-iron: repeating-linear-gradient(
@@ -103,6 +105,7 @@
   --topbar-h: 36px;
   --statusbar-h: 26px;
   --leftnav-w: 200px;
+  --menu-w: 220px;
 
   color-scheme: dark;
 
@@ -290,7 +293,8 @@ body {
 /* 表单控件强调色统一走主题金 —— 此前 18 处内联 accentColor 各写一遍，
    加一个控件就要再抄一次。主题换了这里自动跟着换。 */
 input[type="checkbox"],
-input[type="radio"] {
+input[type="radio"],
+input[type="range"] {
   accent-color: var(--accent-gold);
 }
 
@@ -332,6 +336,22 @@ input[type="radio"] {
 }
 .nowrap {
   white-space: nowrap;
+}
+
+/* 等宽 / 次级色。
+   这两个（连同下面的 .spacer）曾经被删过一次 —— 当时判断「没有精确匹配点」，
+   其实是 apply-ui-classes.mjs 的块解析把内层 `}` 算进了内容，导致全表匹配 0 处，
+   于是误以为没人用。脚本修好后分别命中 6 / 5 / 4 处，它们确实该存在。 */
+.mono {
+  font-family: var(--font-mono);
+}
+.secondary {
+  color: var(--fg-secondary);
+}
+
+/* 把右侧元素推到行尾（工具栏里的「右侧一组按钮」） */
+.spacer {
+  margin-left: auto;
 }
 
 /* 列表重置 */
@@ -412,6 +432,12 @@ input[type="radio"] {
   font-size: 12px;
 }
 
+/* 小号：只改尺寸，视觉仍由 .btn / .btn-ghost / .btn-danger 决定 */
+.btn-sm {
+  padding: var(--sp-1) var(--sp-4);
+  font-size: var(--fs-sm);
+}
+
 /* 输入框 */
 
 .input,
@@ -447,6 +473,250 @@ input[type="radio"] {
 .textarea {
   resize: vertical;
   font-family: inherit;
+}
+
+/* ============ 键盘焦点 ============
+   此前全站没有任何 :focus-visible 规则 —— 键盘 Tab 过去时看不出落点在哪，
+   而这是个八成操作靠键盘的信息密集工具。
+   文本输入例外：它们已有 border-color 变化指示焦点（见 .input:focus），
+   再加一圈描边是双层噪声，所以这里只收口非文本控件。 */
+button:focus-visible,
+[role="button"]:focus-visible,
+a:focus-visible,
+select:focus-visible,
+[tabindex]:not([tabindex="-1"]):focus-visible {
+  outline: 2px solid var(--accent-gold);
+  outline-offset: 1px;
+}
+
+/* ============ 外壳观感层 ============
+   顶栏 / 侧栏 / 状态栏 / 菜单 / 列表项的观感只在这里定义一次。
+   此前这些值散在各组件的内联样式里，Hover 甚至要靠 useState 在 JS 里改
+   style —— 于是「导航项有没有悬停态」这种问题没有唯一答案，只能逐个文件翻。
+
+   迁移后新加的规则：
+     · 导航项 / 菜单项 / 列表项 有悬停态（此前完全没有）
+     · 键盘焦点有金环（此前完全没有）
+   这两条是这次唯一改变观感的改动，其余是等价搬迁。 */
+
+/* 顶栏 */
+.topbar {
+  height: var(--topbar-h);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: 0 var(--sp-6);
+  /* Tauri 自绘标题栏的窗口按钮压在右上角，给它留位 */
+  padding-right: calc(var(--sp-6) + var(--tauri-frame-controls-width, 138px));
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-panel);
+  font-size: var(--fs-lg);
+  flex-shrink: 0;
+}
+
+.brand-mark {
+  font-family: var(--font-title);
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  color: var(--accent-gold);
+  letter-spacing: 1px;
+}
+
+/* 欢迎页大字：字距用 em 而不是 px，换字号时比例不跑 */
+.welcome-brand {
+  font-family: var(--font-title);
+  font-size: var(--fs-3xl);
+  color: var(--accent-gold);
+  letter-spacing: 0.16em;
+}
+
+/* 项目菜单触发按钮 */
+.menu-trigger {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: var(--sp-2) var(--sp-5);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--fg-primary);
+  font-family: inherit;
+  font-size: var(--fs-lg);
+  cursor: pointer;
+}
+.menu-trigger:hover {
+  background: var(--bg-surface);
+}
+.menu-trigger.is-open {
+  background: var(--bg-raised);
+}
+
+/* 下拉菜单 */
+.menu {
+  position: absolute;
+  top: calc(100% + var(--sp-2));
+  left: 0;
+  width: var(--menu-w);
+  display: flex;
+  flex-direction: column;
+  padding: var(--sp-2);
+  background: var(--bg-panel);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-pop);
+  z-index: 1000;
+}
+
+.menu-item {
+  display: block;
+  width: 100%;
+  padding: var(--sp-3) var(--sp-5);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--fg-primary);
+  font-family: inherit;
+  font-size: var(--fs-lg);
+  text-align: left;
+  cursor: pointer;
+}
+.menu-item:hover:not(:disabled) {
+  background: var(--bg-raised);
+}
+.menu-item:disabled {
+  color: var(--fg-muted);
+  cursor: not-allowed;
+}
+.menu-item.is-danger {
+  color: var(--danger);
+}
+.menu-item.is-danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--danger) 20%, transparent);
+}
+
+.menu-sep {
+  height: 1px;
+  margin: var(--sp-2) var(--sp-3);
+  background: var(--border-subtle);
+}
+
+/* 左侧导航 */
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-4);
+  border-right: 1px solid var(--border-subtle);
+  background: var(--bg-panel);
+  font-size: var(--fs-lg);
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.nav-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  width: 100%;
+  padding: var(--sp-3) var(--sp-5);
+  border: none;
+  /* 激活指示条占固定 2px，透明时占位不变 —— 文字不会因为选中而横移 */
+  border-left: 2px solid transparent;
+  background: transparent;
+  color: var(--fg-secondary);
+  font-family: inherit;
+  font-size: var(--fs-lg);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.nav-item:hover:not(:disabled) {
+  background: var(--bg-surface);
+  color: var(--fg-primary);
+}
+.nav-item.is-active {
+  border-left-color: var(--accent-gold);
+  background: var(--bg-raised);
+  color: var(--fg-primary);
+  font-weight: 600;
+}
+.nav-item:disabled {
+  color: var(--fg-muted);
+  cursor: not-allowed;
+}
+.nav-item.is-collapsed {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.nav-stat {
+  display: flex;
+  justify-content: space-between;
+  padding: var(--sp-1) var(--sp-5);
+  color: var(--fg-secondary);
+  font-size: var(--fs-md);
+  white-space: nowrap;
+}
+
+/* 状态栏 */
+.statusbar {
+  height: var(--statusbar-h);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-6);
+  padding: 0 var(--sp-6);
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-panel);
+  color: var(--fg-muted);
+  font-size: var(--fs-sm);
+  flex-shrink: 0;
+}
+
+/* 状态栏里的动作：底栏只有 26px 高，悬停提亮文字就够，不做按钮底 */
+.status-action {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 0 var(--sp-3);
+  border: none;
+  background: transparent;
+  color: var(--fg-secondary);
+  font-family: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+.status-action:hover:not(:disabled) {
+  color: var(--fg-primary);
+}
+.status-action:disabled {
+  color: var(--fg-muted);
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 面板与列表项 —— 首页最近项目、各类『带边框的列表』共用 */
+.panel {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-panel);
+  overflow: hidden;
+}
+
+.list-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-5);
+  padding: var(--sp-4) var(--sp-6);
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: var(--fs-lg);
+  cursor: pointer;
+}
+.list-item:last-child {
+  border-bottom: none;
+}
+.list-item:hover {
+  background: var(--bg-surface);
 }
 
 /* 滚动条 */
