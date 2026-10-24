@@ -14,6 +14,13 @@ import { BoardHistoryPanel } from "./BoardHistoryPanel";
 import { RelationFilterDialog } from "./RelationFilterDialog";
 import { usePileActions } from "./usePileActions";
 import { syncPileWithGroup } from "./pileSync";
+import {
+  flipPayload,
+  layerPayload,
+  movePayload,
+  pilePayload,
+  placePayload,
+} from "./delta";
 import { confirmDialog } from "../../lib/confirm";
 import { runWithError } from "../../lib/runWithError";
 import { useContextMenu, type MenuEntry } from "../../components/ui/ContextMenu";
@@ -105,12 +112,14 @@ export function BoardEditor({ board }: Props) {
       x.id === t.id ? { ...x, face_down: faceDown } : x,
     );
     void savePatch({ tokens: next }, "翻转");
-    void logEvent("board.flip", {
-      token_ids: [t.id],
-      count: 1,
-      face_down: faceDown,
-      summary: `翻${faceDown ? "扣" : "开"}「${tokenName(t.id)}」`,
-    });
+    void logEvent(
+      "board.flip",
+      flipPayload({
+        tokenIds: [t.id],
+        faceDown,
+        summary: `翻${faceDown ? "扣" : "开"}「${tokenName(t.id)}」`,
+      }),
+    );
   }
 
   function setTokenLayer(t: Token, where: "front" | "back") {
@@ -122,12 +131,14 @@ export function BoardEditor({ board }: Props) {
       x.id === t.id ? { ...x, layer: target } : x,
     );
     void savePatch({ tokens: next }, label);
-    void logEvent("board.layer", {
-      token_ids: [t.id],
-      count: 1,
-      where,
-      summary: `${label}「${tokenName(t.id)}」`,
-    });
+    void logEvent(
+      "board.layer",
+      layerPayload({
+        tokens: next.filter((x) => x.id === t.id),
+        where,
+        summary: `${label}「${tokenName(t.id)}」`,
+      }),
+    );
   }
 
   /** 批量翻转选中 token（检查器里的翻转只针对单枚）。 */
@@ -142,12 +153,14 @@ export function BoardEditor({ board }: Props) {
       set.has(x.id) ? { ...x, face_down: !(x.face_down ?? false) } : x,
     );
     void savePatch({ tokens: next }, "批量翻转");
-    void logEvent("board.flip", {
-      token_ids: ids,
-      count: ids.length,
-      face_down: faceDown,
-      summary: `翻${faceDown ? "扣" : "开"} ${ids.length} 枚 Token`,
-    });
+    void logEvent(
+      "board.flip",
+      flipPayload({
+        tokenIds: ids,
+        faceDown,
+        summary: `翻${faceDown ? "扣" : "开"} ${ids.length} 枚 Token`,
+      }),
+    );
   }
 
   /** 批量置顶 / 置底，保持选中集合内部相对次序。 */
@@ -155,27 +168,30 @@ export function BoardEditor({ board }: Props) {
     if (ids.length === 0) return;
     const set = new Set(ids);
     const layers = normalized.tokens.map((x) => x.layer);
+    let next: Token[];
     if (where === "front") {
       const base = Math.max(...layers) + 1;
       let i = 0;
-      const next = normalized.tokens.map((x) =>
+      next = normalized.tokens.map((x) =>
         set.has(x.id) ? { ...x, layer: base + i++ } : x,
       );
       void savePatch({ tokens: next }, "批量置顶");
     } else {
       const base = Math.min(...layers) - 1;
       let i = 0;
-      const next = normalized.tokens.map((x) =>
+      next = normalized.tokens.map((x) =>
         set.has(x.id) ? { ...x, layer: base - i++ } : x,
       );
       void savePatch({ tokens: next }, "批量置底");
     }
-    void logEvent("board.layer", {
-      token_ids: ids,
-      count: ids.length,
-      where,
-      summary: `${where === "front" ? "置顶" : "置底"} ${ids.length} 枚 Token`,
-    });
+    void logEvent(
+      "board.layer",
+      layerPayload({
+        tokens: next.filter((x) => set.has(x.id)),
+        where,
+        summary: `${where === "front" ? "置顶" : "置底"} ${ids.length} 枚 Token`,
+      }),
+    );
   }
 
   // 连线前置：恰好选中 2 枚、且都关联了卡牌
@@ -219,41 +235,59 @@ export function BoardEditor({ board }: Props) {
       layer: maxLayer + 1,
     };
     void savePatch({ tokens: [...normalized.tokens, copy] }, "复制 Token");
-    void logEvent("board.place", {
-      token_ids: [copy.id],
-      count: 1,
-      source: "duplicate",
-      summary: `复制「${tokenName(t.id)}」`,
-    });
+    void logEvent(
+      "board.place",
+      placePayload({
+        tokens: [copy],
+        source: "duplicate",
+        summary: `复制「${tokenName(t.id)}」`,
+      }),
+    );
   }
 
   // ── 卡盒动作：抽 / 洗 / 重置，顺手记牌谱 ──
   async function drawPile(tokenId: string, count: number) {
-    await drawFromPile(tokenId, count);
-    void logEvent("board.pile", {
-      action: "draw",
-      pile_token_id: tokenId,
-      count,
-      summary: `从「${tokenName(tokenId)}」抽 ${count} 张`,
-    });
+    const r = await drawFromPile(tokenId, count);
+    if (!r) return;
+    void logEvent(
+      "board.pile",
+      pilePayload({
+        action: "draw",
+        pileTokenId: tokenId,
+        count,
+        placed: r.placed,
+        pileAfter: r.pileAfter,
+        summary: `从「${tokenName(tokenId)}」抽 ${count} 张`,
+      }),
+    );
   }
 
   async function shufflePileToken(tokenId: string) {
-    await shufflePile(tokenId);
-    void logEvent("board.pile", {
-      action: "shuffle",
-      pile_token_id: tokenId,
-      summary: `洗牌「${tokenName(tokenId)}」`,
-    });
+    const r = await shufflePile(tokenId);
+    if (!r) return;
+    void logEvent(
+      "board.pile",
+      pilePayload({
+        action: "shuffle",
+        pileTokenId: tokenId,
+        pileAfter: r.pileAfter,
+        summary: `洗牌「${tokenName(tokenId)}」`,
+      }),
+    );
   }
 
   async function resetPileToken(tokenId: string) {
-    await resetPile(tokenId);
-    void logEvent("board.pile", {
-      action: "reset",
-      pile_token_id: tokenId,
-      summary: `重置卡盒「${tokenName(tokenId)}」`,
-    });
+    const r = await resetPile(tokenId);
+    if (!r) return;
+    void logEvent(
+      "board.pile",
+      pilePayload({
+        action: "reset",
+        pileTokenId: tokenId,
+        pileAfter: r.pileAfter,
+        summary: `重置卡盒「${tokenName(tokenId)}」`,
+      }),
+    );
   }
 
   /**
@@ -267,14 +301,18 @@ export function BoardEditor({ board }: Props) {
       ? cardGroups.find((g) => g.id === t.pile!.group_id)
       : undefined;
     if (!group) return;
-    const { added } = await syncPile(tokenId, group.card_ids);
+    const { added, pileAfter } = await syncPile(tokenId, group.card_ids);
     if (added.length === 0) return;
-    void logEvent("board.pile", {
-      action: "sync",
-      pile_token_id: tokenId,
-      count: added.length,
-      summary: `同步卡组「${group.name}」+${added.length} 张`,
-    });
+    void logEvent(
+      "board.pile",
+      pilePayload({
+        action: "sync",
+        pileTokenId: tokenId,
+        count: added.length,
+        pileAfter,
+        summary: `同步卡组「${group.name}」+${added.length} 张`,
+      }),
+    );
   }
 
   /**
@@ -302,27 +340,46 @@ export function BoardEditor({ board }: Props) {
     }
 
     if (moved.length > 0) {
-      void logEvent("board.move", {
-        token_ids: moved,
-        count: moved.length,
-        summary:
-          moved.length === 1
-            ? `移动「${tokenName(moved[0])}」`
-            : `移动 ${moved.length} 枚 Token`,
-      });
+      const set = new Set(moved);
+      void logEvent(
+        "board.move",
+        movePayload({
+          before: normalized.tokens.filter((t) => set.has(t.id)),
+          after: patch.tokens.filter((t) => set.has(t.id)),
+          summary:
+            moved.length === 1
+              ? `移动「${tokenName(moved[0])}」`
+              : `移动 ${moved.length} 枚 Token`,
+        }),
+      );
     }
     if (flipped.length > 0) {
       const faceDown = !!patch.tokens.find((t) => t.id === flipped[0])
         ?.face_down;
-      void logEvent("board.flip", {
-        token_ids: flipped,
-        count: flipped.length,
-        face_down: faceDown,
-        summary:
-          flipped.length === 1
-            ? `翻${faceDown ? "扣" : "开"}「${tokenName(flipped[0])}」`
-            : `翻${faceDown ? "扣" : "开"} ${flipped.length} 枚 Token`,
-      });
+      if (flipped.length === 1) {
+        void logEvent(
+          "board.flip",
+          flipPayload({
+            tokenIds: flipped,
+            faceDown,
+            summary: `翻${faceDown ? "扣" : "开"}「${tokenName(flipped[0])}」`,
+          }),
+        );
+      } else {
+        // 双击翻转会一次翻一组，各枚独立取反后状态未必一致 ——
+        // 逐枚各记一条，回放才不会把整组抹成同一个状态
+        for (const id of flipped) {
+          const fd = !!patch.tokens.find((t) => t.id === id)?.face_down;
+          void logEvent(
+            "board.flip",
+            flipPayload({
+              tokenIds: [id],
+              faceDown: fd,
+              summary: `翻${fd ? "扣" : "开"}「${tokenName(id)}」`,
+            }),
+          );
+        }
+      }
     }
   }
 

@@ -5,6 +5,7 @@ import { nowMs } from "../../lib/time";
 import { newId, makeUndoId } from "../../lib/id";
 import { mergeEntity } from "../../lib/undoMerge";
 import { gridPosition, shuffle } from "./tokenPlacement";
+import { deletePayload, placePayload } from "./delta";
 import { toast } from "../../lib/toast";
 import { runWithError } from "../../lib/runWithError";
 
@@ -169,16 +170,18 @@ export function useBoardActions({ board, upsertBoard, pushUndo, logEvent }: Args
 
     if (logEvent) {
       const names = cardIds.map((id) => nameOf(id, "未知卡牌"));
-      void logEvent("board.place", {
-        token_ids: newTokens.map((t) => t.id),
-        card_ids: cardIds,
-        count: cardIds.length,
-        source: "cards",
-        summary:
-          cardIds.length === 1
-            ? `落子「${names[0]}」`
-            : `落子 ${cardIds.length} 张卡牌`,
-      });
+      void logEvent(
+        "board.place",
+        placePayload({
+          tokens: newTokens,
+          source: "cards",
+          cardIds,
+          summary:
+            cardIds.length === 1
+              ? `落子「${names[0]}」`
+              : `落子 ${cardIds.length} 张卡牌`,
+        }),
+      );
     }
   }
 
@@ -215,12 +218,14 @@ export function useBoardActions({ board, upsertBoard, pushUndo, logEvent }: Args
     upsertBoard(next);
 
     if (logEvent) {
-      void logEvent("board.place", {
-        token_ids: [newToken.id],
-        count: 1,
-        source: "placeholder",
-        summary: "添加占位 Token",
-      });
+      void logEvent(
+        "board.place",
+        placePayload({
+          tokens: [newToken],
+          source: "placeholder",
+          summary: "添加占位 Token",
+        }),
+      );
     }
   }
 
@@ -275,16 +280,17 @@ export function useBoardActions({ board, upsertBoard, pushUndo, logEvent }: Args
     }, "导入失败");
 
     if (logEvent) {
-      void logEvent("board.place", {
-        token_ids: newTokens.map((t) => t.id),
-        card_ids: ordered,
-        count: ordered.length,
-        source: "group",
-        group_id: group.id,
-        summary: `从卡组「${group.name}」导入 ${ordered.length} 张${
-          shuffleOn ? "（洗过）" : ""
-        }`,
-      });
+      void logEvent(
+        "board.place",
+        placePayload({
+          tokens: newTokens,
+          source: "group",
+          cardIds: ordered,
+          summary: `从卡组「${group.name}」导入 ${ordered.length} 张${
+            shuffleOn ? "（洗过）" : ""
+          }`,
+        }),
+      );
     }
   }
 
@@ -340,13 +346,14 @@ export function useBoardActions({ board, upsertBoard, pushUndo, logEvent }: Args
     }, "创建卡盒失败");
 
     if (logEvent) {
-      void logEvent("board.place", {
-        token_ids: [pileToken.id],
-        count: 1,
-        source: "pile",
-        group_id: group.id,
-        summary: `创建卡盒「${group.name}」（${valid.length} 张）`,
-      });
+      void logEvent(
+        "board.place",
+        placePayload({
+          tokens: [pileToken],
+          source: "pile",
+          summary: `创建卡盒「${group.name}」（${valid.length} 张）`,
+        }),
+      );
     }
   }
 
@@ -377,19 +384,22 @@ export function useBoardActions({ board, upsertBoard, pushUndo, logEvent }: Args
     });
 
     if (logEvent) {
-      const names = (before.tokens ?? [])
-        .filter((t) => ids.includes(t.id))
-        .map((t) =>
-          t.pile
-            ? `${t.name_override ?? "卡盒"}`
-            : (t.name_override ?? nameOf(t.card_id, "占位")),
-        );
-      void logEvent("board.delete", {
-        token_ids: ids,
-        count: ids.length,
-        summary:
-          ids.length === 1 ? `删除「${names[0]}」` : `删除 ${ids.length} 个 Token`,
-      });
+      const removed = (before.tokens ?? []).filter((t) => ids.includes(t.id));
+      const names = removed.map((t) =>
+        t.pile
+          ? `${t.name_override ?? "卡盒"}`
+          : (t.name_override ?? nameOf(t.card_id, "占位")),
+      );
+      void logEvent(
+        "board.delete",
+        deletePayload({
+          removed,
+          summary:
+            removed.length === 1
+              ? `删除「${names[0]}」`
+              : `删除 ${removed.length} 个 Token`,
+        }),
+      );
     }
   }
 

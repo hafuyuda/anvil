@@ -1013,6 +1013,35 @@ knot 名）、变量只读面板（VAR 行解析）、当前 knot 信息（@scen
 - 面板：工具栏「历史」开关，右侧栏按时间倒序列出。
 - 删棋盘时连同 `boards/<id>/` 整个目录清掉，不留孤儿事件文件。
 
+**牌谱回放（0.4.x 补齐 delta）**：
+
+早年的 payload 只有 `token_ids` / `count` / `summary` —— 那是**写给人看的流水**，
+机器重放不出来：`board.move` 没有前后坐标，`board.delete` 没有被删 token 的快照，
+`board.pile` 的抽牌没记抽到了哪些牌、落到哪。0.4.0 之前落的牌谱缺这些信息，
+而**信息已经丢了，补不回来**，那些步骤永久不可回放。
+
+所以每条事件除 `summary` 外还要带一份 **delta**（写给机器看的「状态怎么变」）：
+
+| 事件                | 新增字段                                     | 为什么                                   |
+| ------------------- | -------------------------------------------- | ---------------------------------------- |
+| `board.place`       | `tokens: TokenSnapshot[]`                    | 落子长什么样、落在哪                     |
+| `board.move`        | `from` / `to: {id,x,y}[]`                    | 从哪移到哪（只记真正动了的）             |
+| `board.flip`        | `face_down`（原有）                          | 目标状态，够用                           |
+| `board.layer`       | `layers: {id,layer}[]`                       | 置顶/置底会重排一批，只记 `where` 不够   |
+| `board.delete`      | `tokens: TokenSnapshot[]`                    | 被删快照，供倒退还原与完整性校验         |
+| `board.pile`        | `placed` / `pile_after: {remaining,initial,total}` | 抽出了什么、落位在哪、卡盒剩什么    |
+
+三条约束：
+
+1. **delta 只在 `src/features/board/delta.ts` 里构造。** 散在各调用点手写必然漏字段，
+   而漏了不报错 —— 用户拖到第 40 步才发现棋盘不对，那时无从查起。
+2. **回放引擎 `src/features/board/engine/` 是纯函数**，依赖闭包不得出现 DOM /
+   React / IPC / store（与剧本引擎 §16.4 同源）—— 它要能打进导出件、也要能在
+   安卓端壳里跑。
+3. **缺 delta 必须显式降级，不许假装完整。** `replayAt` 返回 `degraded` 与
+   `missingSteps`，UI 要把它显示出来。`isConsistent()` 比对回放终点与
+   `board.tokens`，不一致说明有产生方漏记事件 —— 那是代码 bug。
+
 **导入 / 导出**：
 
 - 导出：列表行「导出」→ 单个 JSON

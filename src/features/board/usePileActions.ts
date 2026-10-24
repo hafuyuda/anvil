@@ -1,9 +1,28 @@
-import type { Token } from "../../core/ipc";
+import type { PileData, Token } from "../../core/ipc";
 import { newId } from "../../lib/id";
 import { syncPileWithGroup } from "./pileSync";
 
-/** 卡盒动作的语义标签。棋盘不需要它，会话靠它写牌谱。 */
+/**
+ * 卡盒动作的语义标签，随 `applyTokens` 传给调用方（记撤销栈用）。
+ *
+ * 注：早年会话也用本 hook 写牌谱，0.4.x 棋盘从会话剥离后（DESIGN §14.1）
+ * 只剩棋盘一个消费者。
+ */
 export type PileActionKind = "draw" | "shuffle" | "reset" | "sync";
+
+/**
+ * 卡盒动作的结果。
+ *
+ * 为什么要把它们返回出来：牌谱要记 delta（抽出了哪些牌、落到哪、卡盒剩什么），
+ * 而这些值是在本文件里算出来的 —— 调用方拿不到就只能重算一遍，
+ * 两处一旦不一致，回放就会静默错位。所以算完直接递出去。
+ */
+export interface PileResult {
+  /** 抽牌时新增到棋盘上的 token（含落位坐标） */
+  placed?: Token[];
+  /** 动作之后卡盒的剩余牌面 */
+  pileAfter?: PileData;
+}
 
 export interface PileAction {
   kind: PileActionKind;
@@ -79,16 +98,19 @@ function findPlacement(
  * Board 和 Session 共用，差异由调用方的 applyTokens 承担。
  */
 export function usePileActions({ tokens, applyTokens, bounds }: Args) {
-  async function drawFromPile(pileTokenId: string, count: number) {
+  async function drawFromPile(
+    pileTokenId: string,
+    count: number,
+  ): Promise<PileResult | null> {
     const pileToken = tokens.find((t) => t.id === pileTokenId);
-    if (!pileToken?.pile) return;
+    if (!pileToken?.pile) return null;
 
     const remaining = [...pileToken.pile.remaining];
     const drawn: string[] = [];
     for (let i = 0; i < count && remaining.length > 0; i++) {
       drawn.push(remaining.shift()!);
     }
-    if (drawn.length === 0) return;
+    if (drawn.length === 0) return null;
 
     const startLayer = tokens.reduce((m, t) => Math.max(m, t.layer), 0) + 1;
 
@@ -129,11 +151,12 @@ export function usePileActions({ tokens, applyTokens, bounds }: Args) {
       kind: "draw",
       pile_token_id: pileTokenId,
     });
+    return { placed: newTokens, pileAfter: updatedPile.pile ?? undefined };
   }
 
-  async function shufflePile(pileTokenId: string) {
+  async function shufflePile(pileTokenId: string): Promise<PileResult | null> {
     const pileToken = tokens.find((t) => t.id === pileTokenId);
-    if (!pileToken?.pile) return;
+    if (!pileToken?.pile) return null;
 
     const remaining = [...pileToken.pile.remaining];
     for (let i = remaining.length - 1; i > 0; i--) {
@@ -151,11 +174,12 @@ export function usePileActions({ tokens, applyTokens, bounds }: Args) {
       kind: "shuffle",
       pile_token_id: pileTokenId,
     });
+    return { pileAfter: updatedPile.pile ?? undefined };
   }
 
-  async function resetPile(pileTokenId: string) {
+  async function resetPile(pileTokenId: string): Promise<PileResult | null> {
     const pileToken = tokens.find((t) => t.id === pileTokenId);
-    if (!pileToken?.pile) return;
+    if (!pileToken?.pile) return null;
 
     const updatedPile: Token = {
       ...pileToken,
@@ -167,6 +191,7 @@ export function usePileActions({ tokens, applyTokens, bounds }: Args) {
       kind: "reset",
       pile_token_id: pileTokenId,
     });
+    return { pileAfter: updatedPile.pile ?? undefined };
   }
 
   /**
@@ -176,7 +201,7 @@ export function usePileActions({ tokens, applyTokens, bounds }: Args) {
   async function syncPile(
     pileTokenId: string,
     groupCardIds: string[],
-  ): Promise<{ added: string[] }> {
+  ): Promise<{ added: string[] } & PileResult> {
     const pileToken = tokens.find((t) => t.id === pileTokenId);
     if (!pileToken?.pile) return { added: [] };
 
@@ -190,7 +215,7 @@ export function usePileActions({ tokens, applyTokens, bounds }: Args) {
       kind: "sync",
       pile_token_id: pileTokenId,
     });
-    return { added };
+    return { added, pileAfter: pile };
   }
 
   return { drawFromPile, shufflePile, resetPile, syncPile };
