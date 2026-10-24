@@ -11,6 +11,7 @@ import { BoardBottomBar } from "./BoardBottomBar";
 import { useBoardActions } from "./useBoardActions";
 import { useBoardEvents } from "./useBoardEvents";
 import { BoardHistoryPanel } from "./BoardHistoryPanel";
+import { BoardReplayView } from "./BoardReplayView";
 import { RelationFilterDialog } from "./RelationFilterDialog";
 import { usePileActions } from "./usePileActions";
 import { syncPileWithGroup } from "./pileSync";
@@ -89,6 +90,7 @@ export function BoardEditor({ board }: Props) {
   const [relationFilterOpen, setRelationFilterOpen] = useState(false);
   const [measureMode, setMeasureMode] = useState(false);
   const [historyMode, setHistoryMode] = useState(false);
+  const [replayMode, setReplayMode] = useState(false);
   const [connectOpen, setConnectOpen] = useState(false);
 
   /** 按 token id 取显示名：卡盒用名字，卡牌用卡名，都没有就是占位。 */
@@ -535,6 +537,12 @@ export function BoardEditor({ board }: Props) {
         gap: 8,
       }}
     >
+      {/*
+        回放是只读模态：工具栏里全是会改棋盘的入口，留着会让人以为能边看边改
+        （点了也看不到结果 —— 画布区已经被回放视图顶掉了）。所以整个隐掉，
+        回放条自带退出按钮。
+      */}
+      {!replayMode && (
       <BoardToolbar
         name={name}
         setName={setName}
@@ -578,7 +586,15 @@ export function BoardEditor({ board }: Props) {
         onToggleMeasure={setMeasureMode}
         historyMode={historyMode}
         onToggleHistory={setHistoryMode}
+        replayMode={replayMode}
+        onToggleReplay={(v) => {
+          setReplayMode(v);
+          // 回放是只读模态，进来就顺带打开历史面板，好对照每一步的摘要
+          if (v) setHistoryMode(true);
+        }}
+        canReplay={boardEvents.length > 0}
       />
+      )}
 
       <div
         style={{
@@ -591,16 +607,24 @@ export function BoardEditor({ board }: Props) {
           background: "var(--bg-app)",
         }}
       >
-        <BoardCanvas
-          board={normalized}
-          zoom={zoom}
-          onZoomChange={setZoom}
-          measureMode={measureMode}
-          onPileClick={(id) => setPileDrawTokenId(id)}
-          onTokenContextMenu={handleTokenContextMenu}
-          onBoardContextMenu={handleBoardContextMenu}
-          onChange={handleCanvasChange}
-        />
+        {replayMode ? (
+          <BoardReplayView
+            board={normalized}
+            events={boardEvents}
+            onExit={() => setReplayMode(false)}
+          />
+        ) : (
+          <BoardCanvas
+            board={normalized}
+            zoom={zoom}
+            onZoomChange={setZoom}
+            measureMode={measureMode}
+            onPileClick={(id) => setPileDrawTokenId(id)}
+            onTokenContextMenu={handleTokenContextMenu}
+            onBoardContextMenu={handleBoardContextMenu}
+            onChange={handleCanvasChange}
+          />
+        )}
 
         {historyMode && (
           <BoardHistoryPanel

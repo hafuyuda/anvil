@@ -42,6 +42,10 @@ interface Props {
 
   historyMode: boolean;
   onToggleHistory: (v: boolean) => void;
+  /** 牌谱回放（只读）。空牌谱没有可回放的内容，入口应当禁用而不是点了没反应。 */
+  replayMode: boolean;
+  onToggleReplay: (v: boolean) => void;
+  canReplay: boolean;
 }
 
 export function BoardToolbar({
@@ -75,6 +79,9 @@ export function BoardToolbar({
   onToggleMeasure,
   historyMode,
   onToggleHistory,
+  replayMode,
+  onToggleReplay,
+  canReplay,
 }: Props) {
   return (
     <div
@@ -246,6 +253,18 @@ export function BoardToolbar({
         checked={historyMode}
         onChange={onToggleHistory}
       />
+      <span
+        title={
+          canReplay ? "按牌谱逐步重建棋盘（只读）" : "这张棋盘还没有牌谱 —— 动过棋子之后才有得回放"
+        }
+      >
+        <Toggle
+          label="回放"
+          checked={replayMode}
+          onChange={onToggleReplay}
+          disabled={!canReplay}
+        />
+      </span>
       <button
         className="btn btn-primary"
         onClick={onOpenCardPicker}
