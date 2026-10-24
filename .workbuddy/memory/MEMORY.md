@@ -11,6 +11,17 @@
   别再以「加个规则集」的形式把判定加回来 —— 判定要读卡读状态，属规则引擎，越过项目边界。
 - 剧本系统是自己手写的 ink 风格语言 + 运行时（parser.ts / play/runtime.ts），非真 ink；@scene/@actor 卡引用是差异化核心。
 
+## UI 层现状（2026-10-25 量化，谈「重新设计」前先看这个）
+- **1298 处 `style={{}}` 内联样式，散在 150 个 tsx 文件（占 168 个的 89%）**；
+  `src/components/ui/` 只有 7 个语义组件；`index.css` 605 行。
+- 结论：**瓶颈不是视觉风格，是没有中间层**。任何重新设计都要逐个改 150 个文件。
+  配色变量体系其实已建好 5 套主题（`--bg-app`/`--accent-gold`/`--border-*`），
+  问题是没人用它们，样式全写死在组件里。
+- 参考对象（用户问过）：骨架 Obsidian/VS Code、画布 Figma、多视图 Notion、
+  卡面 MTG Arena、气质 BG3/魂系（只学气质不学布局）、信息架构 World Anvil/Kanka。
+- **改 UI 前先 grep `src/index.css` 确认类名与 CSS 变量存在** —— 已踩过两次
+  （`className="ts"`、`var(--warning-fg)` 都不存在；警告色变量叫 `--warning`）。
+
 ## 减法靠脚本，不靠自觉
 - `scripts/audit-deadcode.mjs`（零依赖，`node scripts/audit-deadcode.mjs`，`--strict` 接 CI）。
   三类检查：未引用导出 / package.json 里无 import 的依赖 / CSS 死类。
