@@ -54,7 +54,10 @@
 - **delta 只在 `src/features/board/delta.ts` 构造**。新增事件产生方必须调它，
   别手写 payload —— 漏字段不报错，用户拖到第 40 步才发现棋盘不对。
 - 引擎 `src/features/board/engine/` 是**纯函数**闭包（无 DOM/React/IPC/store），
-  与剧本引擎 §16.4 同源，因为要打进导出件、也要在安卓端壳里跑。
+  与剧本引擎 §16.4 同源 —— 为了打进导出件。**1.0 只做 Windows，安卓端已排除。**
+- 回放面板 `BoardReplayView.tsx` 已落地：工具栏「回放」进入只读模态，回放时
+  **整个工具栏隐掉**（留着会让人以为能边看边改）。卡名查表必须用 Map，
+  逐枚 `cards.find` 是 O(T·C)，回放每步都要重画。
 - `usePileActions` 的四个动作都返回 `PileResult{placed,pileAfter}` 就是为了记 delta，
   别改成返回 void。
 - **平台决策（用户 2026-10-24，已更新）：1.0 只做 Windows，安卓端暂不考虑、略过。**
