@@ -9,7 +9,7 @@ import {
   createInitialState,
   varsToVariables,
   type KnotIndex,
-} from "../runtime";
+} from "../../engine";
 
 /** 显示行文本（非显示行 / 无状态返回 null）。 */
 function shown(result: {

@@ -15,10 +15,14 @@ import { anvilTheme } from "../../../components/field/editorTheme";
 
 interface Props {
   cardId: string;
+  /** 自动保存成功后的回调（文档页用来更新“已有文档”标记）。 */
+  onSaved?: (cardId: string, content: string) => void;
+  /** 传入时显示“全屏”入口，用于从检查器跳到文档模块。 */
+  onOpenPage?: () => void;
 }
 
 /** 卡牌附属文档编辑器：纯 Markdown 源码，自动保存，支持预览。 */
-export function CardDocEditor({ cardId }: Props) {
+export function CardDocEditor({ cardId, onSaved, onOpenPage }: Props) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const viewRef = useRef<EditorView | null>(null);
   const [content, setContent] = useState("");
@@ -88,6 +92,7 @@ export function CardDocEditor({ cardId }: Props) {
         await ipc.saveDoc(cardId, content);
         lastSavedRef.current = content;
         setDirty(false);
+        onSaved?.(cardId, content);
       } catch {
         // 保留 dirty，下次重试
       } finally {
@@ -95,7 +100,7 @@ export function CardDocEditor({ cardId }: Props) {
       }
     }, delay);
     return () => clearTimeout(handle);
-  }, [content, dirty, loaded, cardId]);
+  }, [content, dirty, loaded, cardId, onSaved]);
 
   return (
     <div
@@ -155,6 +160,16 @@ export function CardDocEditor({ cardId }: Props) {
           预览
         </button>
         <div style={{ flex: 1 }} />
+        {onOpenPage && (
+          <button
+            className="btn btn-ghost"
+            onClick={onOpenPage}
+            title="在文档模块中打开"
+            style={{ fontSize: 11, padding: "2px 8px" }}
+          >
+            ⤢ 全屏
+          </button>
+        )}
         <span
           style={{
             fontSize: 11,

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { clamp01 } from "../lib/math";
 import { useReducedMotion } from "./useReducedMotion";
 
 /** 滚动时长。比血条的 0.15s 略长，数字才看得清。 */
@@ -11,7 +12,7 @@ export function easeOutCubic(t: number): number {
 
 /** 从 from 滚动到 to 时，t ∈ [0,1] 处的插值。 */
 export function countUpValue(from: number, to: number, t: number): number {
-  const clamped = Math.min(1, Math.max(0, t));
+  const clamped = clamp01(t);
   return from + (to - from) * easeOutCubic(clamped);
 }
 

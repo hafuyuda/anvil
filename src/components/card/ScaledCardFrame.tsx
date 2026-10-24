@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { clamp } from "../../lib/math";
 import { CardFrame } from "./CardFrame";
 import { SIZE_MAP, type CardFrameSize } from "./CardFrame/types";
 import type { Card, CardType } from "../../core/ipc";
@@ -44,7 +45,7 @@ export function ScaledCardFrame({
     return () => ro.disconnect();
   }, []);
 
-  const scale = Math.max(minScale, Math.min(maxScale, availWidth / baseW));
+  const scale = clamp(availWidth / baseW, minScale, maxScale);
   const finalW = baseW * scale;
   const finalH = baseH * scale;
 

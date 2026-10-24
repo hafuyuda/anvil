@@ -11,6 +11,7 @@ interface Props {
   onToggleGrid: (v: boolean) => void;
   onToggleSnap: (v: boolean) => void;
   onGridSizeChange: (size: number) => void;
+  onGridOffsetChange: (offsetX: number, offsetY: number) => void;
 
   width: number;
   height: number;
@@ -35,6 +36,12 @@ interface Props {
   relationFilterCount: number;
 
   onShapeChange: (shape: string) => void;
+
+  measureMode: boolean;
+  onToggleMeasure: (v: boolean) => void;
+
+  historyMode: boolean;
+  onToggleHistory: (v: boolean) => void;
 }
 
 export function BoardToolbar({
@@ -45,6 +52,7 @@ export function BoardToolbar({
   onToggleGrid,
   onToggleSnap,
   onGridSizeChange,
+  onGridOffsetChange,
   width,
   height,
   onWidthChange,
@@ -63,6 +71,10 @@ export function BoardToolbar({
   onOpenRelationFilter,
   relationFilterCount,
   onShapeChange,
+  measureMode,
+  onToggleMeasure,
+  historyMode,
+  onToggleHistory,
 }: Props) {
   return (
     <div
@@ -110,6 +122,37 @@ export function BoardToolbar({
           value={grid.size}
           onChange={(e) => onGridSizeChange(Number(e.target.value) || 10)}
           style={{ width: 64 }}
+        />
+      </label>
+
+      <label
+        style={{
+          fontSize: 12,
+          display: "flex",
+          gap: 6,
+          alignItems: "center",
+          color: "var(--fg-secondary)",
+        }}
+        title="网格整体偏移（格内相位）"
+      >
+        偏移
+        <input
+          className="input"
+          type="number"
+          value={grid.offset_x}
+          onChange={(e) =>
+            onGridOffsetChange(Number(e.target.value) || 0, grid.offset_y)
+          }
+          style={{ width: 56 }}
+        />
+        <input
+          className="input"
+          type="number"
+          value={grid.offset_y}
+          onChange={(e) =>
+            onGridOffsetChange(grid.offset_x, Number(e.target.value) || 0)
+          }
+          style={{ width: 56 }}
         />
       </label>
 
@@ -193,6 +236,16 @@ export function BoardToolbar({
         关系过滤
         {relationFilterCount > 0 && `（${relationFilterCount}）`}
       </button>
+      <Toggle
+        label="测量"
+        checked={measureMode}
+        onChange={onToggleMeasure}
+      />
+      <Toggle
+        label="历史"
+        checked={historyMode}
+        onChange={onToggleHistory}
+      />
       <button
         className="btn btn-primary"
         onClick={onOpenCardPicker}

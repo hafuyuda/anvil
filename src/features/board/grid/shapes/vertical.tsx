@@ -4,9 +4,10 @@ const def: GridShapeDef = {
   id: "vertical",
   label: "竖线",
   order: 40,
-  render: ({ size: step, width, height }) => {
+  render: ({ size: step, width, height, offsetX }) => {
+    const ox = ((offsetX % step) + step) % step;
     const elements: React.ReactNode[] = [];
-    for (let x = 0; x <= width; x += step) {
+    for (let x = ox; x <= width; x += step) {
       elements.push(
         <line
           key={`vx${x}`}

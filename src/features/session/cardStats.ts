@@ -1,3 +1,5 @@
+import { clamp01 } from "../../lib/math";
+
 /**
  * 从卡牌上读取跑团用的数值。
  *
@@ -83,5 +85,5 @@ export function listNumberStats(card: Card, cardType: CardType | null): CardStat
 /** HP 百分比。没有上限时返回 null —— UI 就不画血条。 */
 export function hpRatio(hp: number | null, max: number | null): number | null {
   if (hp == null || max == null || max <= 0) return null;
-  return Math.max(0, Math.min(1, hp / max));
+  return clamp01(hp / max);
 }

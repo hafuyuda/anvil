@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Board, GridConfig, Token } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
+import { isModified } from "../../lib/keyboard";
+import {
+  BOARD_PADDING,
+  DEFAULT_TOKEN_H,
+  DEFAULT_TOKEN_W,
+} from "./constants";
 
 interface DragState {
   primaryTokenId: string;
@@ -8,6 +14,14 @@ interface DragState {
   offsetX: number;
   offsetY: number;
   moved: boolean;
+}
+
+/** 框选 / 测量的矩形（棋盘坐标）。 */
+export interface Rect {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
 }
 
 /**
@@ -21,16 +35,28 @@ export interface DragPreview {
   h: number;
 }
 
+type Gesture =
+  | { kind: "pan"; sx: number; sy: number; sl: number; st: number; moved: boolean }
+  | { kind: "marquee"; moved: boolean }
+  | { kind: "measure"; moved: boolean }
+  | null;
+
 interface Options {
   boardTokens: Token[];
   grid: GridConfig;
   zoom: number;
   onChange: (patch: Partial<Board>) => void;
   onPileClick?: (tokenId: string) => void;
+  /** 测量模式：在空白处拖拽绘制距离测量线，而非框选。 */
+  measureMode?: boolean;
 }
 
 /**
- * 棋盘 token 的拖拽 / 多选 / 双击翻牌。
+ * 棋盘 token 的指针交互统一入口：
+ * - 拖拽移动 / 多选 / 双击翻牌（原有）
+ * - 空白处左键拖拽 = 框选（新增）
+ * - 测量模式下空白处拖拽 = 距离测量（新增）
+ * - 空格按住 或 中键拖拽 = 平移画布（新增；平移走容器 scroll）
  *
  * 拖拽时用 localTokens 作为本地镜像（高频操作不过 IPC），
  * 松手后再写回 store。同步 effect 必须先比较长度和 id 集合，
@@ -42,18 +68,59 @@ export function useTokenDrag({
   zoom,
   onChange,
   onPileClick,
+  measureMode,
 }: Options) {
   const selectedTokenIds = useProjectStore((s) => s.selectedTokenIds) ?? [];
   const selectToken = useProjectStore((s) => s.selectToken);
   const toggleTokenSelection = useProjectStore((s) => s.toggleTokenSelection);
   const clearTokenSelection = useProjectStore((s) => s.clearTokenSelection);
+  const clearEdgeSelection = useProjectStore((s) => s.clearEdgeSelection);
+  const setTokenSelection = useProjectStore((s) => s.setTokenSelection);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [dragging, setDragging] = useState<DragState | null>(null);
   const [localTokens, setLocalTokens] = useState<Token[] | null>(null);
 
+  const [marquee, setMarquee] = useState<Rect | null>(null);
+  const marqueeRef = useRef<Rect | null>(null);
+  const [measureLine, setMeasureLine] = useState<Rect | null>(null);
+  const [spaceHeld, setSpaceHeld] = useState(false);
+  const spaceRef = useRef(false);
+  const gesture = useRef<Gesture>(null);
+
   const zoomRef = useRef(zoom);
   zoomRef.current = zoom;
+
+  // 空格按住 = 进入平移预备态（光标变 grab，左键拖拽即平移）
+  useEffect(() => {
+    function isEditable(el: EventTarget | null): boolean {
+      const node = el as HTMLElement | null;
+      if (!node) return false;
+      const tag = node.tagName;
+      return tag === "INPUT" || tag === "TEXTAREA" || node.isContentEditable;
+    }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.code === "Space" && !isEditable(e.target)) {
+        if (!spaceRef.current) {
+          spaceRef.current = true;
+          setSpaceHeld(true);
+        }
+        e.preventDefault();
+      }
+    }
+    function onKeyUp(e: KeyboardEvent) {
+      if (e.code === "Space") {
+        spaceRef.current = false;
+        setSpaceHeld(false);
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+    };
+  }, []);
 
   // 本地镜像与 store 同步
   useEffect(() => {
@@ -87,12 +154,17 @@ export function useTokenDrag({
 
   const tokens = localTokens ?? boardTokens;
 
-  function snap(v: number) {
+  function snap(v: number, offset: number) {
     if (!grid.snap) return v;
     const s = grid.size > 0 ? grid.size : 50;
-    return Math.round(v / s) * s;
+    const o = (((offset % s) + s) % s) || 0;
+    return Math.round((v - o) / s) * s + o;
   }
 
+  /**
+   * 屏幕坐标 → 棋盘坐标。
+   * 容器滚动 + 内边距(PADDING) + 缩放三者都要抵消。
+   */
   function getBoardPoint(e: React.PointerEvent): {
     x: number;
     y: number;
@@ -100,12 +172,24 @@ export function useTokenDrag({
     const container = containerRef.current;
     if (!container) return null;
     const rect = container.getBoundingClientRect();
-    const px = e.clientX - rect.left + container.scrollLeft;
-    const py = e.clientY - rect.top + container.scrollTop;
+    const px = e.clientX - rect.left + container.scrollLeft - BOARD_PADDING;
+    const py = e.clientY - rect.top + container.scrollTop - BOARD_PADDING;
     const z = zoomRef.current;
     return { x: px / z, y: py / z };
   }
-  
+
+  function tokenIntersects(t: Token, r: Rect): boolean {
+    const minX = Math.min(r.x1, r.x2);
+    const maxX = Math.max(r.x1, r.x2);
+    const minY = Math.min(r.y1, r.y2);
+    const maxY = Math.max(r.y1, r.y2);
+    const tw = t.w ?? DEFAULT_TOKEN_W;
+    const th = t.h ?? DEFAULT_TOKEN_H;
+    return (
+      t.x < maxX && t.x + tw > minX && t.y < maxY && t.y + th > minY
+    );
+  }
+
   function onTokenPointerDown(e: React.PointerEvent, t: Token) {
     if (e.button !== 0) return;
     e.stopPropagation();
@@ -113,7 +197,7 @@ export function useTokenDrag({
     const pt = getBoardPoint(e);
     if (!pt) return;
 
-    const isMulti = e.ctrlKey || e.metaKey || e.shiftKey;
+    const isMulti = isModified(e) || e.shiftKey;
 
     let dragIds: string[];
 
@@ -172,59 +256,161 @@ export function useTokenDrag({
   }
 
   function onPointerMove(e: React.PointerEvent) {
-    if (!dragging) return;
+    if (dragging) {
+      const pt = getBoardPoint(e);
+      if (!pt) return;
+
+      const primary = dragging.initialPositions[dragging.primaryTokenId];
+      if (!primary) return;
+
+      const nx = snap(pt.x - dragging.offsetX, grid.offset_x);
+      const ny = snap(pt.y - dragging.offsetY, grid.offset_y);
+      const dx = nx - primary.x;
+      const dy = ny - primary.y;
+
+      const current = localTokens ?? boardTokens;
+      const next = current.map((t) => {
+        const init = dragging.initialPositions[t.id];
+        if (init) {
+          return { ...t, x: init.x + dx, y: init.y + dy };
+        }
+        return t;
+      });
+      setLocalTokens(next);
+      if (!dragging.moved) setDragging({ ...dragging, moved: true });
+      return;
+    }
+
+    const g = gesture.current;
+    if (!g) return;
+
+    if (g.kind === "pan") {
+      const container = containerRef.current;
+      if (container) {
+        container.scrollLeft = g.sl - (e.clientX - g.sx);
+        container.scrollTop = g.st - (e.clientY - g.sy);
+      }
+      if (!g.moved && (Math.abs(e.clientX - g.sx) > 2 || Math.abs(e.clientY - g.sy) > 2)) {
+        g.moved = true;
+        if (container) container.style.cursor = "grabbing";
+      }
+      return;
+    }
+
     const pt = getBoardPoint(e);
     if (!pt) return;
 
-    const primary = dragging.initialPositions[dragging.primaryTokenId];
-    if (!primary) return;
-
-    const nx = snap(pt.x - dragging.offsetX);
-    const ny = snap(pt.y - dragging.offsetY);
-    const dx = nx - primary.x;
-    const dy = ny - primary.y;
-
-    const current = localTokens ?? boardTokens;
-    const next = current.map((t) => {
-      const init = dragging.initialPositions[t.id];
-      if (init) {
-        return { ...t, x: init.x + dx, y: init.y + dy };
-      }
-      return t;
-    });
-    setLocalTokens(next);
-    if (!dragging.moved) setDragging({ ...dragging, moved: true });
-  }
-
-  function onPointerUp() {
-    if (!dragging) return;
-    const wasDragging = dragging;
-    setDragging(null);
-    if (wasDragging.moved && localTokens) {
-      onChange({ tokens: localTokens });
+    if (g.kind === "measure") {
+      g.moved = true;
+      setMeasureLine((m) => (m ? { ...m, x2: pt.x, y2: pt.y } : m));
       return;
     }
-    if (!wasDragging.moved && onPileClick) {
-      const t = boardTokens.find((x) => x.id === wasDragging.primaryTokenId);
-      if (t?.pile) {
-        onPileClick(t.id);
+
+    if (g.kind === "marquee") {
+      g.moved = true;
+      const next = marqueeRef.current
+        ? { ...marqueeRef.current, x2: pt.x, y2: pt.y }
+        : null;
+      marqueeRef.current = next;
+      setMarquee(next);
+      return;
+    }
+  }
+
+  function onPointerUp(e: React.PointerEvent) {
+    if (dragging) {
+      const wasDragging = dragging;
+      setDragging(null);
+      if (wasDragging.moved && localTokens) {
+        onChange({ tokens: localTokens });
+        return;
       }
+      if (!wasDragging.moved && onPileClick) {
+        const t = boardTokens.find((x) => x.id === wasDragging.primaryTokenId);
+        if (t?.pile) {
+          onPileClick(t.id);
+        }
+      }
+      return;
+    }
+
+    const g = gesture.current;
+    gesture.current = null;
+    const container = containerRef.current;
+    if (container) container.style.cursor = "";
+
+    if (!g) return;
+
+    if (g.kind === "pan") return;
+
+    if (g.kind === "measure") return; // 测量线保留，直到下一次测量
+
+    if (g.kind === "marquee") {
+      const r = marqueeRef.current;
+      if (g.moved && r) {
+        const ids = tokens.filter((t) => tokenIntersects(t, r)).map((t) => t.id);
+        if (e.shiftKey) {
+          const merged = new Set([...selectedTokenIds, ...ids]);
+          setTokenSelection([...merged]);
+        } else {
+          setTokenSelection(ids);
+        }
+      } else {
+        // 空白处单击：清空选区（保留原行为）
+        clearTokenSelection();
+        clearEdgeSelection();
+      }
+      marqueeRef.current = null;
+      setMarquee(null);
+      return;
     }
   }
 
   function onContainerPointerDown(e: React.PointerEvent) {
-    const target = e.target as HTMLElement;
-    if (
-      e.target === containerRef.current ||
-      target.dataset.bg === "1" ||
-      target.dataset.boardBg === "1"
-    ) {
-      clearTokenSelection();
+    const container = containerRef.current;
+    if (!container) return;
+
+    // 平移：中键，或空格按住 + 左键
+    if (e.button === 1 || (e.button === 0 && spaceRef.current)) {
+      e.preventDefault();
+      gesture.current = {
+        kind: "pan",
+        sx: e.clientX,
+        sy: e.clientY,
+        sl: container.scrollLeft,
+        st: container.scrollTop,
+        moved: false,
+      };
+      container.style.cursor = "grabbing";
+      container.setPointerCapture(e.pointerId);
+      return;
     }
+
+    if (e.button !== 0) return;
+
+    // 测量模式：绘制距离线
+    if (measureMode) {
+      const pt = getBoardPoint(e);
+      if (!pt) return;
+      gesture.current = { kind: "measure", moved: false };
+      setMeasureLine({ x1: pt.x, y1: pt.y, x2: pt.x, y2: pt.y });
+      container.setPointerCapture(e.pointerId);
+      return;
+    }
+
+    // 框选：记录起点，移动后才成为框选，否则是单击清空
+    const pt = getBoardPoint(e);
+    if (!pt) return;
+    gesture.current = { kind: "marquee", moved: false };
+    const rect: Rect = { x1: pt.x, y1: pt.y, x2: pt.x, y2: pt.y };
+    marqueeRef.current = rect;
+    setMarquee(rect);
+    container.setPointerCapture(e.pointerId);
   }
 
-  const draggingIds = new Set(
-    dragging ? Object.keys(dragging.initialPositions) : [],
+  const draggingIds = useMemo(
+    () => new Set(dragging ? Object.keys(dragging.initialPositions) : []),
+    [dragging],
   );
 
   /**
@@ -235,7 +421,12 @@ export function useTokenDrag({
     if (!dragging || !grid.snap) return null;
     const t = tokens.find((x) => x.id === dragging.primaryTokenId);
     if (!t) return null;
-    return { x: t.x, y: t.y, w: t.w ?? 140, h: t.h ?? 205 };
+    return {
+      x: t.x,
+      y: t.y,
+      w: t.w ?? DEFAULT_TOKEN_W,
+      h: t.h ?? DEFAULT_TOKEN_H,
+    };
   }, [dragging, grid.snap, tokens]);
 
   return {
@@ -243,6 +434,9 @@ export function useTokenDrag({
     tokens,
     draggingIds,
     dragPreview,
+    marquee,
+    measureLine,
+    spaceHeld,
     onTokenPointerDown,
     onTokenDoubleClick,
     onPointerMove,

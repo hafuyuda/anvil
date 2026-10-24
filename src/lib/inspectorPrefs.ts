@@ -1,3 +1,5 @@
+import { clamp } from "./math";
+
 /**
  * 检查器的宽度与折叠偏好。
  *
@@ -28,7 +30,7 @@ let cached: InspectorPrefs | null = null;
 
 export function clampInspectorWidth(w: number): number {
   if (!Number.isFinite(w)) return DEFAULT_INSPECTOR_WIDTH;
-  return Math.max(MIN_INSPECTOR_WIDTH, Math.min(MAX_INSPECTOR_WIDTH, w));
+  return clamp(w, MIN_INSPECTOR_WIDTH, MAX_INSPECTOR_WIDTH);
 }
 
 function readFromStorage(): InspectorPrefs {

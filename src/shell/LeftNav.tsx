@@ -32,6 +32,7 @@ interface ModuleMeta {
 
 const MODULE_META: Record<ModuleKey, ModuleMeta> = {
   world: { label: "世界观", glyph: "◈", shortcut: "Ctrl+1" },
+  docs: { label: "文档", glyph: "✎" },
   story: { label: "视觉小说", glyph: "❖", shortcut: "Ctrl+2" },
   board: { label: "棋盘", glyph: "▦", shortcut: "Ctrl+3" },
   cardGroups: { label: "卡组", glyph: "▤" },

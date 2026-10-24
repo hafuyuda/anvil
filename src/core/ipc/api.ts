@@ -19,7 +19,6 @@ import type {
   ProjectStats,
   AudioMeta,
   ScriptHit,
-  EventVisibility,
   RefHit,
   RefClearMode,
 } from "./types";
@@ -124,6 +123,37 @@ export const ipc = {
   upsertBoard: (board: Board) => invoke<void>("upsert_board", { board }),
   deleteBoard: (id: string) => invoke<void>("delete_board", { id }),
 
+  // ── 棋盘事件（落子历史 / 牌谱）──
+  // 挂在棋盘自己的 events.jsonl 上，与会话事件同形状（GameEvent）。
+  listBoardEvents: (boardId: string) =>
+    invoke<GameEvent[]>("list_board_events", { boardId }),
+  appendBoardEvent: (
+    boardId: string,
+    kind: string,
+    payload: unknown,
+    note?: string,
+  ) =>
+    invoke<GameEvent>("append_board_event", {
+      boardId,
+      kind,
+      payload,
+      note,
+    }),
+  updateBoardEvent: (
+    boardId: string,
+    seq: number,
+    payload: unknown,
+    note?: string,
+  ) => invoke<void>("update_board_event", { boardId, seq, payload, note }),
+  deleteBoardEvent: (boardId: string, seq: number) =>
+    invoke<void>("delete_board_event", { boardId, seq }),
+
+  // ── 单棋盘导出 / 导入 ──
+  exportBoard: (boardId: string, outputPath: string) =>
+    invoke<void>("export_board", { boardId, outputPath }),
+  importBoard: (inputPath: string) =>
+    invoke<Board>("import_board", { inputPath }),
+
   // ── 会话 ──
   listSessions: () => invoke<Session[]>("list_sessions"),
   upsertSession: (session: Session) =>
@@ -136,17 +166,13 @@ export const ipc = {
     kind: string,
     payload: unknown,
     note?: string,
-    visibility?: EventVisibility,
   ) =>
     invoke<GameEvent>("append_event", {
       sessionId,
       kind,
       payload,
       note,
-      visibility,
     }),
-  revealEvent: (sessionId: string, seq: number) =>
-    invoke<GameEvent>("reveal_event", { sessionId, seq }),
 
   // ── 主题 ──
   listThemes: () => invoke<Theme[]>("list_themes"),
@@ -178,6 +204,8 @@ export const ipc = {
   loadDoc: (cardId: string) => invoke<string | null>("load_doc", { cardId }),
   saveDoc: (cardId: string, content: string) =>
     invoke<void>("save_doc", { cardId, content }),
+  listDocIds: () => invoke<string[]>("list_doc_ids"),
+  readTextFile: (path: string) => invoke<string>("read_text_file", { path }),
 
   saveTextFile: (path: string, content: string) =>
     invoke<void>("save_text_file", { path, content }),

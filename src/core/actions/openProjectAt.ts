@@ -1,6 +1,9 @@
 import { ipc } from "../ipc";
 import { useProjectStore } from "../../stores/projectStore";
 import { applyProjectTheme } from "./applyProjectTheme";
+import { clearAssetCache } from "../../lib/assetCache";
+import { clearDurationCache } from "../../lib/audioMetaCache";
+import { bindPlayerToProject } from "../../lib/audioPlayer";
 import {
   addRecentProject,
   removeRecentProject,
@@ -9,6 +12,12 @@ import {
 
 export async function openProjectAt(path: string): Promise<void> {
   await ipc.openProject(path);
+
+  // 资源缓存与播放队列都以「项目内相对路径」为键，换项目必须整体作废，
+  // 否则同名文件（assets/audio/x.mp3）会指向上一个项目的绝对路径。
+  clearAssetCache();
+  clearDurationCache();
+  bindPlayerToProject(path);
 
   const [
     cards,

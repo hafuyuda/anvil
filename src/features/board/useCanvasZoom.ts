@@ -1,4 +1,6 @@
 import { useEffect, useRef } from "react";
+import { isModified } from "../../lib/keyboard";
+import { clamp } from "../../lib/math";
 
 const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 4;
@@ -44,12 +46,12 @@ export function useCanvasZoom(
     }
 
     function handleWheel(e: WheelEvent) {
-      if (!e.ctrlKey && !e.metaKey) return;
+      if (!isModified(e)) return;
       e.preventDefault();
 
       const from = zoomRef.current;
       const delta = -e.deltaY * 0.0015;
-      const to = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, from * Math.exp(delta)));
+      const to = clamp(from * Math.exp(delta), MIN_ZOOM, MAX_ZOOM);
       if (to === from) return;
 
       const rect = container!.getBoundingClientRect();

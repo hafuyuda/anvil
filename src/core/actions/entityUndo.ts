@@ -1,10 +1,9 @@
+import { clamp } from "../../lib/math";
 import {
   ipc,
   type Board,
   type Card,
   type CardGroup,
-  type InitiativeEntry,
-  type InitiativeTracker,
   type PileData,
   type Relation,
   type Session,
@@ -53,7 +52,7 @@ export function insertCardIntoPileList(
   if (!before.includes(cardId) || current.includes(cardId)) return current;
   const idx = before.indexOf(cardId);
   const out = [...current];
-  out.splice(Math.min(Math.max(idx, 0), out.length), 0, cardId);
+  out.splice(clamp(idx, 0, out.length), 0, cardId);
   return out;
 }
 
@@ -115,54 +114,6 @@ export function restoreTokensForCard(
   });
 }
 
-/** 撤销「删卡」对先攻列表的影响：被移走的条目按原索引插回。 */
-export function restoreEntriesForCard(
-  before: InitiativeEntry[],
-  current: InitiativeEntry[],
-  cardId: string,
-): InitiativeEntry[] {
-  const inserts = before
-    .map((e, i) => ({ item: e, index: i }))
-    .filter(
-      ({ item }) =>
-        item.card_id === cardId &&
-        !current.some((c) => deepEqual(c, item)),
-    );
-  return insertAtIndices(current, inserts);
-}
-
-/** 撤销「删卡」对先攻追踪器的影响。没被这次删除碰过就原样返回。 */
-export function restoreTrackerForCard(
-  before: InitiativeTracker | null | undefined,
-  current: InitiativeTracker | null | undefined,
-  cardId: string,
-): InitiativeTracker | null | undefined {
-  if (!before) return current;
-  const beforeEntries = before.entries ?? [];
-  if (!beforeEntries.some((e) => e.card_id === cardId)) return current;
-  if (!current) return before;
-
-  const entries = restoreEntriesForCard(beforeEntries, current.entries ?? [], cardId);
-  if (deepEqual(entries, current.entries ?? [])) return current;
-
-  // 后端在移走条目后会把 turn_index 夹到合法范围。撤销时若当前值正好等于
-  // 那个夹出来的结果，说明用户没再动过先攻，直接还原动作前的下标；
-  // 否则用户之后推进过轮次，保留他的。
-  const clamped =
-    current.entries.length > 0
-      ? Math.min(before.turn_index, current.entries.length - 1)
-      : 0;
-
-  return {
-    ...current,
-    entries,
-    turn_index:
-      current.turn_index === clamped ? before.turn_index : current.turn_index,
-    // 后端在条目清空时会把 active 置 false，插回非空时还原
-    active: current.active || (before.active && entries.length > 0),
-  };
-}
-
 /** 撤销「删卡组」对一堆 token 的影响：用它做的卡盒按原索引插回。 */
 export function restorePileTokens(
   before: Token[],
@@ -186,22 +137,20 @@ export interface CardFootprint {
   groups: CardGroup[];
   /** 删除前挂着它、或卡盒里有它的棋盘 */
   boards: Board[];
-  /** 删除前挂着它、卡盒里有它、或先攻里有它的会话 */
-  sessions: Session[];
+  // 会话不再持有棋子。它通过卡组引用卡，故上面的 groups 已覆盖会话这一路。
 }
 
 export interface GroupFootprint {
   group: CardGroup;
   /** 删除前有它做的卡盒的棋盘 */
   boards: Board[];
-  /** 删除前有它做的卡盒的会话 */
+  /** 删除前拿它当队伍的会话 */
   sessions: Session[];
 }
 
 export interface BoardFootprint {
   board: Board;
-  /** 删除前拿它作战场的会话 */
-  sessions: Session[];
+  // 会话不再绑定棋盘，删棋盘不需要解绑任何东西。
 }
 
 /** 删除前采集这张卡的关系网足迹。卡不在 store 里时返回 null。 */
@@ -216,11 +165,6 @@ export function captureCardFootprint(cardId: string): CardFootprint | null {
     ),
     groups: (s.cardGroups ?? []).filter((g) => g.card_ids.includes(cardId)),
     boards: (s.boards ?? []).filter((b) => tokensTouchCard(b.tokens ?? [], cardId)),
-    sessions: (s.sessions ?? []).filter(
-      (x) =>
-        tokensTouchCard(x.tokens ?? [], cardId) ||
-        (x.tracker?.entries ?? []).some((e) => e.card_id === cardId),
-    ),
   };
 }
 
@@ -234,26 +178,19 @@ export function captureGroupFootprint(groupId: string): GroupFootprint | null {
   return {
     group,
     boards: (s.boards ?? []).filter((b) => hasPile(b.tokens)),
-    sessions: (s.sessions ?? []).filter((x) => hasPile(x.tokens)),
+    sessions: (s.sessions ?? []).filter((x) => x.group_id === groupId),
   };
 }
 
-/** 删除前采集这个棋盘的足迹（主要是被解绑的会话）。 */
+/** 删除前采集这个棋盘的足迹。会话不再绑定棋盘，因此只有本体。 */
 export function captureBoardFootprint(boardId: string): BoardFootprint | null {
   const s = useProjectStore.getState();
   const board = (s.boards ?? []).find((b) => b.id === boardId);
   if (!board) return null;
-  return {
-    board,
-    sessions: (s.sessions ?? []).filter((x) => x.board_id === boardId),
-  };
+  return { board };
 }
 
 // ───────────────── 恢复 ─────────────────
-
-function sameTokens(a: Token[], b: Token[]): boolean {
-  return deepEqual(a, b);
-}
 
 /** 恢复一批卡的足迹。批量删除走这个，只在最后回灌一次 store。 */
 export async function restoreCardFootprints(
@@ -294,7 +231,7 @@ async function applyCardFootprint(fp: CardFootprint): Promise<void> {
     if (cur.card_ids.includes(fp.card.id)) continue;
     const idx = g.card_ids.indexOf(fp.card.id);
     const next = [...cur.card_ids];
-    next.splice(Math.min(Math.max(idx, 0), next.length), 0, fp.card.id);
+    next.splice(clamp(idx, 0, next.length), 0, fp.card.id);
     await ipc.upsertCardGroup({ ...cur, card_ids: next, updated_at: nowMs() });
   }
 
@@ -305,23 +242,12 @@ async function applyCardFootprint(fp: CardFootprint): Promise<void> {
       continue;
     }
     const tokens = restoreTokensForCard(b.tokens ?? [], cur.tokens ?? [], fp.card.id);
-    if (!sameTokens(tokens, cur.tokens ?? [])) {
+    if (!deepEqual(tokens, cur.tokens ?? [])) {
       await ipc.upsertBoard({ ...cur, tokens, updated_at: nowMs() });
     }
   }
 
-  for (const x of fp.sessions) {
-    const cur = (s.sessions ?? []).find((y) => y.id === x.id);
-    if (!cur) {
-      await ipc.upsertSession(x);
-      continue;
-    }
-    const tokens = restoreTokensForCard(x.tokens ?? [], cur.tokens ?? [], fp.card.id);
-    const tracker = restoreTrackerForCard(x.tracker, cur.tracker, fp.card.id);
-    if (!sameTokens(tokens, cur.tokens ?? []) || tracker !== cur.tracker) {
-      await ipc.upsertSession({ ...cur, tokens, tracker, updated_at: nowMs() });
-    }
-  }
+  // 会话不再持有棋子。它通过卡组引用卡，上面的卡组成员恢复已覆盖这一路。
 }
 
 /** 恢复一批卡组的足迹。 */
@@ -341,20 +267,23 @@ export async function restoreGroupFootprints(
         continue;
       }
       const tokens = restorePileTokens(b.tokens ?? [], cur.tokens ?? [], fp.group.id);
-      if (!sameTokens(tokens, cur.tokens ?? [])) {
+      if (!deepEqual(tokens, cur.tokens ?? [])) {
         await ipc.upsertBoard({ ...cur, tokens, updated_at: nowMs() });
       }
     }
-    for (const x of fp.sessions) {
-      const cur = (s.sessions ?? []).find((y) => y.id === x.id);
+    for (const before of fp.sessions) {
+      const cur = (s.sessions ?? []).find((x) => x.id === before.id);
       if (!cur) {
-        await ipc.upsertSession(x);
+        await ipc.upsertSession(before);
         continue;
       }
-      const tokens = restorePileTokens(x.tokens ?? [], cur.tokens ?? [], fp.group.id);
-      if (!sameTokens(tokens, cur.tokens ?? [])) {
-        await ipc.upsertSession({ ...cur, tokens, updated_at: nowMs() });
-      }
+      // 用户已经选了别的队伍 → 尊重后来的选择
+      if (cur.group_id != null) continue;
+      await ipc.upsertSession({
+        ...cur,
+        group_id: before.group_id ?? null,
+        updated_at: nowMs(),
+      });
     }
   }
   await reloadIntoStore();
@@ -364,26 +293,11 @@ export async function restoreGroupFootprint(fp: GroupFootprint): Promise<void> {
   await restoreGroupFootprints([fp]);
 }
 
-/** 恢复棋盘的足迹：本体 + 被解绑会话的 board_id。 */
+/** 恢复棋盘的足迹。会话不再绑定棋盘，因此只恢复本体。 */
 export async function restoreBoardFootprint(fp: BoardFootprint): Promise<void> {
   const s = useProjectStore.getState();
   if (!(s.boards ?? []).some((b) => b.id === fp.board.id)) {
     await ipc.upsertBoard(fp.board);
-  }
-  for (const before of fp.sessions) {
-    const cur = (s.sessions ?? []).find((x) => x.id === before.id);
-    if (!cur) {
-      await ipc.upsertSession(before);
-      continue;
-    }
-    // 用户已经绑了别的棋盘 → 尊重后来的选择
-    if (cur.board_id != null) continue;
-    if (cur.board_id === before.board_id) continue;
-    await ipc.upsertSession({
-      ...cur,
-      board_id: before.board_id ?? null,
-      updated_at: nowMs(),
-    });
   }
   await reloadIntoStore();
 }

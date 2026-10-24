@@ -37,15 +37,22 @@ export function SessionList() {
     const s: Session = {
       id: newId(),
       name: "新会话",
-      board_id: null,
+      group_id: null,
       state: {},
-      tokens: [],
       created_at: now,
       updated_at: now,
     };
     await ipc.upsertSession(s);
     upsertSession(s);
     setSelectedId(s.id);
+    // 会话起点：记录这一局从何时开始、当时的队伍是谁
+    await runWithError(
+      () =>
+        ipc.appendEvent(s.id, "session.start", {
+          group_id: s.group_id ?? null,
+        }),
+      "记录会话起点失败",
+    );
   }
 
   const deleteWithUndo = useDeleteUndo();

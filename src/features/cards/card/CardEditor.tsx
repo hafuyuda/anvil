@@ -5,6 +5,7 @@ import { useDraft } from "../../../hooks/useDraft";
 import { FieldInput } from "../../../components/field/FieldInput";
 import { RelationsPanel } from "./RelationsPanel";
 import { CardDocEditor } from "./CardDocEditor";
+import { DocFieldSummary } from "./DocFieldSummary";
 import { nowMs } from "../../../lib/time";
 import { useDeleteUndo } from "../../../hooks/useDeleteUndo";
 import { CropEditor } from "../card-type/CropEditor";
@@ -23,6 +24,7 @@ interface Props {
 
 export function CardEditor({ card, cardType }: Props) {
   const updateCard = useProjectStore((s) => s.updateCard);
+  const setActiveModule = useProjectStore((s) => s.setActiveModule);
   const [tab, setTab] = useState<"fields" | "doc">("fields");
 
   const { draft, dirty, update, commit } = useDraft(
@@ -154,7 +156,15 @@ export function CardEditor({ card, cardType }: Props) {
         </TabButton>
       </div>
 
-      {tab === "doc" && <CardDocEditor cardId={card.id} />}
+      {tab === "doc" && (
+        <>
+          <DocFieldSummary card={draft} cardType={cardType} />
+          <CardDocEditor
+            cardId={card.id}
+            onOpenPage={() => setActiveModule("docs")}
+          />
+        </>
+      )}
 
       {tab === "fields" && (
         <>

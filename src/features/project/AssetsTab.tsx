@@ -12,11 +12,7 @@ import {
 import { toast } from "../../lib/toast";
 import { confirmDialog } from "../../lib/confirm";
 import { runWithError } from "../../lib/runWithError";
-
-function basename(p: string): string {
-  const parts = p.split("/");
-  return parts[parts.length - 1] ?? p;
-}
+import { basename } from "../../lib/path";
 
 export function AssetsTab() {
   const cards = useProjectStore((s) => s.cards) ?? [];

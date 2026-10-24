@@ -4,6 +4,7 @@ const KEY = "anvil.leftNavOrder";
 
 export const DEFAULT_MODULE_ORDER: ModuleKey[] = [
   "world",
+  "docs",
   "story",
   "board",
   "cardGroups",

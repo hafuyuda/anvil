@@ -1,8 +1,9 @@
 import type { Token } from "../../core/ipc";
 import { newId } from "../../lib/id";
+import { syncPileWithGroup } from "./pileSync";
 
 /** 卡盒动作的语义标签。棋盘不需要它，会话靠它写牌谱。 */
-export type PileActionKind = "draw" | "shuffle" | "reset";
+export type PileActionKind = "draw" | "shuffle" | "reset" | "sync";
 
 export interface PileAction {
   kind: PileActionKind;
@@ -168,5 +169,29 @@ export function usePileActions({ tokens, applyTokens, bounds }: Args) {
     });
   }
 
-  return { drawFromPile, shufflePile, resetPile };
+  /**
+   * 卡组 → 卡盒同步（只补不删）。返回补入的卡 id，
+   * 调用方据此记牌谱；为空表示组里没有新卡，什么都不写。
+   */
+  async function syncPile(
+    pileTokenId: string,
+    groupCardIds: string[],
+  ): Promise<{ added: string[] }> {
+    const pileToken = tokens.find((t) => t.id === pileTokenId);
+    if (!pileToken?.pile) return { added: [] };
+
+    const { pile, added } = syncPileWithGroup(pileToken.pile, groupCardIds);
+    if (added.length === 0) return { added };
+
+    const next = tokens.map((t) =>
+      t.id === pileTokenId ? { ...t, pile } : t,
+    );
+    await applyTokens(next, `同步卡组 +${added.length} 张`, {
+      kind: "sync",
+      pile_token_id: pileTokenId,
+    });
+    return { added };
+  }
+
+  return { drawFromPile, shufflePile, resetPile, syncPile };
 }

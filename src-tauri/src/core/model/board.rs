@@ -106,3 +106,19 @@ pub struct Board {
     pub created_at: i64,
     pub updated_at: i64,
 }
+
+/// 单棋盘导出文件的外层包装：棋盘本体 + 它的落子历史。
+///
+/// 一个棋盘就是一个自足的小文件，不牵扯卡牌本体 ——
+/// 棋盘只持有 card_id 引用，导出时不跟着搬卡。
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BoardExport {
+    pub kind: String,
+    pub schema_version: String,
+    #[serde(default)]
+    pub exported_at: i64,
+    pub board: Board,
+    /// 落子历史。老文件（还没有历史时导出的）没有这个字段。
+    #[serde(default)]
+    pub events: Vec<crate::core::model::session::Event>,
+}

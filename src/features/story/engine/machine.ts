@@ -2,7 +2,26 @@ import type { VariableDef } from "../../../core/ipc";
 import { evalCondition } from "../script/eval";
 import { parseInlineInner } from "../script/parser";
 import type { ParsedScript, ScriptLine } from "../script/types";
-import { applyEffects, type AppliedEffect, type ParsedEffect } from "../effects";
+import {
+  applyEffects,
+  type AppliedEffect,
+  type ParsedEffect,
+} from "../effects";
+
+/**
+ * 剧本语言的状态机 —— **唯一实现**。
+ *
+ * 预览（`play/usePlayState.ts`）与导出阅读器（`src-tauri` 里的
+ * `reader_runtime.js` 由本模块打进 bundle）都执行这份代码，因此两侧
+ * 不存在「求值语义写两遍」的问题。约束：
+ *
+ * - 本模块与它的依赖闭包（`script/parser`、`script/eval`、`effects`、
+ *   `lib/dice`）只能有 **类型** 层面的外部依赖，不得引入 DOM / React /
+ *   IPC / store。`scripts/build-reader-runtime.mjs` 会把闭包打成
+ *   IIFE 内嵌进导出的 HTML，任何运行时依赖都会在浏览器里炸掉。
+ * - 「读文件、解析、建 knot 索引、推断变量表」由 `engine/reader.ts`
+ *   统一，不在调用方重复。
+ */
 
 /** 两态机运行时状态。 */
 export interface RuntimeState {
@@ -60,6 +79,25 @@ export type KnotIndex = Map<string, { file: string; pc: number }>;
 export const MAX_STEPS = 1000;
 
 /**
+ * 条件求值的容错包装：表达式语法错误按「假」处理，不中断播放。
+ *
+ * 语法校验归编辑器侧（validateXxx）负责，运行时只负责别停——作者的
+ * 笔误不该让整个试玩崩掉。导出侧过去单独实现过一份 try/catch，现在
+ * 与预览共用本函数。
+ */
+function safeEvalCondition(
+  expr: string,
+  values: Record<string, unknown>,
+  visited: Record<string, unknown>,
+): boolean {
+  try {
+    return evalCondition(expr, values, visited);
+  } catch {
+    return false;
+  }
+}
+
+/**
  * 跨文件 knot 索引。按文件名字典序构建（调用方保证 Map 插入顺序），
  * 重名 knot 后加载的覆盖先加载的，名字记入 duplicates 供调用方警告。
  */
@@ -82,6 +120,10 @@ export function buildKnotIndex(files: Map<string, ParsedScript>): {
 /**
  * VAR 声明 → VariableDef。跨文件同名视为同一变量，首次声明生效。
  * 字面量推断：数字 → number、true/false → bool、其余 → text。
+ *
+ * 这是变量表类型的唯一推断实现：导出侧过去在 Rust 里另写了一份
+ * （`parse_var_line` + `var_to_def`），已于 0.4.0 删除，改由导出 bundle
+ * 内的本函数计算。
  */
 export function varsToVariables(
   vars: { key: string; literal: string }[],
@@ -133,9 +175,7 @@ function stripQuotes(s: string): string {
 }
 
 /** 变量初始值：VariableDef.default（无 default 时 null）。 */
-export function initValues(
-  variables: VariableDef[],
-): Record<string, unknown> {
+export function initValues(variables: VariableDef[]): Record<string, unknown> {
   const init: Record<string, unknown> = {};
   for (const v of variables) init[v.key] = v.default ?? null;
   return init;
@@ -272,7 +312,7 @@ export function continueStep(
       }
 
       case "condition":
-        if (evalCondition(line.expr, values, visited) && line.text) {
+        if (safeEvalCondition(line.expr, values, visited) && line.text) {
           displayLine = mergeGlue(glue, displayLine, line);
           glue = false;
           return {
@@ -331,7 +371,12 @@ export function continueStep(
         }
         const target = knots.get(line.target);
         if (!target) {
-          return { state: null, sfx, rolls, error: `找不到 knot：${line.target}` };
+          return {
+            state: null,
+            sfx,
+            rolls,
+            error: `找不到 knot：${line.target}`,
+          };
         }
         file = target.file;
         pc = target.pc;
@@ -349,7 +394,10 @@ export function continueStep(
         }
         return {
           state: snap({
-            choices: group.choices.map((c, idx) => ({ label: c.label, index: idx })),
+            choices: group.choices.map((c, idx) => ({
+              label: c.label,
+              index: idx,
+            })),
             currentChoiceGroupStart: pc,
             choiceBodyEnd: null,
             gatherPc: null,
@@ -441,15 +489,19 @@ export function mergeGlue(
 }
 
 /**
- * 行内条件渲染前求值：按源码位置扫描 `{...}` 跨度，逐个与 line.inline
- * 对齐求值替换。非条件跨度（如 `{术语}`）原样保留。
+ * 行内条件渲染前求值：按源码位置扫描 `{...}` 跨度，逐个求值替换。
+ * 非条件跨度（如 `{术语}`）原样保留。
  */
 function resolveInline(
   line: ScriptLine,
   values: Record<string, unknown>,
   visited: Record<string, number>,
 ): ScriptLine {
-  if (line.type !== "narration" && line.type !== "say" && line.type !== "action") {
+  if (
+    line.type !== "narration" &&
+    line.type !== "say" &&
+    line.type !== "action"
+  ) {
     return line;
   }
   const inline = line.inline;
@@ -457,7 +509,6 @@ function resolveInline(
 
   const text = line.text;
   let out = "";
-  let spanIdx = 0;
   let i = 0;
   while (i < text.length) {
     const open = text.indexOf("{", i);
@@ -477,9 +528,8 @@ function resolveInline(
       continue;
     }
     out += text.slice(i, open);
-    spanIdx++;
     out += String(
-      evalCondition(cond.expr, values, visited) ? cond.then : cond.else,
+      safeEvalCondition(cond.expr, values, visited) ? cond.then : cond.else,
     );
     i = close + 1;
   }

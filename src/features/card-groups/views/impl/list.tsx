@@ -1,24 +1,11 @@
-import { useMemo } from "react";
 import {
-  DndContext,
-  KeyboardSensor,
-  PointerSensor,
-  closestCenter,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  arrayMove,
-  sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { Card, CardType } from "../../../../core/ipc";
 import type { CardGroupViewDef, CardGroupViewProps } from "../types";
-import { aggregate, reorderByUnique } from "../../aggregate";
+import { SortableCards } from "../SortableCards";
 
 function ListView({
   cardIds,
@@ -27,32 +14,13 @@ function ListView({
   onReorder,
   onRemoveOne,
 }: CardGroupViewProps) {
-  const entries = useMemo(() => aggregate(cardIds), [cardIds]);
-  const uniqueIds = useMemo(() => entries.map((e) => e.cardId), [entries]);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    }),
-  );
-
-  function handleDragEnd(e: DragEndEvent) {
-    const { active, over } = e;
-    if (!over || active.id === over.id) return;
-    const oldIdx = uniqueIds.indexOf(active.id as string);
-    const newIdx = uniqueIds.indexOf(over.id as string);
-    if (oldIdx < 0 || newIdx < 0) return;
-    onReorder(reorderByUnique(cardIds, arrayMove(uniqueIds, oldIdx, newIdx)));
-  }
-
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragEnd={handleDragEnd}
+    <SortableCards
+      cardIds={cardIds}
+      onReorder={onReorder}
+      strategy={verticalListSortingStrategy}
     >
-      <SortableContext items={uniqueIds} strategy={verticalListSortingStrategy}>
+      {(entries) => (
         <ul
           style={{
             listStyle: "none",
@@ -81,8 +49,8 @@ function ListView({
             );
           })}
         </ul>
-      </SortableContext>
-    </DndContext>
+      )}
+    </SortableCards>
   );
 }
 

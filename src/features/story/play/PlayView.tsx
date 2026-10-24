@@ -5,6 +5,7 @@ import { VariablePanel } from "./panels/VariablePanel";
 import { VNStage } from "./vn/VNStage";
 import { SceneCard } from "./SceneCard";
 import { useSceneAudio } from "./useSceneAudio";
+import { isEditableTarget } from "../../../lib/keyboard";
 
 interface Props {
   scenario: Scenario;
@@ -52,15 +53,7 @@ export function PlayView({ scenario }: Props) {
   // 键盘操作：Space/Enter 推进，1-9 选择选项；输入框聚焦时不拦截
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      const el = e.target as HTMLElement | null;
-      if (
-        el &&
-        (el.tagName === "INPUT" ||
-          el.tagName === "TEXTAREA" ||
-          el.isContentEditable)
-      ) {
-        return;
-      }
+      if (isEditableTarget(e.target)) return;
       if (e.key === " " || e.key === "Enter") {
         if (currentLine && choices.length === 0 && !ended) {
           e.preventDefault();

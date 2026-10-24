@@ -13,7 +13,6 @@ type Slice = Pick<
   | "selectedEdgeId"
   | "selectedCardTypeId"
   | "currentBoardId"
-  | "currentSessionId"
   | "activeModule"
   | "cardWallView"
   | "cardGroupView"
@@ -24,9 +23,9 @@ type Slice = Pick<
   | "selectCard"
   | "selectToken"
   | "selectEdge"
+  | "clearEdgeSelection"
   | "selectCardType"
   | "setCurrentBoard"
-  | "setCurrentSession"
   | "setActiveModule"
   | "setCardGroupView"
   | "setCardWallView"
@@ -59,7 +58,6 @@ export const createUISlice: StateCreator<ProjectState, [], [], Slice> = (
   selectedEdgeId: null,
   selectedCardTypeId: null,
   currentBoardId: null,
-  currentSessionId: null,
   activeModule: "world",
   cardWallView: "card",
   cardGroupView: "grid",
@@ -97,6 +95,8 @@ export const createUISlice: StateCreator<ProjectState, [], [], Slice> = (
       selectedTokenIds: [],
     }),
 
+  clearEdgeSelection: () => set({ selectedEdgeId: null }),
+
   selectCardType: (selectedCardTypeId) => set({ selectedCardTypeId }),
 
   setCurrentBoard: (currentBoardId) =>
@@ -106,9 +106,6 @@ export const createUISlice: StateCreator<ProjectState, [], [], Slice> = (
       selectedEdgeId: null,
       selectedTokenIds: [],
     }),
-
-  setCurrentSession: (currentSessionId) =>
-    set({ currentSessionId, selectedTokenId: null }),
 
   setActiveModule: (activeModule) => set({ activeModule }),
   setCardWallView: (cardWallView) => set({ cardWallView }),

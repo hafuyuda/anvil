@@ -1,18 +1,10 @@
-use crate::core::model::card_type::FieldType;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
-
-/// 剧情变量定义（供 applyEffects 与导出使用）。
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct VariableDef {
-    pub key: String,
-    pub label: String,
-    pub ty: FieldType,
-    #[serde(default)]
-    pub default: Option<Value>,
-}
 
 /// 剧情元数据。流程拓扑不在其中——剧本本体是 `scenarios/<id>/*.md`（weave 语法）。
+///
+/// 变量表也不在其中：变量由剧本里的 `VAR` 行声明，类型推断归前端
+/// `features/story/engine` 唯一实现（导出件用同一个 bundle）。
+/// 曾经的 `VariableDef` 结构体已随之删除——它是第三份实现的载体。
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Scenario {
     pub id: String,

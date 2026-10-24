@@ -4,6 +4,10 @@ use std::path::PathBuf;
 
 const ALLOWED_EXT: &[&str] = &["png", "jpg", "jpeg", "gif", "webp", "svg"];
 
+/// 可导入 / 可列出的音频扩展名。列表与导入共用同一张白名单：
+/// 否则手工丢进 assets/audio 的封面图、说明文本会被列成「音频」并播放失败。
+const ALLOWED_AUDIO_EXT: &[&str] = &["mp3", "ogg", "wav", "m4a"];
+
 impl Project {
     pub fn assets_dir(&self) -> PathBuf {
         self.root.join("assets")
@@ -185,8 +189,6 @@ impl Project {
 
     /// 把外部音频复制进项目，返回相对路径 `assets/audio/<uuid>.<ext>`
     pub fn import_audio(&self, src: &std::path::Path) -> anyhow::Result<String> {
-        const ALLOWED_AUDIO_EXT: &[&str] = &["mp3", "ogg", "wav", "m4a"];
-
         if !src.exists() || !src.is_file() {
             return Err(anyhow::anyhow!("源文件不存在"));
         }
@@ -240,6 +242,15 @@ impl Project {
         for entry in std::fs::read_dir(&dir)? {
             let entry = entry?;
             if !entry.file_type()?.is_file() {
+                continue;
+            }
+            let ext = entry
+                .path()
+                .extension()
+                .and_then(|s| s.to_str())
+                .unwrap_or("")
+                .to_lowercase();
+            if !ALLOWED_AUDIO_EXT.contains(&ext.as_str()) {
                 continue;
             }
             let name = entry.file_name().to_string_lossy().into_owned();
@@ -360,4 +371,60 @@ fn unique_readable_name(dir: &std::path::Path, original_name: &str, ext: &str) -
         "{stem}-{}.{ext}",
         &uuid::Uuid::new_v4().simple().to_string()[..8]
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn temp_project() -> (Project, PathBuf) {
+        let dir = std::env::temp_dir().join(format!("anvil_assets_{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let project = Project::open(&dir).expect("open temp project");
+        (project, dir)
+    }
+
+    #[test]
+    fn list_audios_tolerates_missing_dir_and_skips_non_audio() {
+        let (project, dir) = temp_project();
+
+        // 目录不存在时返回空表，不报错（新项目刚建、还没导入过音频）
+        assert!(project.list_audios().unwrap().is_empty());
+
+        std::fs::create_dir_all(project.audio_dir()).unwrap();
+        std::fs::write(project.audio_path("战斗.mp3"), b"x").unwrap();
+        std::fs::write(project.audio_path("cover.jpg"), b"x").unwrap();
+        std::fs::write(project.audio_path("note.txt"), b"x").unwrap();
+
+        // 白名单与导入一致：非音频文件不列入，否则列表里会出现点不动的行
+        assert_eq!(
+            project.list_audios().unwrap(),
+            vec!["assets/audio/战斗.mp3".to_string()]
+        );
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn list_audios_with_meta_counts_scenario_references() {
+        let (project, dir) = temp_project();
+        std::fs::create_dir_all(project.audio_dir()).unwrap();
+        std::fs::write(project.audio_path("tavern.mp3"), b"x").unwrap();
+
+        let scenario_dir = project.scenarios_dir().join("s1");
+        std::fs::create_dir_all(&scenario_dir).unwrap();
+        std::fs::write(
+            scenario_dir.join("main.md"),
+            "@bgm assets/audio/tavern.mp3\n> 炉火噼啪作响。\n",
+        )
+        .unwrap();
+
+        let metas = project.list_audios_with_meta().unwrap();
+        assert_eq!(metas.len(), 1);
+        assert_eq!(metas[0].path, "assets/audio/tavern.mp3");
+        assert_eq!(metas[0].ref_count, 1);
+        assert!(metas[0].size > 0);
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }

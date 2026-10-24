@@ -5,6 +5,7 @@ interface Props {
   typeName: (id: string) => string;
   selectedCardIds: string[];
   onCardClick: (card: Card, e: React.MouseEvent) => void;
+  onCardContextMenu?: (card: Card, e: React.MouseEvent) => void;
 }
 
 export function CardListView({
@@ -12,6 +13,7 @@ export function CardListView({
   typeName,
   selectedCardIds,
   onCardClick,
+  onCardContextMenu,
 }: Props) {
   return (
       <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
@@ -22,6 +24,11 @@ export function CardListView({
               key={c.id}
               data-card-id={c.id}
               onClick={(e) => onCardClick(c, e)}
+              onContextMenu={
+                onCardContextMenu
+                  ? (e) => onCardContextMenu(c, e)
+                  : undefined
+              }
             style={{
               cursor: "pointer",
               padding: "6px 10px",

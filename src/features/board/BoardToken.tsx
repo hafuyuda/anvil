@@ -5,9 +5,7 @@ import { CardBack } from "../../components/card/CardFrame/primitives/CardBack";
 import { PileToken } from "./PileToken";
 import { useProjectStore } from "../../stores/projectStore";
 import { useReducedMotion } from "../../hooks/useReducedMotion";
-
-const DEFAULT_TOKEN_W = 140;
-const DEFAULT_TOKEN_H = 205;
+import { DEFAULT_TOKEN_H, DEFAULT_TOKEN_W } from "./constants";
 
 /** 翻牌时长。与「啪」地翻一下的手感对齐，再长就觉得拖。 */
 const FLIP_MS = 340;
@@ -27,6 +25,7 @@ interface Props {
   enterFrom?: { x: number; y: number } | null;
   onPointerDown: (e: React.PointerEvent, t: Token) => void;
   onDoubleClick: (e: React.MouseEvent, t: Token) => void;
+  onContextMenu?: (e: React.MouseEvent, t: Token) => void;
 }
 
 /**
@@ -49,6 +48,7 @@ export function BoardToken({
   enterFrom,
   onPointerDown,
   onDoubleClick,
+  onContextMenu,
 }: Props) {
   const w = t.w ?? DEFAULT_TOKEN_W;
   const h = t.h ?? DEFAULT_TOKEN_H;
@@ -209,6 +209,7 @@ export function BoardToken({
       }}
       onPointerDown={(e) => onPointerDown(e, t)}
       onDoubleClick={(e) => onDoubleClick(e, t)}
+      onContextMenu={(e) => onContextMenu?.(e, t)}
     >
       <div
         style={{

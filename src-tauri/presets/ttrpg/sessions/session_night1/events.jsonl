@@ -6,5 +6,5 @@
 {"seq": 0, "at": 1700000000000, "kind": "chat.say", "payload": {"author_name": "邦伯", "content": "问：矮人怎么数羊？一只羊、两只羊、三只羊……金子！（然后睡着了）"}, "note": null}
 {"seq": 0, "at": 1700000000000, "kind": "chat.say", "payload": {"author_name": "KP", "content": "斯毛格已经在矿道尽头睁开了眼。他们现在还不知道。"}, "note": null, "visibility": "secret"}
 {"seq": 0, "at": 1700000000000, "kind": "board.step", "payload": {"draws": [{"id": "tok_d1", "card_id": "card_goblin", "name": "哥布林巡逻队", "to": [1040, 200], "pile_id": "tok_enc1", "pile_name": "遭遇堆"}, {"id": "tok_d2", "card_id": "card_rat", "name": "洞穴巨鼠", "to": [1040, 425], "pile_id": "tok_enc1", "pile_name": "遭遇堆"}]}, "note": "矿道里摸出两点动静"}
-{"seq": 0, "at": 1700000000000, "kind": "chat.roll", "payload": {"author_name": "索林", "content": "1d20", "roll": {"expr": "1d20", "result": 17, "detail": [17], "dropped": [], "natural": 17, "target": null, "rule_set": "dnd5e", "outcome": null}}, "note": null}
+{"seq": 0, "at": 1700000000000, "kind": "chat.roll", "payload": {"author_name": "索林", "content": "1d20", "roll": {"expr": "1d20", "result": 17, "detail": [17], "dropped": []}}, "note": null}
 {"seq": 0, "at": 1700000000000, "kind": "board.step", "payload": {"flips": [{"id": "tok_d1", "name": "哥布林巡逻队", "face_down": false}]}, "note": "索林听出那是哥布林"}

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { clamp } from "../../lib/math";
 import { useProjectStore } from "../../stores/projectStore";
 import { CardFrame } from "./CardFrame";
 
@@ -78,7 +79,7 @@ export function HoverPreview({
     if (px + CARD_W > vw - 8) {
       px = rect.left - CARD_W - OFFSET;
     }
-    py = Math.max(8, Math.min(vh - CARD_H - 8, py));
+    py = clamp(py, 8, vh - CARD_H - 8);
     return { x: px, y: py };
   }
 

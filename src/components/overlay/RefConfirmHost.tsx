@@ -17,13 +17,10 @@ interface Pending extends RefConfirmOptions {
 const KIND_LABEL: Record<RefKind, string> = {
   board_token: "棋盘棋子",
   board_pile: "棋盘卡盒",
-  session_token: "会话棋子",
-  session_pile: "会话卡盒",
-  session_init: "先攻条目",
-  session_board: "会话战场",
-  relation: "关系",
+  session_party: "会话队伍",
   card_group: "卡组",
   card_type: "卡牌",
+  relation: "关系",
 };
 
 /** 各目标种类对应的动作文案。没有 detach 的表示它只提供一条路。 */

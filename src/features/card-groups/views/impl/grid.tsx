@@ -1,25 +1,9 @@
-import { useMemo } from "react";
-import {
-  DndContext,
-  KeyboardSensor,
-  PointerSensor,
-  closestCenter,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  arrayMove,
-  rectSortingStrategy,
-  sortableKeyboardCoordinates,
-  useSortable,
-} from "@dnd-kit/sortable";
+import { rectSortingStrategy, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { Card, CardType } from "../../../../core/ipc";
 import { CardGrid, GridCard } from "../../../../components/card/CardGrid";
 import type { CardGroupViewDef, CardGroupViewProps } from "../types";
-import { aggregate, reorderByUnique } from "../../aggregate";
+import { SortableCards } from "../SortableCards";
 
 function GridView({
   cardIds,
@@ -28,32 +12,13 @@ function GridView({
   onReorder,
   onRemoveOne,
 }: CardGroupViewProps) {
-  const entries = useMemo(() => aggregate(cardIds), [cardIds]);
-  const uniqueIds = useMemo(() => entries.map((e) => e.cardId), [entries]);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    }),
-  );
-
-  function handleDragEnd(e: DragEndEvent) {
-    const { active, over } = e;
-    if (!over || active.id === over.id) return;
-    const oldIdx = uniqueIds.indexOf(active.id as string);
-    const newIdx = uniqueIds.indexOf(over.id as string);
-    if (oldIdx < 0 || newIdx < 0) return;
-    onReorder(reorderByUnique(cardIds, arrayMove(uniqueIds, oldIdx, newIdx)));
-  }
-
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragEnd={handleDragEnd}
+    <SortableCards
+      cardIds={cardIds}
+      onReorder={onReorder}
+      strategy={rectSortingStrategy}
     >
-      <SortableContext items={uniqueIds} strategy={rectSortingStrategy}>
+      {(entries) => (
         <CardGrid>
           {entries.map((e) => {
             const card = cardById.get(e.cardId) ?? null;
@@ -70,8 +35,8 @@ function GridView({
             );
           })}
         </CardGrid>
-      </SortableContext>
-    </DndContext>
+      )}
+    </SortableCards>
   );
 }
 

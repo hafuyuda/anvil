@@ -14,7 +14,7 @@ import {
   type HistoryEntry,
   type KnotIndex,
   type RuntimeState,
-} from "./runtime";
+} from "../engine";
 
 export interface LastRoll {
   key: string;

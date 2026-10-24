@@ -105,7 +105,10 @@ export function evalExpr(
   function parseOr(): unknown {
     let left = parseAnd();
     while (eatOp("||")) {
-      left = truthy(left) || truthy(parseAnd());
+      // 右操作数必须先解析完再合并：写成 `truthy(left) || truthy(parseAnd())`
+      // 会在 left 为真时短路掉解析，游标停在 ) 之前，随后报「期望 )」。
+      const right = parseAnd();
+      left = truthy(left) || truthy(right);
     }
     return left;
   }
@@ -113,7 +116,8 @@ export function evalExpr(
   function parseAnd(): unknown {
     let left = parseEquality();
     while (eatOp("&&")) {
-      left = truthy(left) && truthy(parseEquality());
+      const right = parseEquality();
+      left = truthy(left) && truthy(right);
     }
     return left;
   }

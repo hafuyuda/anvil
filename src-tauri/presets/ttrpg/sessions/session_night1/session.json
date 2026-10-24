@@ -2,7 +2,6 @@
   "id": "session_night1",
   "name": "第一夜：麦酒与龙息",
   "board_id": "board_tavern",
-  "rule_set": "dnd5e",
   "tracker": {
     "round": 1,
     "turn_index": 0,

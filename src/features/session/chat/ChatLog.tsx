@@ -1,11 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type {
-  Card,
-  CardType,
-  GameEvent,
-  SessionViewMode,
-} from "../../../core/ipc";
-import { isEventVisible } from "../../../core/ipc";
+import type { Card, CardType, GameEvent } from "../../../core/ipc";
 import { useReducedMotion } from "../../../hooks/useReducedMotion";
 import { ChatMessage } from "./ChatMessage";
 
@@ -20,22 +14,18 @@ interface Props {
   events: GameEvent[];
   cards: Card[];
   cardTypes: CardType[];
-  view: SessionViewMode;
   filter?: "all" | "chat";
-  onEdit?: (event: GameEvent) => void;
-  onDelete?: (event: GameEvent) => void;
-  onReveal?: (event: GameEvent) => void;
+  onEdit: (event: GameEvent) => void;
+  onDelete: (event: GameEvent) => void;
 }
 
 export function ChatLog({
   events,
   cards,
   cardTypes,
-  view,
   filter = "all",
   onEdit,
   onDelete,
-  onReveal,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
@@ -54,20 +44,12 @@ export function ChatLog({
     return m;
   }, [cardTypes]);
 
-  // 可见集（玩家视图滤掉秘密消息 —— 这就是帷幕本身）
-  //
-  // gm 全景 + 全类别时过滤是恒等映射，直接复用 events 引用：
-  // 否则每条新消息都把整个数组过滤一遍，长会话里又变成 O(n²)。
-  const passthrough = view === "gm" && filter !== "chat";
   const visible = useMemo(
     () =>
-      passthrough
-        ? events
-        : events.filter((e) => {
-            if (filter === "chat" && !e.kind.startsWith("chat.")) return false;
-            return isEventVisible(e, view);
-          }),
-    [passthrough, events, filter, view],
+      filter === "chat"
+        ? events.filter((e) => e.kind.startsWith("chat."))
+        : events,
+    [events, filter],
   );
 
   // 会话切换后回到默认限额。用首条 seq 当身份：整表被换掉时它必然变。
@@ -81,7 +63,6 @@ export function ChatLog({
 
   const earlierCount = Math.max(0, visible.length - visibleCount);
   const shown = earlierCount > 0 ? visible.slice(earlierCount) : visible;
-  const hiddenCount = events.length - visible.length;
 
   // ── 滚到底部 ──
   // 只有本来就停在底部才跟着滚，否则用户正翻历史时会被新消息拽走。
@@ -126,18 +107,8 @@ export function ChatLog({
     setVisibleCount((n) => Math.min(visible.length, n + LOAD_STEP));
   }
 
-  const handleEdit = useCallback(
-    (e: GameEvent) => onEdit?.(e),
-    [onEdit],
-  );
-  const handleDelete = useCallback(
-    (e: GameEvent) => onDelete?.(e),
-    [onDelete],
-  );
-  const handleReveal = useCallback(
-    (e: GameEvent) => onReveal?.(e),
-    [onReveal],
-  );
+  const handleEdit = useCallback((e: GameEvent) => onEdit(e), [onEdit]);
+  const handleDelete = useCallback((e: GameEvent) => onDelete(e), [onDelete]);
 
   if (shown.length === 0) {
     return (
@@ -155,11 +126,6 @@ export function ChatLog({
         }}
       >
         <span>还没有消息，下面输入框开始吧</span>
-        {hiddenCount > 0 && (
-          <span style={{ fontSize: 11, opacity: 0.7 }}>
-            （已隐藏 {hiddenCount} 条秘密消息）
-          </span>
-        )}
       </div>
     );
   }
@@ -176,21 +142,6 @@ export function ChatLog({
         background: "var(--chat-panel-bg)",
       }}
     >
-      {hiddenCount > 0 && (
-        <div
-          style={{
-            fontSize: 11,
-            color: "var(--fg-muted)",
-            textAlign: "center",
-            padding: "2px 0 8px",
-            borderBottom: "1px dashed var(--border-subtle)",
-            marginBottom: 8,
-          }}
-        >
-          已隐藏 {hiddenCount} 条秘密消息
-        </div>
-      )}
-
       {earlierCount > 0 && (
         <button
           className="btn btn-ghost"
@@ -212,10 +163,8 @@ export function ChatLog({
           event={e}
           cardMap={cardMap}
           typeMap={typeMap}
-          view={view}
-          onEdit={onEdit ? handleEdit : undefined}
-          onDelete={onDelete ? handleDelete : undefined}
-          onReveal={onReveal ? handleReveal : undefined}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
         />
       ))}
       <div ref={bottomRef} />

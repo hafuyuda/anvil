@@ -13,6 +13,7 @@ import { ErrorBoundary } from "./ErrorBoundary";
 import { CardGroupList } from "../features/card-groups/CardGroupList";
 import { toast } from "../lib/toast";
 import { PlayerView } from "../features/player/PlayerView";
+import { DocLibrary } from "../features/docs/DocLibrary";
 
 export function Workspace() {
   const projectPath = useProjectStore((s) => s.projectPath);
@@ -222,6 +223,11 @@ export function Workspace() {
         {activeModule === "world" && (
           <ErrorBoundary>
             <CardWall />
+          </ErrorBoundary>
+        )}
+        {activeModule === "docs" && (
+          <ErrorBoundary>
+            <DocLibrary />
           </ErrorBoundary>
         )}
         {activeModule === "types" && (

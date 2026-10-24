@@ -5,6 +5,7 @@ import {
   getPlayerState,
   pause as pausePlayer,
   play as playPlayer,
+  setSceneAudioActive,
 } from "../../../lib/audioPlayer";
 
 /**
@@ -24,11 +25,13 @@ export function useSceneAudio(
   const currentBgmRef = useRef<string | null>(null);
   const settings = useAppSettings();
 
-  // VN 接管：进入时暂停全局播放器，退出时恢复
+  // VN 接管：进入时暂停全局播放器，退出时恢复；同时让位全局媒体键（Space 等）
   useEffect(() => {
     const wasPlaying = getPlayerState().playing;
     if (wasPlaying) pausePlayer();
+    setSceneAudioActive(true);
     return () => {
+      setSceneAudioActive(false);
       if (wasPlaying) playPlayer();
     };
   }, []);
@@ -64,7 +67,9 @@ export function useSceneAudio(
     void loadAsset(bgm).then((url) => {
       if (cancelled || !url) return;
       const audio = new Audio(url);
-      audio.loop = settings.playerLoop;
+      // 场景 BGM 语义就是「循环到下一次 @bgm」。原先读 settings.playerLoop，
+      // 但该设置自 P0 改队列播放模式后已无 UI 入口、恒为 false，等于 BGM 播完即静音。
+      audio.loop = true;
       audio.volume = 0;
       void audio.play().catch(() => {
         // 浏览器可能因用户交互策略拒绝播放，静默

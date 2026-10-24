@@ -4,10 +4,12 @@ const def: GridShapeDef = {
   id: "dots",
   label: "点阵",
   order: 20,
-  render: ({ size: step, width, height }) => {
+  render: ({ size: step, width, height, offsetX, offsetY }) => {
+    const ox = ((offsetX % step) + step) % step;
+    const oy = ((offsetY % step) + step) % step;
     const elements: React.ReactNode[] = [];
-    for (let x = 0; x <= width; x += step) {
-      for (let y = 0; y <= height; y += step) {
+    for (let x = ox; x <= width; x += step) {
+      for (let y = oy; y <= height; y += step) {
         elements.push(
           <circle
             key={`d${x}-${y}`}

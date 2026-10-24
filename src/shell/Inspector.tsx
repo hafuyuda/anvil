@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ipc, type Board, type Session, type Token } from "../core/ipc";
+import { ipc, type Board, type Card, type Relation, type RelationKind, type Token } from "../core/ipc";
 import { useProjectStore } from "../stores/projectStore";
 import { DEFAULT_INSPECTOR_WIDTH } from "../lib/inspectorPrefs";
 import { CardEditor } from "../features/cards/card/CardEditor";
@@ -19,16 +19,17 @@ export function Inspector() {
   const selectedEdgeId = useProjectStore((s) => s.selectedEdgeId);
   const selectedCardTypeId = useProjectStore((s) => s.selectedCardTypeId);
   const currentBoardId = useProjectStore((s) => s.currentBoardId);
-  const currentSessionId = useProjectStore((s) => s.currentSessionId);
 
   const cards = useProjectStore((s) => s.cards) ?? [];
   const cardTypes = useProjectStore((s) => s.cardTypes) ?? [];
   const boards = useProjectStore((s) => s.boards) ?? [];
-  const sessions = useProjectStore((s) => s.sessions) ?? [];
   const relations = useProjectStore((s) => s.relations) ?? [];
+  const relationKinds = useProjectStore((s) => s.relationKinds) ?? [];
+  const removeRelation = useProjectStore((s) => s.removeRelation);
+  const upsertRelationStore = useProjectStore((s) => s.upsertRelation);
+  const selectEdge = useProjectStore((s) => s.selectEdge);
 
   const upsertBoard = useProjectStore((s) => s.upsertBoard);
-  const upsertSession = useProjectStore((s) => s.upsertSession);
   const pushUndo = useProjectStore((s) => s.pushUndo);
   const selectToken = useProjectStore((s) => s.selectToken);
 
@@ -71,21 +72,13 @@ export function Inspector() {
     [width, setWidth],
   );
 
-  // 根据模块决定 token 来源
+  // Token 只活在棋盘上。会话不再持有棋子 —— 那是棋盘模块的职责。
   const board =
     activeModule === "board" && currentBoardId
       ? (boards.find((b) => b.id === currentBoardId) ?? null)
       : null;
-  const session =
-    activeModule === "session" && currentSessionId
-      ? (sessions.find((s) => s.id === currentSessionId) ?? null)
-      : null;
 
-  const tokenSource: Token[] = board
-    ? (board.tokens ?? [])
-    : session
-      ? (session.tokens ?? [])
-      : [];
+  const tokenSource: Token[] = board ? (board.tokens ?? []) : [];
 
   const token =
     selectedTokenId != null
@@ -123,84 +116,32 @@ export function Inspector() {
     });
   }
 
-  function pushSessionUndo(before: Session, after: Session, label: string) {
-    pushUndo({
-      id: makeUndoId(),
-      label,
-      undo: async () => {
-        const store = useProjectStore.getState();
-        const cur = store.sessions.find((s) => s.id === before.id) ?? null;
-        const next = cur ? mergeEntity(before, after, cur) : before;
-        await ipc.upsertSession(next);
-        store.upsertSession(next);
-      },
-      redo: async () => {
-        const store = useProjectStore.getState();
-        const cur = store.sessions.find((s) => s.id === before.id) ?? null;
-        const next = cur ? mergeEntity(after, before, cur) : after;
-        await ipc.upsertSession(next);
-        store.upsertSession(next);
-      },
-    });
-  }
-
   async function handleTokenSave(updated: Token) {
-    if (board) {
-      const before = board;
-      const after: Board = {
-        ...before,
-        tokens: (before.tokens ?? []).map((t) =>
-          t.id === updated.id ? updated : t,
-        ),
-        updated_at: nowMs(),
-      };
-      await ipc.upsertBoard(after);
-      upsertBoard(after);
-      pushBoardUndo(before, after, "编辑 Token");
-      return;
-    }
-    if (session) {
-      const before = session;
-      const after: Session = {
-        ...before,
-        tokens: (before.tokens ?? []).map((t) =>
-          t.id === updated.id ? updated : t,
-        ),
-        updated_at: nowMs(),
-      };
-      await ipc.upsertSession(after);
-      upsertSession(after);
-      pushSessionUndo(before, after, "编辑 Token");
-      return;
-    }
+    if (!board) return;
+    const before = board;
+    const after: Board = {
+      ...before,
+      tokens: (before.tokens ?? []).map((t) =>
+        t.id === updated.id ? updated : t,
+      ),
+      updated_at: nowMs(),
+    };
+    await ipc.upsertBoard(after);
+    upsertBoard(after);
+    pushBoardUndo(before, after, "编辑 Token");
   }
 
   async function handleTokenDelete() {
-    if (!token) return;
-    if (board) {
-      const before = board;
-      const after: Board = {
-        ...before,
-        tokens: (before.tokens ?? []).filter((t) => t.id !== token.id),
-        updated_at: nowMs(),
-      };
-      await ipc.upsertBoard(after);
-      upsertBoard(after);
-      pushBoardUndo(before, after, "删除 Token");
-      return;
-    }
-    if (session) {
-      const before = session;
-      const after: Session = {
-        ...before,
-        tokens: (before.tokens ?? []).filter((t) => t.id !== token.id),
-        updated_at: nowMs(),
-      };
-      await ipc.upsertSession(after);
-      upsertSession(after);
-      pushSessionUndo(before, after, "删除 Token");
-      return;
-    }
+    if (!token || !board) return;
+    const before = board;
+    const after: Board = {
+      ...before,
+      tokens: (before.tokens ?? []).filter((t) => t.id !== token.id),
+      updated_at: nowMs(),
+    };
+    await ipc.upsertBoard(after);
+    upsertBoard(after);
+    pushBoardUndo(before, after, "删除 Token");
   }
 
   const edge = selectedEdgeId
@@ -339,6 +280,24 @@ export function Inspector() {
             />
           )}
 
+          {!token && edge && (
+            <EdgeInspector
+              edge={edge}
+              relationKinds={relationKinds}
+              cards={cards}
+              onDelete={async () => {
+                await ipc.deleteRelation(edge.from, edge.id);
+                removeRelation(edge.id);
+                selectEdge(null);
+              }}
+              onChangeKind={async (kindId) => {
+                const updated = { ...edge, kind: kindId };
+                await ipc.upsertRelation(updated);
+                upsertRelationStore(updated);
+              }}
+            />
+          )}
+
           {!token && !edge && card && !cardType && (
             <p style={{ color: "var(--danger)", fontSize: 12 }}>
               找不到卡牌类型 {card.type_id}
@@ -469,5 +428,88 @@ export function Inspector() {
         {renderPanel(() => setCollapsed(true), "折叠（Ctrl+I）")}
       </div>
     </>
+  );
+}
+
+/**
+ * 棋盘关系线选中后的检查器：显示两端卡牌、可改关系类型、可删除。
+ * 关系本身基于卡牌，删除走 ipc.deleteRelation(fromId, relationId)。
+ */
+function EdgeInspector({
+  edge,
+  relationKinds,
+  cards,
+  onDelete,
+  onChangeKind,
+}: {
+  edge: Relation;
+  relationKinds: RelationKind[];
+  cards: Card[];
+  onDelete: () => void | Promise<void>;
+  onChangeKind: (kindId: string) => void | Promise<void>;
+}) {
+  const fromCard = cards.find((c) => c.id === edge.from) ?? null;
+  const toCard = cards.find((c) => c.id === edge.to) ?? null;
+  const kind = relationKinds.find((k) => k.id === edge.kind) ?? null;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div
+        style={{
+          fontSize: 12,
+          color: "var(--fg-secondary)",
+          display: "flex",
+          flexDirection: "column",
+          gap: 2,
+        }}
+      >
+        <span style={{ color: "var(--fg-muted)" }}>从</span>
+        <strong style={{ color: "var(--fg-primary)" }}>
+          {fromCard?.name ?? edge.from}
+        </strong>
+        <span style={{ color: "var(--fg-muted)", marginTop: 4 }}>到</span>
+        <strong style={{ color: "var(--fg-primary)" }}>
+          {toCard?.name ?? edge.to}
+        </strong>
+      </div>
+
+      <label
+        style={{
+          fontSize: 12,
+          display: "flex",
+          flexDirection: "column",
+          gap: 3,
+          color: "var(--fg-muted)",
+        }}
+      >
+        关系类型
+        <select
+          className="select"
+          value={edge.kind}
+          onChange={(e) => void onChangeKind(e.target.value)}
+        >
+          {relationKinds.map((k) => (
+            <option key={k.id} value={k.id}>
+              {k.name}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      {kind && (
+        <p style={{ fontSize: 11, color: "var(--fg-muted)" }}>
+          {kind.directed ? "有向" : "无向"}
+          {kind.inverse_name ? ` · 反向：${kind.inverse_name}` : ""}
+        </p>
+      )}
+
+      <button
+        className="btn btn-danger"
+        onClick={() => void onDelete()}
+        style={{ marginTop: 4 }}
+      >
+        删除关系
+      </button>
+    </div>
   );
 }

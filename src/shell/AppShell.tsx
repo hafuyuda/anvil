@@ -21,6 +21,9 @@ import { ConfirmHost } from "../components/overlay/ConfirmHost";
 import { RefConfirmHost } from "../components/overlay/RefConfirmHost";
 import { SettingsPage } from "../features/settings/SettingsPage";
 import { MiniPlayer } from "../features/player/MiniPlayer";
+import { installPlayerHotkeys } from "../lib/playerHotkeys";
+import { restorePlayer } from "../lib/audioPlayer";
+import { isModified } from "../lib/keyboard";
 
 export function AppShell() {
   const projectPath = useProjectStore((s) => s.projectPath);
@@ -34,6 +37,13 @@ export function AppShell() {
   useKeyboard();
   // 闪卡倾斜：一个全局委托监听器，见 hook 注释
   useCardTilt();
+  // 媒体键 + OS MediaSession；启动恢复上次队列（停在暂停态）。
+  // 必须在 effect 里只跑一次：这两件事都有副作用（改 state、重建 audio.src、
+  // 挂 MediaSession 元数据），写在渲染体里会随每次重渲染重置播放进度。
+  useEffect(() => {
+    installPlayerHotkeys();
+    restorePlayer();
+  }, []);
 
   const mergePackOpen = useUIStore((s) => s.mergePackOpen);
   const closeMergePack = useUIStore((s) => s.closeMergePack);
@@ -42,7 +52,7 @@ export function AppShell() {
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      const mod = e.ctrlKey || e.metaKey;
+      const mod = isModified(e);
       if (mod && e.key.toLowerCase() === "k") {
         e.preventDefault();
         togglePalette();
@@ -112,7 +122,8 @@ export function AppShell() {
         height: "100vh",
         display: "flex",
         flexDirection: "column",
-        background: "var(--bg-app)",
+        backgroundColor: "var(--bg-app)",
+        backgroundImage: "var(--tex-iron)",
         color: "var(--fg-primary)",
         fontFamily: "var(--font-body)",
       }}

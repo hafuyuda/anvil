@@ -1,5 +1,4 @@
 import type { GameEvent } from "../../../core/ipc";
-import { formatStep, type BoardStepPayload } from "../boardRecord";
 
 export function SystemLine({ event }: { event: GameEvent }) {
   const text = systemText(event);
@@ -25,48 +24,16 @@ export function SystemLine({ event }: { event: GameEvent }) {
   );
 }
 
+/**
+ * 系统行的文案。
+ *
+ * 精简后只有一种系统事件：会话起点。棋盘步骤、战斗轮次、会话结束、
+ * 状态、备注等分支随棋盘与战斗一并移除 —— 它们本来也没有产生方。
+ */
 function systemText(event: GameEvent): string {
-  const payload = event.payload as Record<string, unknown>;
   switch (event.kind) {
     case "session.start":
       return "会话开始";
-    case "session.end":
-      return "会话结束";
-    case "token.move":
-      return `Token 变动（${payload.count ?? "?"} 个）`;
-    case "board.step": {
-      const text = formatStep(payload as BoardStepPayload);
-      return text || "棋盘变动";
-    }
-    case "state.set": {
-      const k = payload.key ?? "?";
-      const v = payload.value;
-      return `状态：${k} = ${JSON.stringify(v)}`;
-    }
-    case "effect.apply": {
-      const applied = payload.applied as
-        | Array<{
-            raw: string;
-            is_roll?: boolean;
-            roll_detail?: number[];
-          }>
-        | undefined;
-      const label = payload.relation_label as string | undefined;
-      if (!applied || applied.length === 0) {
-        return label ? `效果：${label}` : "效果执行";
-      }
-      const parts = applied.map((a) => {
-        const rollInfo =
-          a.is_roll && a.roll_detail && a.roll_detail.length > 0
-            ? ` [${a.roll_detail.join(",")}]`
-            : "";
-        return `${a.raw}${rollInfo}`;
-      });
-      const prefix = label ? `${label} → ` : "";
-      return `${prefix}效果：${parts.join(" · ")}`;
-    }
-    case "note":
-      return event.note ?? "备注";
     default:
       return event.kind;
   }

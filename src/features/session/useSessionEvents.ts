@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { ipc, type GameEvent, type EventVisibility } from "../../core/ipc";
+import { ipc, type GameEvent } from "../../core/ipc";
 import { runWithError } from "../../lib/runWithError";
 
 /**
@@ -34,20 +34,9 @@ export function useSessionEvents(sessionId: string) {
   }, []);
 
   const logEvent = useCallback(
-    async (
-      kind: string,
-      payload: unknown,
-      note?: string,
-      visibility?: EventVisibility,
-    ) => {
+    async (kind: string, payload: unknown, note?: string) => {
       await runWithError(async () => {
-        const ev = await ipc.appendEvent(
-          sessionId,
-          kind,
-          payload,
-          note,
-          visibility,
-        );
+        const ev = await ipc.appendEvent(sessionId, kind, payload, note);
         appendLocal(ev);
       }, "记录事件失败");
     },
@@ -72,23 +61,5 @@ export function useSessionEvents(sessionId: string) {
     [sessionId, reload],
   );
 
-  /**
-   * 揭示一条秘密事件。
-   * 后端会把本体标 revealed（仍是 secret），并在流尾追加一条公开副本。
-   * 前端本地标记 + 追加副本，不整表重读。
-   */
-  const revealEvent = useCallback(
-    async (seq: number) => {
-      await runWithError(async () => {
-        const copy = await ipc.revealEvent(sessionId, seq);
-        setEvents((prev) =>
-          prev.map((e) => (e.seq === seq ? { ...e, revealed: true } : e)),
-        );
-        appendLocal(copy);
-      }, "揭示失败");
-    },
-    [sessionId, appendLocal],
-  );
-
-  return { events, logEvent, updateEvent, deleteEvent, revealEvent };
+  return { events, logEvent, updateEvent, deleteEvent };
 }

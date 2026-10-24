@@ -36,7 +36,7 @@ interface Props {
  *   2. cardType.card_frame.style（须为已注册 id）
  *   3. DEFAULT_CARD_STYLE_ID
  *
- * 任何未知 id 最终都由 getCardStyle 回退到 yugioh。
+ * 任何未知 id 最终都由 getCardStyle 回退到 anvil。
  */
 function resolveStyleId(
   explicit: string | null | undefined,

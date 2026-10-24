@@ -9,6 +9,7 @@ import { useUIStore } from "../stores/uiStore";
 import { resetTheme } from "../lib/theme";
 import { setLastOpenPath } from "../lib/recentProjects";
 import { clearAssetCache } from "../lib/assetCache";
+import { bindPlayerToProject } from "../lib/audioPlayer";
 import { runWithError } from "../lib/runWithError";
 import { AddPresetDialog } from "../features/project/AddPresetDialog";
 
@@ -51,6 +52,8 @@ export function TopBar() {
     closeProject();
     resetTheme();
     clearAssetCache();
+    // 队列里的相对路径已无法解析（Rust 侧没有项目了），不清会让「下一首」静默失败
+    bindPlayerToProject(null);
     setLastOpenPath(null);
   }
 

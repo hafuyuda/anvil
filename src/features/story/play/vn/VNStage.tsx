@@ -1,5 +1,6 @@
 import type { ScriptLine } from "../../script/types";
 import { useAppSettings } from "../../../../hooks/useAppSettings";
+import { hashString } from "../../../../lib/color";
 import { useTypewriter } from "../useTypewriter";
 import { VNStageBackground } from "./VNStageBackground";
 import { VNStageChoice } from "./VNStageChoice";
@@ -26,9 +27,7 @@ interface Props {
 
 /** 同一说话人稳定落在同一侧，制造对话左右交替的观感。 */
 function sideFor(speaker: string): "left" | "right" {
-  let h = 0;
-  for (const ch of speaker) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-  return h % 2 === 0 ? "right" : "left";
+  return hashString(speaker) % 2 === 0 ? "right" : "left";
 }
 
 export function VNStage({

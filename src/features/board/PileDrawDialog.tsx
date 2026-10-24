@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { clamp } from "../../lib/math";
 import { Modal } from "../../components/ui/Modal";
 import type { PileData } from "../../core/ipc";
 
@@ -27,7 +28,7 @@ export function PileDrawDialog({
 
   function handleDraw() {
     if (!canDraw) return;
-    const n = Math.max(1, Math.min(count, remaining));
+    const n = clamp(remaining, 1, count);
     onDraw(n);
   }
 

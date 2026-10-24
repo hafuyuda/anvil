@@ -3,14 +3,10 @@ import type {
   CardType,
   ChatEventKind,
   ChatPayload,
-  EventVisibility,
   GameEvent,
-  SessionViewMode,
 } from "../../core/ipc";
-import { isEventVisible } from "../../core/ipc";
 import { ChatLog } from "./chat/ChatLog";
 import { ChatInput } from "./chat/ChatInput";
-import type { RuleSetId } from "./ruleset";
 
 interface AuthorOption {
   card_id: string | null;
@@ -22,16 +18,9 @@ interface Props {
   cards: Card[];
   cardTypes: CardType[];
   authors: AuthorOption[];
-  view: SessionViewMode;
-  ruleSet: RuleSetId;
   onEditEvent: (event: GameEvent) => void;
   onDeleteEvent: (event: GameEvent) => void;
-  onRevealEvent: (event: GameEvent) => void;
-  onSend: (
-    kind: ChatEventKind,
-    payload: ChatPayload,
-    visibility: EventVisibility,
-  ) => void;
+  onSend: (kind: ChatEventKind, payload: ChatPayload) => void;
   /** 提供则在头部显示折叠按钮，折叠由父级控制 */
   onCollapse?: () => void;
 }
@@ -41,17 +30,11 @@ export function ChatPanel({
   cards,
   cardTypes,
   authors,
-  view,
-  ruleSet,
   onEditEvent,
   onDeleteEvent,
-  onRevealEvent,
   onSend,
   onCollapse,
 }: Props) {
-  const shown = events.filter((e) => isEventVisible(e, view)).length;
-  const hidden = events.length - shown;
-
   return (
     <div
       style={{
@@ -61,7 +44,6 @@ export function ChatPanel({
         flexDirection: "column",
         overflow: "hidden",
         background: "var(--bg-panel)",
-        borderRight: "1px solid var(--border-subtle)",
       }}
     >
       <div
@@ -77,14 +59,16 @@ export function ChatPanel({
           flexShrink: 0,
         }}
       >
-        <span>
-          {view === "player" ? "对话记录 · 玩家视图" : "对话记录 · KP 全景"}
-        </span>
+        <span>对话记录</span>
         <span
-          style={{ fontFamily: "var(--font-mono)", display: "flex", alignItems: "center", gap: 8 }}
+          style={{
+            fontFamily: "var(--font-mono)",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+          }}
         >
-          {shown} 条
-          {hidden > 0 && ` （+${hidden} 秘密）`}
+          {events.length} 条
           {onCollapse && (
             <button
               type="button"
@@ -103,19 +87,11 @@ export function ChatPanel({
         events={events}
         cards={cards}
         cardTypes={cardTypes}
-        view={view}
-        onEdit={view === "gm" ? onEditEvent : undefined}
+        onEdit={onEditEvent}
         onDelete={onDeleteEvent}
-        onReveal={view === "gm" ? onRevealEvent : undefined}
       />
 
-      <ChatInput
-        authors={authors}
-        defaultAuthorId={null}
-        ruleSet={ruleSet}
-        view={view}
-        onSend={onSend}
-      />
+      <ChatInput authors={authors} onSend={onSend} />
     </div>
   );
 }

@@ -396,29 +396,12 @@ impl Project {
                 };
 
                 session.id = uuid::Uuid::new_v4().to_string();
-                // ← 改动：从直接置 None，改为按 board_id_map 映射；映射不到才置 None
-                session.board_id = session
-                    .board_id
+                // 会话不再绑定棋盘、也不再持有棋子。它引用卡组的唯一途径是
+                // group_id，按 group_id_map 映射；映射不到就置空。
+                session.group_id = session
+                    .group_id
                     .as_ref()
-                    .and_then(|id| board_id_map.get(id).cloned());
-
-                session.tokens = session
-                    .tokens
-                    .into_iter()
-                    .filter_map(|mut t| {
-                        if let Some(cid) = &t.card_id {
-                            match card_id_map.get(cid) {
-                                Some(new_id) => t.card_id = Some(new_id.clone()),
-                                None => return None,
-                            }
-                        }
-                        t.id = uuid::Uuid::new_v4().to_string();
-                        if let Some(pile) = &mut t.pile {
-                            map_pile(pile, &card_id_map, &group_id_map);
-                        }
-                        Some(t)
-                    })
-                    .collect();
+                    .and_then(|id| group_id_map.get(id).cloned());
 
                 session.name = unique_name(&existing_session_names, &session.name);
                 existing_session_names.insert(session.name.clone());

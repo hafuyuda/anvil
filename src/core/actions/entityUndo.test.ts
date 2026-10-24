@@ -1,17 +1,10 @@
 import { describe, expect, it } from "vitest";
-import type {
-  InitiativeEntry,
-  InitiativeTracker,
-  PileData,
-  Token,
-} from "../ipc";
+import type { PileData, Token } from "../ipc";
 import {
   insertCardIntoPileList,
-  restoreEntriesForCard,
   restorePileData,
   restorePileTokens,
   restoreTokensForCard,
-  restoreTrackerForCard,
   tokensTouchCard,
 } from "./entityUndo";
 
@@ -156,93 +149,6 @@ describe("restoreTokensForCard", () => {
     const out = restoreTokensForCard(before, current, "c2");
     expect(out[0].pile?.remaining).toEqual(["c1"]);
     expect(out[0].pile?.initial).toEqual(["c1", "c2"]);
-  });
-});
-
-describe("restoreEntriesForCard", () => {
-  const entry = (name: string, cardId: string | null, value: number): InitiativeEntry => ({
-    token_id: null,
-    card_id: cardId,
-    name,
-    value,
-  });
-
-  it("被移走的先攻条目按原索引插回", () => {
-    const before = [
-      entry("斥候", "c1", 20),
-      entry("哥布林", "c2", 15),
-      entry("法师", "c3", 12),
-    ];
-    const current = [entry("斥候", "c1", 20), entry("法师", "c3", 12)];
-    const out = restoreEntriesForCard(before, current, "c2");
-    expect(out.map((e) => e.name)).toEqual(["斥候", "哥布林", "法师"]);
-  });
-
-  it("没有对应条目时原样返回", () => {
-    const current = [entry("斥候", "c1", 20)];
-    expect(restoreEntriesForCard(current, current, "c9")).toBe(current);
-  });
-});
-
-describe("restoreTrackerForCard", () => {
-  const entry = (name: string, cardId: string | null): InitiativeEntry => ({
-    token_id: null,
-    card_id: cardId,
-    name,
-    value: 10,
-  });
-
-  it("没被这次删除碰过就原样返回", () => {
-    const before: InitiativeTracker = {
-      round: 1,
-      turn_index: 0,
-      active: true,
-      entries: [entry("a", "c9")],
-    };
-    expect(restoreTrackerForCard(before, before, "c1")).toBe(before);
-  });
-
-  it("插回条目时还原被夹紧的下标，并还原被清空的 active", () => {
-    const before: InitiativeTracker = {
-      round: 3,
-      turn_index: 2,
-      active: true,
-      entries: [entry("a", "c1"), entry("b", "c2"), entry("c", "c3")],
-    };
-    // 后端移走 b 后把下标从 2 夹到 1
-    const after: InitiativeTracker = {
-      round: 3,
-      turn_index: 1,
-      active: true,
-      entries: [entry("a", "c1"), entry("c", "c3")],
-    };
-    const out = restoreTrackerForCard(before, after, "c2");
-    expect(out?.entries.map((e) => e.name)).toEqual(["a", "b", "c"]);
-    expect(out?.turn_index).toBe(2);
-    expect(out?.active).toBe(true);
-  });
-
-  it("用户之后推进过轮次就保留他的下标", () => {
-    const before: InitiativeTracker = {
-      round: 3,
-      turn_index: 2,
-      active: true,
-      entries: [entry("a", "c1"), entry("b", "c2"), entry("c", "c3")],
-    };
-    // 用户删卡之后又点了一次「下一回合」，下标和轮次都变了
-    const advanced: InitiativeTracker = {
-      round: 4,
-      turn_index: 0,
-      active: true,
-      entries: [entry("a", "c1"), entry("c", "c3")],
-    };
-    const out = restoreTrackerForCard(before, advanced, "c2");
-    expect(out?.entries.map((e) => e.name)).toEqual(["a", "b", "c"]);
-    expect(out?.turn_index).toBe(0);
-  });
-
-  it("删除前根本没有 tracker 就保持没有", () => {
-    expect(restoreTrackerForCard(null, null, "c1")).toBeNull();
   });
 });
 

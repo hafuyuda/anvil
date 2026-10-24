@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useProjectStore } from "../stores/projectStore";
 import { flushAll } from "../lib/saveRegistry";
+import { isModified, isEditableTarget } from "../lib/keyboard";
 
 const MODULES = ["world", "story", "board", "session", "types"] as const;
 
@@ -12,7 +13,7 @@ export function useKeyboard() {
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      const mod = e.ctrlKey || e.metaKey;
+      const mod = isModified(e);
       const key = e.key.toLowerCase();
 
       // Ctrl+Z 撤销
@@ -36,23 +37,14 @@ export function useKeyboard() {
         return;
       }
 
-      // Ctrl+I 折叠 / 展开检查器
-      if (mod && !e.shiftKey && key === "i") {
-        // 输入框里 Ctrl+I 是斜体，别抢。其余快捷键一律接管。
-        const el = e.target as HTMLElement | null;
-        const tag = el?.tagName;
-        if (
-          tag === "INPUT" ||
-          tag === "TEXTAREA" ||
-          tag === "SELECT" ||
-          el?.isContentEditable
-        ) {
+        // Ctrl+I 折叠 / 展开检查器
+        if (mod && !e.shiftKey && key === "i") {
+          // 输入框里 Ctrl+I 是斜体，别抢。其余快捷键一律接管。
+          if (isEditableTarget(e.target)) return;
+          e.preventDefault();
+          toggleInspector();
           return;
         }
-        e.preventDefault();
-        toggleInspector();
-        return;
-      }
 
       // Ctrl+1..5 切模块
       if (mod && key >= "1" && key <= "5") {

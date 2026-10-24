@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
-import type { Board, Card, CardType, GridConfig } from "../../core/ipc";
+import type { Board, Card, CardType, GridConfig, Token } from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
 import { useAssetUrl } from "../../hooks/useAssetUrl";
 import { BoardToken } from "./BoardToken";
@@ -7,13 +7,19 @@ import { RelationLines } from "./RelationLines";
 import { GridLayer } from "./GridLayer";
 import { useTokenDrag } from "./useTokenDrag";
 import { useCanvasZoom } from "./useCanvasZoom";
+import { useVisibleRect } from "./useVisibleRect";
+import { tokenInView } from "./viewport";
+import { BOARD_PADDING } from "./constants";
 
 interface Props {
   board: Board;
   zoom: number;
   onZoomChange: (z: number) => void;
   onChange: (patch: Partial<Board>) => void;
+  measureMode?: boolean;
   onPileClick?: (tokenId: string) => void;
+  onTokenContextMenu?: (e: React.MouseEvent, t: Token) => void;
+  onBoardContextMenu?: (e: React.MouseEvent) => void;
 }
 
 const DEFAULT_GRID: GridConfig = {
@@ -24,18 +30,23 @@ const DEFAULT_GRID: GridConfig = {
   snap: true,
 };
 
-const PADDING = 16;
+const PADDING = BOARD_PADDING;
 
 export function BoardCanvas({
   board,
   zoom,
   onZoomChange,
   onChange,
+  measureMode,
   onPileClick,
+  onTokenContextMenu,
+  onBoardContextMenu,
 }: Props) {
   const cards = useProjectStore((s) => s.cards) ?? [];
   const cardTypes = useProjectStore((s) => s.cardTypes) ?? [];
   const selectedTokenIds = useProjectStore((s) => s.selectedTokenIds) ?? [];
+  const selectedEdgeId = useProjectStore((s) => s.selectedEdgeId);
+  const selectEdge = useProjectStore((s) => s.selectEdge);
   const relations = useProjectStore((s) => s.relations) ?? [];
   const relationKinds = useProjectStore((s) => s.relationKinds) ?? [];
 
@@ -89,6 +100,9 @@ export function BoardCanvas({
     tokens,
     draggingIds,
     dragPreview,
+    marquee,
+    measureLine,
+    spaceHeld,
     onTokenPointerDown,
     onTokenDoubleClick,
     onPointerMove,
@@ -100,9 +114,23 @@ export function BoardCanvas({
     zoom,
     onChange,
     onPileClick,
+    measureMode,
   });
 
   useCanvasZoom(containerRef, zoom, onZoomChange);
+
+  // ── DOM 虚拟化 ──
+  // 只挂载视口内的 token：每枚 token 是一棵完整的 CardFrame 子树，
+  // 几百枚全挂在一起时拖拽每帧都要扛着整片林子。视口外的不进 DOM，
+  // 滚动到位再挂——与卡片墙「首屏限额 + 加载更多」同源的思路。
+  const visibleRect = useVisibleRect(containerRef, zoom);
+  const renderTokens = useMemo(() => {
+    const base = tokens.filter((t) => t.visible);
+    const kept = visibleRect
+      ? base.filter((t) => draggingIds.has(t.id) || tokenInView(t, visibleRect))
+      : base;
+    return kept.sort((a, b) => a.layer - b.layer);
+  }, [tokens, visibleRect, draggingIds]);
 
   return (
     <div
@@ -113,10 +141,12 @@ export function BoardCanvas({
         overflow: "auto",
         background: "var(--bg-app)",
         position: "relative",
+        cursor: spaceHeld ? "grab" : undefined,
       }}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerDown={onContainerPointerDown}
+      onContextMenu={onBoardContextMenu}
     >
       <div
         style={{
@@ -182,19 +212,20 @@ export function BoardCanvas({
             />
           )}
 
+          {/* 关系线仍用全量表：线要连到视口外的 token，
+              锚点在不在屏里不影响这条边存不存在。 */}
           {board.show_relations && (
             <RelationLines
               board={board}
               tokens={tokens.filter((t) => t.visible)}
               relations={relations}
               relationKinds={relationKinds}
+              selectedEdgeId={selectedEdgeId}
+              onSelectEdge={selectEdge}
             />
           )}
 
-          {tokens
-            .filter((t) => t.visible)
-            .sort((a, b) => a.layer - b.layer)
-            .map((t) => {
+          {renderTokens.map((t) => {
               const card = t.card_id ? (cardMap.get(t.card_id) ?? null) : null;
               const cardType = card ? (typeMap.get(card.type_id) ?? null) : null;
               return (
@@ -208,11 +239,99 @@ export function BoardCanvas({
                   enterFrom={enterFrom?.get(t.id) ?? null}
                   onPointerDown={onTokenPointerDown}
                   onDoubleClick={onTokenDoubleClick}
+                  onContextMenu={onTokenContextMenu}
                 />
               );
             })}
+
+          {/* 框选矩形：与 token 同坐标系（board-bg 内，已缩放） */}
+          {marquee && (marquee.x1 !== marquee.x2 || marquee.y1 !== marquee.y2) && (
+            <div
+              style={{
+                position: "absolute",
+                left: Math.min(marquee.x1, marquee.x2),
+                top: Math.min(marquee.y1, marquee.y2),
+                width: Math.abs(marquee.x2 - marquee.x1),
+                height: Math.abs(marquee.y2 - marquee.y1),
+                border: "1px solid var(--accent-gold)",
+                background: "color-mix(in srgb, var(--accent-gold) 12%, transparent)",
+                pointerEvents: "none",
+                zIndex: 5,
+              }}
+            />
+          )}
+
+          {/* 测量线 + 距离标注 */}
+          {measureLine && (
+            <svg
+              style={{
+                position: "absolute",
+                inset: 0,
+                width: board.width,
+                height: board.height,
+                pointerEvents: "none",
+                zIndex: 6,
+                overflow: "visible",
+              }}
+            >
+              <line
+                x1={measureLine.x1}
+                y1={measureLine.y1}
+                x2={measureLine.x2}
+                y2={measureLine.y2}
+                stroke="var(--accent-ember)"
+                strokeWidth={1.5}
+              />
+              <circle cx={measureLine.x1} cy={measureLine.y1} r={3} fill="var(--accent-ember)" />
+              <circle cx={measureLine.x2} cy={measureLine.y2} r={3} fill="var(--accent-ember)" />
+              <MeasureLabel
+                line={measureLine}
+                gridSize={grid.size > 0 ? grid.size : 50}
+              />
+            </svg>
+          )}
         </div>
       </div>
     </div>
+  );
+}
+
+function MeasureLabel({
+  line,
+  gridSize,
+}: {
+  line: { x1: number; y1: number; x2: number; y2: number };
+  gridSize: number;
+}) {
+  const dx = line.x2 - line.x1;
+  const dy = line.y2 - line.y1;
+  const px = Math.sqrt(dx * dx + dy * dy);
+  const cells = px / gridSize;
+  const mx = (line.x1 + line.x2) / 2;
+  const my = (line.y1 + line.y2) / 2;
+  const label = `${cells.toFixed(1)} 格 · ${Math.round(px)} px`;
+  return (
+    <g>
+      <rect
+        x={mx - label.length * 3.6 - 4}
+        y={my - 18}
+        width={label.length * 7.2 + 8}
+        height={16}
+        rx={3}
+        fill="var(--bg-panel)"
+        stroke="var(--accent-ember)"
+        strokeWidth={0.5}
+      />
+      <text
+        x={mx}
+        y={my - 6}
+        textAnchor="middle"
+        fontSize={11}
+        fill="var(--fg-primary)"
+        fontFamily="var(--font-mono)"
+      >
+        {label}
+      </text>
+    </g>
   );
 }

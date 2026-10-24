@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { clamp } from "../../lib/math";
 import {
   getAppSettings,
   setAppSettings,
@@ -26,7 +27,7 @@ export function AppEditorPanel() {
           value={draft.autoSaveDelayMs}
           onChange={(e) => {
             const n = Number(e.target.value) || 800;
-            update({ autoSaveDelayMs: Math.max(100, Math.min(10000, n)) });
+            update({ autoSaveDelayMs: clamp(n, 100, 10000) });
           }}
         />
       </Field>
@@ -41,7 +42,7 @@ export function AppEditorPanel() {
           value={draft.recentProjectsMax}
           onChange={(e) => {
             const n = Number(e.target.value) || 10;
-            update({ recentProjectsMax: Math.max(3, Math.min(50, n)) });
+            update({ recentProjectsMax: clamp(n, 3, 50) });
           }}
         />
       </Field>

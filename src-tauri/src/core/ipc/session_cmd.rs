@@ -38,7 +38,6 @@ pub fn append_event(
     kind: String,
     payload: serde_json::Value,
     note: Option<String>,
-    visibility: Option<String>,
 ) -> Result<Event, String> {
     let guard = state.project.lock().unwrap();
     let p = guard.as_ref().ok_or("no project open")?;
@@ -48,17 +47,8 @@ pub fn append_event(
         kind,
         payload,
         note,
-        visibility,
-        revealed: false,
     };
     p.append_event(&session_id, ev).map_err(|e| e.to_string())
-}
-
-#[tauri::command]
-pub fn reveal_event(state: State<AppState>, session_id: String, seq: u64) -> Result<Event, String> {
-    let guard = state.project.lock().unwrap();
-    let p = guard.as_ref().ok_or("no project open")?;
-    p.reveal_event(&session_id, seq).map_err(|e| e.to_string())
 }
 
 #[tauri::command]

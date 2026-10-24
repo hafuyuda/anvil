@@ -24,6 +24,7 @@ export function FieldRow({
   const needsOptions =
     field.ty.kind === "enum" || field.ty.kind === "multi_enum";
   const needsTargets = field.ty.kind === "ref";
+  const isLongText = field.ty.kind === "rich_text";
 
   return (
     <div
@@ -131,6 +132,19 @@ export function FieldRow({
             ×
           </button>
         </div>
+
+        {isLongText && (
+          <div
+            style={{
+              fontSize: 11,
+              color: "var(--fg-muted)",
+              lineHeight: 1.5,
+            }}
+          >
+            长文建议放到卡片的「文档」tab（CodeMirror + Markdown 预览）；
+            字段适合存放模块要读取的结构化文本。
+          </div>
+        )}
 
         {needsOptions && (
           <OptionsEditor

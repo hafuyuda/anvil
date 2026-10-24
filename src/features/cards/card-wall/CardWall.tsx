@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState } from "react";
-import { ipc, type Card, type CardType } from "../../../core/ipc";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ipc, type Card, type CardType, type Token } from "../../../core/ipc";
 import { useOpenProject } from "../../../core/actions/useOpenProject";
 import { useProjectStore } from "../../../stores/projectStore";
 import { useDeleteUndo } from "../../../hooks/useDeleteUndo";
@@ -13,6 +13,7 @@ import { CardListView } from "./CardListView";
 import { useCardWallFilters } from "./useCardWallFilters";
 import { useCardWallFlip } from "./useCardWallFlip";
 import { AddToGroupDialog } from "../../card-groups/AddToGroupDialog";
+import { isModified } from "../../../lib/keyboard";
 import { toast } from "../../../lib/toast";
 import { confirmRefAwareDelete } from "../../../lib/refAwareDelete";
 import { reloadIntoStore } from "../../../core/actions/reloadIntoStore";
@@ -22,6 +23,8 @@ import {
 } from "../../../core/actions/entityUndo";
 import { runWithError } from "../../../lib/runWithError";
 import { PickerDialog } from "../../../components/overlay/PickerDialog";
+import { useContextMenu, type MenuEntry } from "../../../components/ui/ContextMenu";
+import { gridPosition } from "../../board/tokenPlacement";
 
 /**
  * 首屏渲染多少张。再多就只渲染前面这些，下面挂「加载更多」。
@@ -91,6 +94,17 @@ export function CardWall() {
   const reducedMotion = useReducedMotion();
   useCardWallFlip(scrollRef, filterKey, !reducedMotion);
 
+  // ── 离开卡牌墙即清空选中态 ──
+  // 选中态存在模块级 Zustand 单例里，不会随组件卸载自动消失。
+  // 切到其它模块时 CardWall 会被 <div key={activeModule}> 卸载，这里在
+  // 卸载时清掉单选 + 多选，避免绕一圈回来还残留着旧高亮/批量选区，
+  // 也顺手收起跟随它的检查器（检查器读的是 selectedCardId）。
+  useEffect(() => {
+    return () => {
+      clearCardSelection();
+    };
+  }, [clearCardSelection]);
+
   // ── 新建卡牌 ──
 
   async function handleAddCard() {
@@ -122,10 +136,9 @@ export function CardWall() {
     }, "保存失败");
   }
 
-  // ── 批量删除 ──
+  // ── 删除（单张或批量，复用同一套引用感知确认 + 撤销）──
 
-  async function handleBulkDelete() {
-    const ids = selectedCardIds ?? [];
+  async function deleteCards(ids: string[]) {
     if (ids.length === 0) return;
 
     const cardsToDelete = (cards ?? []).filter((c) => ids.includes(c.id));
@@ -162,10 +175,14 @@ export function CardWall() {
     );
   }
 
+  function handleBulkDelete() {
+    void deleteCards(selectedCardIds ?? []);
+  }
+
   // ── 卡片点击（含多选修饰）──
 
   function handleCardClick(card: Card, e: React.MouseEvent) {
-    if (e.ctrlKey || e.metaKey) {
+    if (isModified(e)) {
       toggleCardSelection(card.id);
       return;
     }
@@ -181,6 +198,78 @@ export function CardWall() {
       }
     }
     selectCard(card.id);
+  }
+
+  // ── 右键菜单 ──
+  const ctx = useContextMenu();
+
+  async function duplicateCard(card: Card) {
+    const copy: Card = {
+      ...card,
+      id: newId(),
+      name: card.name + " 副本",
+      created_at: nowMs(),
+      updated_at: nowMs(),
+    };
+    await runWithError(async () => {
+      await ipc.saveCard(copy);
+      addCard(copy);
+      selectCard(copy.id);
+    }, "复制失败");
+  }
+
+  async function addToCurrentBoard(cardId: string) {
+    const st = useProjectStore.getState();
+    const board = st.boards.find((b) => b.id === st.currentBoardId);
+    if (!board) {
+      toast.info("先在左侧切换到棋盘模块并打开一个棋盘");
+      return;
+    }
+    const tokens = board.tokens ?? [];
+    const pos = gridPosition(tokens.length);
+    const maxLayer = tokens.reduce((m, x) => Math.max(m, x.layer), -1);
+    const newToken: Token = {
+      id: newId(),
+      card_id: cardId,
+      name_override: null,
+      value_overrides: {},
+      x: pos.x,
+      y: pos.y,
+      w: 140,
+      h: 205,
+      rotation: 0,
+      layer: maxLayer + 1,
+      visible: true,
+      face_down: false,
+      pile: null,
+    };
+    const next = { ...board, tokens: [...tokens, newToken] };
+    await runWithError(async () => {
+      await ipc.upsertBoard(next);
+      st.upsertBoard(next);
+    }, "加入棋盘失败");
+    toast.success("已加入当前棋盘");
+  }
+
+  function handleCardContextMenu(card: Card, e: React.MouseEvent) {
+    const current = useProjectStore.getState().selectedCardIds ?? [];
+    const isInMulti = current.length > 1 && current.includes(card.id);
+    if (!current.includes(card.id)) setCardSelection([card.id]);
+    const targetIds = isInMulti ? current : [card.id];
+    const n = targetIds.length;
+
+    const items: MenuEntry[] = [
+      { label: n > 1 ? `加入卡组（${n} 张）` : "加入卡组", onClick: () => setAddToGroupOpen(true) },
+      { label: "复制卡牌", onClick: () => void duplicateCard(card) },
+      { label: "加入当前棋盘", onClick: () => void addToCurrentBoard(card.id) },
+      { type: "divider" },
+      {
+        label: n > 1 ? `删除（${n} 张）` : "删除",
+        danger: true,
+        onClick: () => void deleteCards(targetIds),
+      },
+    ];
+    ctx.open(e, items);
   }
 
   const selectionCount = (selectedCardIds ?? []).length;
@@ -278,6 +367,7 @@ export function CardWall() {
             cardTypes={cardTypes}
             selectedCardIds={selectedCardIds}
             onCardClick={handleCardClick}
+            onCardContextMenu={handleCardContextMenu}
           />
         ) : (
           <CardListView
@@ -285,6 +375,7 @@ export function CardWall() {
             typeName={(id) => typeMap.get(id)?.name ?? id.slice(0, 8)}
             selectedCardIds={selectedCardIds}
             onCardClick={handleCardClick}
+            onCardContextMenu={handleCardContextMenu}
           />
         )}
 
@@ -326,6 +417,8 @@ export function CardWall() {
           }}
         />
       )}
+
+      {ctx.node}
     </div>
   );
 }

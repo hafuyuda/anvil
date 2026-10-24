@@ -1,5 +1,11 @@
-import { useMemo, useState } from "react";
-import { ipc, type Card, type CardGroup, type CardType } from "../../core/ipc";
+import { useEffect, useMemo, useState } from "react";
+import {
+  ipc,
+  type Card,
+  type CardGroup,
+  type CardType,
+  type RefHit,
+} from "../../core/ipc";
 import { useProjectStore } from "../../stores/projectStore";
 import { useDraft } from "../../hooks/useDraft";
 import { nowMs } from "../../lib/time";
@@ -20,6 +26,8 @@ export function CardGroupEditor({ group }: Props) {
   const cards = useProjectStore((s) => s.cards) ?? [];
   const cardTypes = useProjectStore((s) => s.cardTypes) ?? [];
   const upsertCardGroup = useProjectStore((s) => s.upsertCardGroup);
+  const setActiveModule = useProjectStore((s) => s.setActiveModule);
+  const setCurrentBoard = useProjectStore((s) => s.setCurrentBoard);
   const view = useProjectStore((s) => s.cardGroupView);
   const setView = useProjectStore((s) => s.setCardGroupView);
 
@@ -129,6 +137,48 @@ export function CardGroupEditor({ group }: Props) {
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [cards, pickQuery, typeById]);
 
+  // ── 被谁引用 ──
+  // 删除确认对话框里本来就列得出（scan_card_group_refs），但那是删之前
+  // 才看。§4.9 说「核心不保护自己的被引用状态」，另一半是让人在编辑时
+  // 就知道它正活着被用——尤其卡组是被棋盘卡盒和会话队伍引用的。
+  const [refHits, setRefHits] = useState<RefHit[] | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    ipc
+      .scanCardGroupRefs(group.id)
+      .then((hits) => {
+        if (!cancelled) setRefHits(hits);
+      })
+      .catch(() => {
+        if (!cancelled) setRefHits([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [group.id]);
+
+  // 同一块棋盘上可能有好几个卡盒用它——按宿主合并，别刷一排同名 chip
+  const pileBoards = useMemo(() => {
+    const m = new Map<string, { name: string; count: number }>();
+    for (const h of refHits ?? []) {
+      if (h.kind !== "board_pile") continue;
+      const cur = m.get(h.owner_id);
+      m.set(h.owner_id, {
+        name: h.owner_name,
+        count: (cur?.count ?? 0) + 1,
+      });
+    }
+    return [...m.entries()];
+  }, [refHits]);
+
+  const partySessions = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const h of refHits ?? []) {
+      if (h.kind === "session_party") m.set(h.owner_id, h.owner_name);
+    }
+    return [...m.entries()];
+  }, [refHits]);
+
   return (
     <div
       style={{
@@ -166,6 +216,45 @@ export function CardGroupEditor({ group }: Props) {
           style={{ minHeight: 60 }}
         />
       </div>
+
+      {/* 被谁引用：棋盘卡盒可跳转，会话是纯展示（store 无会话选择态） */}
+      {(pileBoards.length > 0 || partySessions.length > 0) && (
+        <div>
+          <Label>被 {pileBoards.length + partySessions.length} 处使用</Label>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {pileBoards.map(([id, { name, count }]) => (
+              <button
+                key={`board:${id}`}
+                className="btn btn-ghost"
+                title={`跳转到棋盘「${name}」${count > 1 ? `（${count} 个卡盒）` : ""}`}
+                onClick={() => {
+                  setActiveModule("board");
+                  setCurrentBoard(id);
+                }}
+                style={{ fontSize: 11, padding: "2px 8px" }}
+              >
+                ▦ {name}
+                {count > 1 && ` · ${count} 个卡盒`}
+              </button>
+            ))}
+            {partySessions.map(([id, name]) => (
+              <span
+                key={`session:${id}`}
+                title={`会话「${name}」用它当队伍`}
+                style={{
+                  fontSize: 11,
+                  padding: "2px 8px",
+                  color: "var(--fg-secondary)",
+                  border: "1px solid var(--border-subtle)",
+                  borderRadius: "var(--radius-md)",
+                }}
+              >
+                ✦ {name} · 队伍
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* 卡列表 */}
       <div>

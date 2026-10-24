@@ -4,9 +4,11 @@ const def: GridShapeDef = {
   id: "square",
   label: "方格",
   order: 10,
-  render: ({ size: step, width, height }) => {
+  render: ({ size: step, width, height, offsetX, offsetY }) => {
+    const ox = ((offsetX % step) + step) % step;
+    const oy = ((offsetY % step) + step) % step;
     const elements: React.ReactNode[] = [];
-    for (let x = 0; x <= width; x += step) {
+    for (let x = ox; x <= width; x += step) {
       elements.push(
         <line
           key={`vx${x}`}
@@ -19,7 +21,7 @@ const def: GridShapeDef = {
         />,
       );
     }
-    for (let y = 0; y <= height; y += step) {
+    for (let y = oy; y <= height; y += step) {
       elements.push(
         <line
           key={`hy${y}`}

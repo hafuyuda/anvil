@@ -19,6 +19,11 @@ interface Args {
   board: Board;
   upsertBoard: (b: Board) => void;
   pushUndo: (entry: UndoEntry) => void;
+  /**
+   * 记牌谱。由 BoardEditor 传入（那里持有 useBoardEvents 的本地列表）。
+   * 不传则只改棋盘、不记历史。
+   */
+  logEvent?: (kind: string, payload: unknown) => Promise<void>;
 }
 
 /**
@@ -67,9 +72,15 @@ function nextLayerBase(tokens: Token[]): number {
  * 卡盒抽牌 / 洗牌 / 重置由 BoardEditor 直接调用 usePileActions
  * （那里带了 bounds，用于抽牌时的边界判断），本 hook 不重复创建。
  */
-export function useBoardActions({ board, upsertBoard, pushUndo }: Args) {
+export function useBoardActions({ board, upsertBoard, pushUndo, logEvent }: Args) {
   const cards = useProjectStore((s) => s.cards) ?? [];
   const deleteWithUndo = useDeleteUndo();
+
+  /** 卡牌显示名。card_id 为空（占位 / 卡盒）时退回传入的默认值。 */
+  function nameOf(cardId: string | null | undefined, fallback = "未命名") {
+    if (!cardId) return fallback;
+    return cards.find((c) => c.id === cardId)?.name ?? fallback;
+  }
 
   async function persist(b: Board) {
     await ipc.upsertBoard(b);
@@ -155,6 +166,20 @@ export function useBoardActions({ board, upsertBoard, pushUndo }: Args) {
       await ipc.upsertBoard(next);
       upsertBoard(next);
     }, "添加失败");
+
+    if (logEvent) {
+      const names = cardIds.map((id) => nameOf(id, "未知卡牌"));
+      void logEvent("board.place", {
+        token_ids: newTokens.map((t) => t.id),
+        card_ids: cardIds,
+        count: cardIds.length,
+        source: "cards",
+        summary:
+          cardIds.length === 1
+            ? `落子「${names[0]}」`
+            : `落子 ${cardIds.length} 张卡牌`,
+      });
+    }
   }
 
   async function addCardToBoard(cardId: string) {
@@ -188,6 +213,15 @@ export function useBoardActions({ board, upsertBoard, pushUndo }: Args) {
     };
     await ipc.upsertBoard(next);
     upsertBoard(next);
+
+    if (logEvent) {
+      void logEvent("board.place", {
+        token_ids: [newToken.id],
+        count: 1,
+        source: "placeholder",
+        summary: "添加占位 Token",
+      });
+    }
   }
 
   async function importFromGroup(group: CardGroup, shuffleOn: boolean) {
@@ -239,6 +273,19 @@ export function useBoardActions({ board, upsertBoard, pushUndo }: Args) {
       await ipc.upsertBoard(next);
       upsertBoard(next);
     }, "导入失败");
+
+    if (logEvent) {
+      void logEvent("board.place", {
+        token_ids: newTokens.map((t) => t.id),
+        card_ids: ordered,
+        count: ordered.length,
+        source: "group",
+        group_id: group.id,
+        summary: `从卡组「${group.name}」导入 ${ordered.length} 张${
+          shuffleOn ? "（洗过）" : ""
+        }`,
+      });
+    }
   }
 
   async function addPile(group: CardGroup) {
@@ -291,6 +338,16 @@ export function useBoardActions({ board, upsertBoard, pushUndo }: Args) {
       await ipc.upsertBoard(next);
       upsertBoard(next);
     }, "创建卡盒失败");
+
+    if (logEvent) {
+      void logEvent("board.place", {
+        token_ids: [pileToken.id],
+        count: 1,
+        source: "pile",
+        group_id: group.id,
+        summary: `创建卡盒「${group.name}」（${valid.length} 张）`,
+      });
+    }
   }
 
   async function deleteSelectedTokens(ids: string[]) {
@@ -318,6 +375,22 @@ export function useBoardActions({ board, upsertBoard, pushUndo }: Args) {
         await persist(cur ? mergeEntity(after, before, cur) : after);
       },
     });
+
+    if (logEvent) {
+      const names = (before.tokens ?? [])
+        .filter((t) => ids.includes(t.id))
+        .map((t) =>
+          t.pile
+            ? `${t.name_override ?? "卡盒"}`
+            : (t.name_override ?? nameOf(t.card_id, "占位")),
+        );
+      void logEvent("board.delete", {
+        token_ids: ids,
+        count: ids.length,
+        summary:
+          ids.length === 1 ? `删除「${names[0]}」` : `删除 ${ids.length} 个 Token`,
+      });
+    }
   }
 
   return {

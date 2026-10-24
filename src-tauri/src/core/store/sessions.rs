@@ -1,5 +1,5 @@
 use super::project::Project;
-use crate::core::model::session::{Event, Session, VIS_PUBLIC};
+use crate::core::model::session::{Event, Session};
 use crate::core::store::atomic::write_atomic;
 use std::io::Write;
 use std::path::PathBuf;
@@ -174,54 +174,6 @@ impl Project {
         Ok(event)
     }
 
-    /// 揭示一条秘密事件。返回流尾追加的那条公开副本。
-    ///
-    /// 本体保持 secret 且打上 revealed 标记（KP 视角知道它何时发生过），
-    /// 另外在流尾追加一条 public 的 `chat.reveal` 副本 —— 玩家视角只看到副本。
-    /// 这样历史只追加不改写，回放时间线才是准确的。
-    pub fn reveal_event(&self, session_id: &str, seq: u64) -> anyhow::Result<Event> {
-        let mut events = self.load_events(session_id)?;
-
-        let mut snapshot: Option<serde_json::Value> = None;
-        let mut origin_at: Option<i64> = None;
-
-        for ev in events.iter_mut() {
-            if ev.seq != seq {
-                continue;
-            }
-            if !ev.is_secret() {
-                return Err(anyhow::anyhow!("event {seq} is not secret"));
-            }
-            ev.revealed = true;
-            origin_at = Some(ev.at);
-            // 副本里带上原始种类与序号，玩家看到的就是一条正常消息
-            let mut copy = ev.payload.clone();
-            if let Some(obj) = copy.as_object_mut() {
-                obj.insert("revealed_kind".into(), serde_json::json!(ev.kind));
-                obj.insert("revealed_seq".into(), serde_json::json!(seq));
-                obj.insert("revealed_at".into(), serde_json::json!(ev.at));
-            }
-            snapshot = Some(copy);
-            break;
-        }
-
-        let payload = snapshot.ok_or_else(|| anyhow::anyhow!("event seq {seq} not found"))?;
-
-        self.save_events(session_id, &events)?;
-
-        let marker = Event {
-            seq: 0,
-            at: origin_at.unwrap_or(0),
-            kind: "chat.reveal".into(),
-            payload,
-            note: None,
-            visibility: Some(VIS_PUBLIC.into()),
-            revealed: false,
-        };
-        let appended = self.append_event(session_id, marker)?;
-        Ok(appended)
-    }
-
     pub fn update_event(
         &self,
         session_id: &str,
@@ -278,7 +230,6 @@ impl Project {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::model::session::VIS_SECRET;
     use std::collections::BTreeMap;
 
     fn temp_project() -> (Project, std::path::PathBuf) {
@@ -288,132 +239,14 @@ mod tests {
         (project, dir)
     }
 
-    fn secret_event(at: i64, content: &str) -> Event {
-        Event {
-            seq: 0,
-            at,
-            kind: "chat.say".into(),
-            payload: serde_json::json!({ "author_name": "KP", "content": content }),
-            note: None,
-            visibility: Some(VIS_SECRET.into()),
-            revealed: false,
-        }
-    }
-
     #[test]
-    fn reveal_keeps_original_secret_and_appends_public_copy() {
-        let (project, dir) = temp_project();
-        project.append_event("s1", secret_event(100, "密谋")).unwrap();
-        let seq = project.load_events("s1").unwrap()[0].seq;
-
-        project.reveal_event("s1", seq).unwrap();
-
-        let after = project.load_events("s1").unwrap();
-        assert_eq!(after.len(), 2, "揭示应追加一条公开副本，而不是改写原事件");
-
-        let original = &after[0];
-        assert!(
-            original.is_secret(),
-            "本体必须仍是秘密，否则玩家视图会同时看到原文和副本两条"
-        );
-        assert!(original.revealed, "本体应标记已揭示");
-
-        let copy = &after[1];
-        assert_eq!(copy.kind, "chat.reveal");
-        assert!(!copy.is_secret(), "副本必须公开");
-        assert_eq!(copy.payload["content"], "密谋");
-        assert_eq!(copy.payload["revealed_seq"], seq);
-        assert_eq!(copy.at, 100, "副本沿用原始时间戳，回放时时间线才对");
-
-        let _ = std::fs::remove_dir_all(&dir);
-    }
-
-    #[test]
-    fn reveal_rejects_public_and_missing_events() {
-        let (project, dir) = temp_project();
-        project
-            .append_event(
-                "s1",
-                Event {
-                    seq: 0,
-                    at: 1,
-                    kind: "chat.say".into(),
-                    payload: serde_json::json!({ "content": "公开的话" }),
-                    note: None,
-                    visibility: Some(VIS_PUBLIC.into()),
-                    revealed: false,
-                },
-            )
-            .unwrap();
-        let seq = project.load_events("s1").unwrap()[0].seq;
-
-        assert!(
-            project.reveal_event("s1", seq).is_err(),
-            "公开事件不该能被揭示"
-        );
-        assert!(
-            project.reveal_event("s1", 9999).is_err(),
-            "不存在的事件应报错"
-        );
-
-        let _ = std::fs::remove_dir_all(&dir);
-    }
-
-    #[test]
-    fn legacy_event_without_visibility_is_public() {
-        let (project, dir) = temp_project();
-        let dir_path = project.session_dir("s1");
-        std::fs::create_dir_all(&dir_path).unwrap();
-        std::fs::write(
-            dir_path.join("events.jsonl"),
-            "{\"seq\":1,\"at\":1,\"kind\":\"chat.say\",\"payload\":{\"content\":\"旧消息\"}}\n",
-        )
-        .unwrap();
-
-        let events = project.load_events("s1").unwrap();
-        assert_eq!(events.len(), 1, "旧格式事件必须仍能读进来");
-        assert!(
-            !events[0].is_secret(),
-            "旧数据没有 visibility 字段，应视为公开 —— 这是向后兼容的关键"
-        );
-        assert!(!events[0].revealed);
-
-        let _ = std::fs::remove_dir_all(&dir);
-    }
-
-    #[test]
-    fn session_tracker_and_rule_set_roundtrip() {
-        use crate::core::model::session::{InitiativeEntry, InitiativeTracker};
-
+    fn session_group_ref_roundtrip() {
         let (project, dir) = temp_project();
         let session = Session {
             id: "s1".into(),
             name: "矮人矿镇".into(),
-            board_id: None,
+            group_id: Some("g1".into()),
             state: BTreeMap::new(),
-            rule_set: Some("coc7".into()),
-            tracker: Some(InitiativeTracker {
-                round: 3,
-                turn_index: 1,
-                active: true,
-                entries: vec![
-                    InitiativeEntry {
-                        token_id: Some("t1".into()),
-                        card_id: Some("c1".into()),
-                        name: "索林".into(),
-                        value: 18,
-                        is_pc: true,
-                    },
-                    InitiativeEntry {
-                        token_id: Some("t2".into()),
-                        card_id: None,
-                        name: "哥布林".into(),
-                        value: 9,
-                        is_pc: false,
-                    },
-                ],
-            }),
-            tokens: Vec::new(),
             created_at: 0,
             updated_at: 0,
         };
@@ -425,20 +258,16 @@ mod tests {
             .into_iter()
             .find(|s| s.id == "s1")
             .expect("会话应能读回");
-        assert_eq!(loaded.rule_set.as_deref(), Some("coc7"));
-        let tracker = loaded.tracker.expect("先攻追踪应能读回");
-        assert_eq!(tracker.round, 3);
-        assert_eq!(tracker.turn_index, 1);
-        assert!(tracker.active);
-        assert_eq!(tracker.entries.len(), 2);
-        assert!(tracker.entries[0].is_pc);
-        assert!(!tracker.entries[1].is_pc);
+        assert_eq!(loaded.group_id.as_deref(), Some("g1"), "队伍卡组引用应能读回");
 
         let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
     fn legacy_session_without_new_fields_still_loads() {
+        // 夹具里刻意保留已删除的 `tracker` / `tokens` / `board_id` 字段：
+        // 验证移除这些字段后旧数据仍能打开（模型未开 deny_unknown_fields，
+        // 未知字段被忽略）。
         let (project, dir) = temp_project();
         let dir_path = project.session_dir("s1");
         std::fs::create_dir_all(&dir_path).unwrap();
@@ -448,7 +277,9 @@ mod tests {
                 "id": "s1",
                 "name": "旧会话",
                 "state": {},
+                "board_id": "b1",
                 "tokens": [],
+                "tracker": { "round": 2, "turn_index": 0, "active": true, "entries": [] },
                 "created_at": 0,
                 "updated_at": 0
             }))
@@ -462,8 +293,8 @@ mod tests {
             .into_iter()
             .find(|s| s.id == "s1")
             .expect("旧会话必须仍能打开");
-        assert!(loaded.rule_set.is_none());
-        assert!(loaded.tracker.is_none(), "旧会话没有先攻追踪");
+        assert_eq!(loaded.name, "旧会话");
+        assert!(loaded.group_id.is_none(), "旧会话没有队伍卡组引用");
 
         let _ = std::fs::remove_dir_all(&dir);
     }
@@ -475,8 +306,6 @@ mod tests {
             kind: "chat.say".into(),
             payload: serde_json::json!({ "author_name": "KP", "content": content }),
             note: None,
-            visibility: None,
-            revealed: false,
         }
     }
 
@@ -510,21 +339,6 @@ mod tests {
         let ev = project.append_event("s1", chat(3, "三")).unwrap();
         assert_eq!(ev.seq, 2, "尾行 seq 是 1，下一条必须是 2");
         assert_eq!(project.load_events("s1").unwrap().len(), 3);
-
-        let _ = std::fs::remove_dir_all(&dir);
-    }
-
-    #[test]
-    fn append_after_reveal_gets_max_plus_one() {
-        let (project, dir) = temp_project();
-        // 揭示会整表重写再追加，是最容易让 seq 算错的一条路径
-        project.append_event("s1", secret_event(100, "密谋")).unwrap();
-        let seq = project.load_events("s1").unwrap()[0].seq;
-        let copy = project.reveal_event("s1", seq).unwrap();
-
-        assert_eq!(copy.seq, seq + 1);
-        let next = project.append_event("s1", chat(200, "之后")).unwrap();
-        assert_eq!(next.seq, seq + 2);
 
         let _ = std::fs::remove_dir_all(&dir);
     }

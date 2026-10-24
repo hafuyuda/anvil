@@ -11,7 +11,14 @@ import type {
 } from "../../core/ipc";
 
 export type ModuleKey =
-  "world" | "story" | "board" | "cardGroups" | "session" | "player" | "types";
+  | "world"
+  | "docs"
+  | "story"
+  | "board"
+  | "cardGroups"
+  | "session"
+  | "player"
+  | "types";
 
 export type CardWallView = "card" | "list";
 
@@ -105,7 +112,6 @@ export interface ProjectState {
   selectedEdgeId: string | null;
   selectedCardTypeId: string | null;
   currentBoardId: string | null;
-  currentSessionId: string | null;
   activeModule: ModuleKey;
   cardWallView: CardWallView;
   cardGroupView: string;
@@ -121,9 +127,9 @@ export interface ProjectState {
   selectCard: (id: string | null) => void;
   selectToken: (id: string | null) => void;
   selectEdge: (id: string | null) => void;
+  clearEdgeSelection: () => void;
   selectCardType: (id: string | null) => void;
   setCurrentBoard: (id: string | null) => void;
-  setCurrentSession: (id: string | null) => void;
   setActiveModule: (m: ModuleKey) => void;
   setCardWallView: (v: CardWallView) => void;
   setCardGroupView: (v: string) => void;

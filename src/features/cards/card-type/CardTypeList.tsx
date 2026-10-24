@@ -112,7 +112,7 @@ function CardTypeSection() {
       allowed_relation_kinds: [],
       views: [],
       card_frame:
-        defaultStyle === "yugioh"
+        defaultStyle === "anvil"
           ? null
           : { style: defaultStyle, bindings: {}, foil_values: [] },
       created_at: now,

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { clamp } from "../../../lib/math";
 import type { CropRect } from "../../../core/ipc";
 import { useAssetUrl } from "../../../hooks/useAssetUrl";
 
@@ -90,24 +91,24 @@ export function CropEditor({ value, onChange, imagePath }: Props) {
 
       const m = d.mode;
       if (m === "move") {
-        x = Math.max(0, Math.min(1 - s.w, s.x + dx));
-        y = Math.max(0, Math.min(1 - s.h, s.y + dy));
+        x = clamp(s.x + dx, 0, 1 - s.w);
+        y = clamp(s.y + dy, 0, 1 - s.h);
       } else {
         if (m === "left" || m === "tl" || m === "bl") {
-          const nx = Math.max(0, Math.min(s.x + s.w - MIN_SIZE, s.x + dx));
+          const nx = clamp(s.x + dx, 0, s.x + s.w - MIN_SIZE);
           x = nx;
           w = s.x + s.w - nx;
         }
         if (m === "right" || m === "tr" || m === "br") {
-          w = Math.max(MIN_SIZE, Math.min(1 - s.x, s.w + dx));
+          w = clamp(s.w + dx, MIN_SIZE, 1 - s.x);
         }
         if (m === "top" || m === "tl" || m === "tr") {
-          const ny = Math.max(0, Math.min(s.y + s.h - MIN_SIZE, s.y + dy));
+          const ny = clamp(s.y + dy, 0, s.y + s.h - MIN_SIZE);
           y = ny;
           h = s.y + s.h - ny;
         }
         if (m === "bottom" || m === "bl" || m === "br") {
-          h = Math.max(MIN_SIZE, Math.min(1 - s.y, s.h + dy));
+          h = clamp(s.h + dy, MIN_SIZE, 1 - s.y);
         }
       }
       setLocal({ x, y, w, h });

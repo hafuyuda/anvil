@@ -24,14 +24,8 @@ pub enum RefKind {
     BoardToken,
     /// 棋盘上的卡盒（牌堆里有它）
     BoardPile,
-    /// 会话里的棋子
-    SessionToken,
-    /// 会话里的卡盒
-    SessionPile,
-    /// 会话先攻序列里的条目
-    SessionInit,
-    /// 会话绑定的棋盘
-    SessionBoard,
+    /// 会话拿它当队伍
+    SessionParty,
     /// 关系边（指向它或被它指向）
     Relation,
     /// 卡组成员
@@ -247,56 +241,6 @@ impl Project {
             }
         }
 
-        for s in self.load_sessions()? {
-            for t in &s.tokens {
-                if let Some(p) = &t.pile {
-                    let mut seen: Vec<&String> = Vec::new();
-                    for cid in p.remaining.iter().chain(p.initial.iter()) {
-                        if ids.contains(cid) && !seen.contains(&cid) {
-                            seen.push(cid);
-                            push_hit(
-                                &mut map,
-                                cid,
-                                RefHit::new(
-                                    RefKind::SessionPile,
-                                    &s.id,
-                                    &s.name,
-                                    format!("会话「{}」的卡盒「{}」里有它", s.name, p.label),
-                                ),
-                            );
-                        }
-                    }
-                } else if let Some(cid) = t.card_id.as_deref().filter(|c| ids.contains(*c)) {
-                    push_hit(
-                        &mut map,
-                        cid,
-                        RefHit::new(
-                            RefKind::SessionToken,
-                            &s.id,
-                            &s.name,
-                            format!("会话「{}」里有它的棋子", s.name),
-                        ),
-                    );
-                }
-            }
-            if let Some(tr) = &s.tracker {
-                for e in &tr.entries {
-                    if let Some(cid) = e.card_id.as_deref().filter(|c| ids.contains(*c)) {
-                        push_hit(
-                            &mut map,
-                            cid,
-                            RefHit::new(
-                                RefKind::SessionInit,
-                                &s.id,
-                                &s.name,
-                                format!("会话「{}」的先攻序列里有它", s.name),
-                            ),
-                        );
-                    }
-                }
-            }
-        }
-
         for r in self.list_all_relations()? {
             if ids.contains(&r.from) {
                 push_hit(
@@ -344,20 +288,10 @@ impl Project {
         Ok(map)
     }
 
-    /// 谁在引用这个棋盘（会话把它当战场）。
-    pub fn scan_board_refs(&self, board_id: &str) -> anyhow::Result<Vec<RefHit>> {
-        let mut hits = Vec::new();
-        for s in self.load_sessions()? {
-            if s.board_id.as_deref() == Some(board_id) {
-                hits.push(RefHit::new(
-                    RefKind::SessionBoard,
-                    &s.id,
-                    &s.name,
-                    format!("会话「{}」用它作战场", s.name),
-                ));
-            }
-        }
-        Ok(hits)
+    /// 谁在引用这个棋盘。会话不再绑定棋盘，因此没有引用者 ——
+    /// 保留这个空实现是为了让删除棋盘的调用方不必特判。
+    pub fn scan_board_refs(&self, _board_id: &str) -> anyhow::Result<Vec<RefHit>> {
+        Ok(Vec::new())
     }
 
     /// 谁在引用这个卡组（棋盘/会话上用它做的卡盒）。
@@ -377,15 +311,13 @@ impl Project {
             }
         }
         for s in self.load_sessions()? {
-            for t in &s.tokens {
-                if t.pile.as_ref().map(|p| p.group_id.as_str()) == Some(group_id) {
-                    hits.push(RefHit::new(
-                        RefKind::SessionPile,
-                        &s.id,
-                        &s.name,
-                        format!("会话「{}」上有用它做的卡盒", s.name),
-                    ));
-                }
+            if s.group_id.as_deref() == Some(group_id) {
+                hits.push(RefHit::new(
+                    RefKind::SessionParty,
+                    &s.id,
+                    &s.name,
+                    format!("会话「{}」用它当队伍", s.name),
+                ));
             }
         }
 
@@ -431,30 +363,8 @@ impl Project {
             }
         }
 
-        for mut s in self.load_sessions()? {
-            let mut c = strip_tokens(&mut s.tokens, card_id, card_name, mode);
-            // 先攻条目：卡没了，条目也该没。Remove 与 Detach 都移除——
-            // 先攻条目没有「占位」形态，留着只会指向空。
-            if let Some(tr) = s.tracker.as_mut() {
-                let e_before = tr.entries.len();
-                tr.entries.retain(|e| e.card_id.as_deref() != Some(card_id));
-                if tr.entries.len() != e_before {
-                    // 行动者被移走后，下标可能越界
-                    if !tr.entries.is_empty() {
-                        tr.turn_index = tr.turn_index.min(tr.entries.len() - 1);
-                    } else {
-                        tr.turn_index = 0;
-                        tr.active = false;
-                    }
-                    c += e_before - tr.entries.len();
-                }
-            }
-            if c > 0 {
-                s.updated_at = crate::core::util::now_ms();
-                self.save_session(&s)?;
-                n += c;
-            }
-        }
+        // 会话不再持有棋子，也不再持有先攻序列。它引用卡的唯一途径是队伍卡组，
+        // 由下面的 remove_card_from_all_groups 一并处理。
 
         n += self.delete_relations_touching(card_id)?;
         n += self.remove_card_from_all_groups(card_id)?;
@@ -462,21 +372,14 @@ impl Project {
     }
 
     /// 摘掉会话对这个棋盘的绑定。
-    pub fn purge_board_refs(&self, board_id: &str) -> anyhow::Result<usize> {
-        let mut n = 0;
-        for mut s in self.load_sessions()? {
-            if s.board_id.as_deref() != Some(board_id) {
-                continue;
-            }
-            s.board_id = None;
-            s.updated_at = crate::core::util::now_ms();
-            self.save_session(&s)?;
-            n += 1;
-        }
-        Ok(n)
+    ///
+    /// 会话已不再绑定棋盘，这里恒为 0。保留函数是为了让删除棋盘的调用方
+    /// 不必特判 —— 哪天棋盘又有了引用者，只改这一处。
+    pub fn purge_board_refs(&self, _board_id: &str) -> anyhow::Result<usize> {
+        Ok(0)
     }
 
-    /// 摘掉棋盘/会话上用这个卡组做的卡盒。
+    /// 摘掉棋盘上用这个卡组做的卡盒，并解绑以它当队伍的会话。
     pub fn purge_card_group_refs(&self, group_id: &str) -> anyhow::Result<usize> {
         let mut n = 0;
 
@@ -492,15 +395,13 @@ impl Project {
             }
         }
         for mut s in self.load_sessions()? {
-            let before = s.tokens.len();
-            s.tokens.retain(|t| {
-                t.pile.as_ref().map(|p| p.group_id.as_str()) != Some(group_id)
-            });
-            if s.tokens.len() != before {
-                s.updated_at = crate::core::util::now_ms();
-                self.save_session(&s)?;
-                n += before - s.tokens.len();
+            if s.group_id.as_deref() != Some(group_id) {
+                continue;
             }
+            s.group_id = None;
+            s.updated_at = crate::core::util::now_ms();
+            self.save_session(&s)?;
+            n += 1;
         }
 
         Ok(n)
@@ -569,30 +470,7 @@ impl Project {
             }
         }
 
-        for mut s in self.load_sessions()? {
-            let mut c = strip_missing_tokens(&mut s.tokens, &alive);
-            if let Some(tr) = s.tracker.as_mut() {
-                let before = tr.entries.len();
-                tr.entries.retain(|e| match &e.card_id {
-                    Some(cid) => alive.contains(cid),
-                    None => true,
-                });
-                if tr.entries.len() != before {
-                    if !tr.entries.is_empty() {
-                        tr.turn_index = tr.turn_index.min(tr.entries.len() - 1);
-                    } else {
-                        tr.turn_index = 0;
-                        tr.active = false;
-                    }
-                    c += before - tr.entries.len();
-                }
-            }
-            if c > 0 {
-                s.updated_at = crate::core::util::now_ms();
-                self.save_session(&s)?;
-                n += c;
-            }
-        }
+        // 会话不再持有棋子与先攻序列，无需清理。
 
         // 关系：两端只要有一端没了，这条边就失去意义
         let all = self.list_all_relations()?;
@@ -679,34 +557,8 @@ impl Project {
             }
         }
 
-        for s in self.load_sessions()? {
-            for t in &s.tokens {
-                if let Some(cid) = &t.card_id {
-                    if !alive.contains(cid) {
-                        hits.push(RefHit::new(
-                            RefKind::SessionToken,
-                            &s.id,
-                            &s.name,
-                            format!("会话「{}」里有悬空棋子 {}", s.name, cid),
-                        ));
-                    }
-                }
-            }
-            if let Some(tr) = &s.tracker {
-                for e in &tr.entries {
-                    if let Some(cid) = &e.card_id {
-                        if !alive.contains(cid) {
-                            hits.push(RefHit::new(
-                                RefKind::SessionInit,
-                                &s.id,
-                                &s.name,
-                                format!("会话「{}」的先攻序列里有悬空条目 {}", s.name, cid),
-                            ));
-                        }
-                    }
-                }
-            }
-        }
+        // 会话只通过队伍卡组引用卡，且卡组成员由后端同步维护，
+        // 不存在悬空引用 —— 无需扫描。
 
         for r in self.list_all_relations()? {
             for cid in [&r.from, &r.to] {
@@ -745,7 +597,7 @@ mod tests {
     use crate::core::model::card::Card;
     use crate::core::model::card_group::CardGroup;
     use crate::core::model::relation::Relation;
-    use crate::core::model::session::{InitiativeEntry, InitiativeTracker, Session};
+    use crate::core::model::session::Session;
     use std::collections::BTreeMap;
 
     const T: i64 = 1_700_000_000_000;
@@ -831,15 +683,12 @@ mod tests {
         }
     }
 
-    fn session(id: &str, name: &str, board_id: Option<&str>, tokens: Vec<Token>) -> Session {
+    fn session(id: &str, name: &str, group_id: Option<&str>) -> Session {
         Session {
             id: id.into(),
             name: name.into(),
-            board_id: board_id.map(|s| s.to_string()),
+            group_id: group_id.map(|s| s.to_string()),
             state: BTreeMap::new(),
-            rule_set: None,
-            tracker: None,
-            tokens,
             created_at: T,
             updated_at: T,
         }
@@ -887,13 +736,8 @@ mod tests {
 
         // 会话需要有目录，save_session 会建
         std::fs::create_dir_all(p.session_dir("sess_1")).unwrap();
-        p.save_session(&session(
-            "sess_1",
-            "第一夜",
-            Some("board_tavern"),
-            vec![token("stok_dragon", Some("card_dragon"))],
-        ))
-        .unwrap();
+        p.save_session(&session("sess_1", "第一夜", Some("grp_enc")))
+            .unwrap();
 
         p.upsert_relation(&rel("rel_1", "card_dwarf", "card_dragon", "敌对"))
             .unwrap();
@@ -911,7 +755,6 @@ mod tests {
         let kinds: Vec<RefKind> = hits.iter().map(|h| h.kind).collect();
         assert!(kinds.contains(&RefKind::BoardToken), "棋盘棋子未扫到");
         assert!(kinds.contains(&RefKind::BoardPile), "棋盘卡盒未扫到");
-        assert!(kinds.contains(&RefKind::SessionToken), "会话棋子未扫到");
         assert!(kinds.contains(&RefKind::Relation), "关系未扫到");
         assert!(kinds.contains(&RefKind::CardGroup), "卡组未扫到");
         // 两侧关系都要报：一条它指向别人，一条别人指向它
@@ -974,10 +817,6 @@ mod tests {
         let g = p.load_card_groups().unwrap().remove(0);
         assert_eq!(g.card_ids, vec!["card_dwarf".to_string()]);
 
-        // 会话棋子也没了
-        let s = p.load_sessions().unwrap().remove(0);
-        assert!(s.tokens.is_empty());
-
         let hits = p.scan_card_refs("card_dragon").unwrap();
         assert!(hits.is_empty(), "清理后仍有残留引用");
         let _ = std::fs::remove_dir_all(&dir);
@@ -1023,46 +862,7 @@ mod tests {
     }
 
     #[test]
-    fn detach_drops_initiative_entry_and_clamps_turn_index() {
-        let (p, dir) = proj("init");
-        p.save_card(&card("card_a", "A", "t")).unwrap();
-        std::fs::create_dir_all(p.session_dir("s1")).unwrap();
-        let mut s = session("s1", "夜", None, vec![]);
-        s.tracker = Some(InitiativeTracker {
-            round: 3,
-            turn_index: 2,
-            active: true,
-            entries: vec![
-                InitiativeEntry {
-                    token_id: None,
-                    card_id: Some("card_a".into()),
-                    name: "A".into(),
-                    value: 20,
-                    is_pc: true,
-                },
-                InitiativeEntry {
-                    token_id: None,
-                    card_id: None,
-                    name: "临时 NPC".into(),
-                    value: 10,
-                    is_pc: false,
-                },
-            ],
-        });
-        p.save_session(&s).unwrap();
-
-        p.purge_card_refs("card_a", "A", ClearMode::Remove).unwrap();
-
-        let s2 = p.load_sessions().unwrap().remove(0);
-        let tr = s2.tracker.as_ref().unwrap();
-        assert_eq!(tr.entries.len(), 1);
-        assert_eq!(tr.entries[0].name, "临时 NPC");
-        assert_eq!(tr.turn_index, 0, "下标越界会被夹回最后一个");
-        let _ = std::fs::remove_dir_all(&dir);
-    }
-
-    #[test]
-    fn deleting_card_group_removes_its_piles() {
+    fn deleting_card_group_unbinds_the_party_session() {
         let (p, dir) = proj("grp");
         p.save_board(&board(
             "b1",
@@ -1074,39 +874,31 @@ mod tests {
         ))
         .unwrap();
         std::fs::create_dir_all(p.session_dir("s1")).unwrap();
-        p.save_session(&session(
-            "s1",
-            "夜",
-            None,
-            vec![pile_token("stok_pile", "g1", &["x"])],
-        ))
-        .unwrap();
+        p.save_session(&session("s1", "夜", Some("g1"))).unwrap();
 
         let hits = p.scan_card_group_refs("g1").unwrap();
-        assert_eq!(hits.len(), 2, "棋盘与会话各一个卡盒");
+        assert_eq!(hits.len(), 2, "棋盘上一个卡盒，会话拿它当队伍");
+        assert!(hits.iter().any(|h| h.kind == RefKind::SessionParty));
 
         p.purge_card_group_refs("g1").unwrap();
 
         let b = p.load_boards().unwrap().remove(0);
         assert_eq!(b.tokens.len(), 1, "只剩普通棋子");
         let s = p.load_sessions().unwrap().remove(0);
-        assert!(s.tokens.is_empty());
+        assert!(s.group_id.is_none(), "会话应解绑队伍，而不是留个指向空卡组的 id");
         let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
-    fn deleting_board_unbinds_sessions() {
+    fn board_has_no_referrers_after_decoupling() {
+        // 会话不再绑定棋盘，删棋盘不需要解绑任何东西。
+        // 这条用例锁住的是「棋盘可以随便删」这个结论。
         let (p, dir) = proj("brd");
         std::fs::create_dir_all(p.session_dir("s1")).unwrap();
-        p.save_session(&session("s1", "夜", Some("b1"), vec![])).unwrap();
+        p.save_session(&session("s1", "夜", Some("g1"))).unwrap();
 
-        let hits = p.scan_board_refs("b1").unwrap();
-        assert_eq!(hits.len(), 1);
-        assert_eq!(hits[0].kind, RefKind::SessionBoard);
-
-        p.purge_board_refs("b1").unwrap();
-        let s = p.load_sessions().unwrap().remove(0);
-        assert_eq!(s.board_id, None, "会话应解绑而不是留个指向空棋盘的 id");
+        assert!(p.scan_board_refs("b1").unwrap().is_empty());
+        assert_eq!(p.purge_board_refs("b1").unwrap(), 0);
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -1142,21 +934,6 @@ mod tests {
             .push(pile_token("tok_ghost_pile", "g9", &["card_ghost", "card_dwarf"]));
         p.save_board(&b).unwrap();
 
-        let mut s = p.load_sessions().unwrap().remove(0);
-        s.tokens.push(token("stok_ghost", Some("card_ghost")));
-        s.tracker = Some(InitiativeTracker {
-            round: 2,
-            turn_index: 1,
-            active: true,
-            entries: vec![InitiativeEntry {
-                token_id: None,
-                card_id: Some("card_ghost".into()),
-                name: "幽灵".into(),
-                value: 15,
-                is_pc: false,
-            }],
-        });
-        p.save_session(&s).unwrap();
         p.upsert_relation(&rel("rel_ghost", "card_ghost", "card_dwarf", "缠绕"))
             .unwrap();
         p.save_card_group(&group("g2", "幽灵组", &["card_ghost"])).unwrap();

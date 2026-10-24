@@ -1,67 +1,28 @@
-import type {
-  Card,
-  CardType,
-  Session,
-  SessionViewMode,
-} from "../../core/ipc";
+import { clamp01 } from "../../lib/math";
+import type { Card, CardType } from "../../core/ipc";
 import { nowMs } from "../../lib/time";
 import { useCountUp } from "../../hooks/useCountUp";
 import { hpRatio, listNumberStats, readHp, type CardStat } from "./cardStats";
 
 interface Props {
-  session: Session;
-  cards: Card[];
+  /** 队伍成员。来自会话绑定的卡组 —— 会话只持有引用，数据仍在卡上 */
+  party: Card[];
   cardTypes: CardType[];
-  selectedTokenId: string | null;
-  onSelectToken: (id: string | null) => void;
-  /** 改动 HP 要写回卡牌 —— 数据只存在卡上 */
+  /** HP 等数值改动要写回卡牌本身 */
   onUpdateCard: (card: Card) => void;
   onQuickCheck: (stat: CardStat, card: Card) => void;
-  view: SessionViewMode;
-  /** 提供则在头部显示折叠按钮，折叠由父级控制 */
-  onCollapse?: () => void;
-}
-
-interface Row {
-  tokenId: string;
-  card: Card;
-  cardType: CardType | null;
 }
 
 export function PartyPanel({
-  session,
-  cards,
+  party,
   cardTypes,
-  selectedTokenId,
-  onSelectToken,
   onUpdateCard,
   onQuickCheck,
-  view,
-  onCollapse,
 }: Props) {
-  // 去重：同一张卡可能有多个 token 指向它
-  const seen = new Set<string>();
-  const entries: Row[] = [];
-
-  for (const t of session.tokens) {
-    if (!t.card_id || seen.has(t.card_id)) continue;
-    const c = cards.find((x) => x.id === t.card_id);
-    if (!c) continue;
-    seen.add(t.card_id);
-    entries.push({
-      tokenId: t.id,
-      card: c,
-      cardType: cardTypes.find((x) => x.id === c.type_id) ?? null,
-    });
-  }
-
-  const readOnly = view === "player";
-
   return (
     <div
       style={{
         width: 240,
-        borderLeft: "1px solid var(--border-subtle)",
         background: "var(--bg-panel)",
         display: "flex",
         flexDirection: "column",
@@ -72,9 +33,6 @@ export function PartyPanel({
         style={{
           padding: "8px 8px 8px 12px",
           borderBottom: "1px solid var(--border-subtle)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
           fontSize: 10,
           color: "var(--fg-muted)",
           textTransform: "uppercase",
@@ -82,22 +40,11 @@ export function PartyPanel({
           flexShrink: 0,
         }}
       >
-        <span>在场角色（{entries.length}）</span>
-        {onCollapse && (
-          <button
-            type="button"
-            className="btn btn-ghost"
-            onClick={onCollapse}
-            title="折叠队伍面板"
-            style={{ padding: "2px 6px", fontSize: 12, lineHeight: 1 }}
-          >
-            ⟨
-          </button>
-        )}
+        队伍（{party.length}）
       </div>
 
       <div style={{ flex: 1, overflowY: "auto", padding: 4 }}>
-        {entries.length === 0 && (
+        {party.length === 0 && (
           <div
             style={{
               padding: 12,
@@ -107,26 +54,24 @@ export function PartyPanel({
               lineHeight: 1.6,
             }}
           >
-            没有角色
+            没有成员
             <br />
-            从卡片墙加 Token 到棋盘
+            在顶栏为本次会话选一个卡组
           </div>
         )}
 
-        {entries.map((e) => (
+        {party.map((card) => (
           <Entry
-            key={e.tokenId}
-            row={e}
-            active={selectedTokenId === e.tokenId}
-            readOnly={readOnly}
-            onSelect={() => onSelectToken(e.tokenId)}
+            key={card.id}
+            card={card}
+            cardType={cardTypes.find((x) => x.id === card.type_id) ?? null}
             onUpdateCard={onUpdateCard}
             onQuickCheck={onQuickCheck}
           />
         ))}
       </div>
 
-      {entries.length > 0 && !readOnly && (
+      {party.length > 0 && (
         <div
           style={{
             padding: "6px 10px",
@@ -146,21 +91,16 @@ export function PartyPanel({
 }
 
 function Entry({
-  row,
-  active,
-  readOnly,
-  onSelect,
+  card,
+  cardType,
   onUpdateCard,
   onQuickCheck,
 }: {
-  row: Row;
-  active: boolean;
-  readOnly: boolean;
-  onSelect: () => void;
+  card: Card;
+  cardType: CardType | null;
   onUpdateCard: (card: Card) => void;
   onQuickCheck: (stat: CardStat, card: Card) => void;
 }) {
-  const { card, cardType } = row;
   const hp = readHp(card);
   const ratio = hpRatio(hp.hp, hp.max);
   const stats = listNumberStats(card, cardType);
@@ -170,9 +110,7 @@ function Entry({
   // 条宽也跟着同一个滚动值走：CSS width 过渡与 rAF 是两条时间线，
   // 一起跑会错位（条先到位、数字还在滚）。统一交给 rAF 驱动即天然同步。
   const barRatio =
-    hp.max && hp.max > 0
-      ? Math.min(1, Math.max(0, hpDisplay / hp.max))
-      : null;
+    hp.max && hp.max > 0 ? clamp01(hpDisplay / hp.max) : null;
 
   function changeHp(delta: number) {
     if (hp.hp == null || !hp.hpKey) return;
@@ -189,20 +127,14 @@ function Entry({
       style={{
         padding: "6px 8px",
         borderRadius: "var(--radius-sm)",
-        background: active ? "var(--bg-raised)" : "transparent",
-        borderLeft: active
-          ? "2px solid var(--accent-gold)"
-          : "2px solid transparent",
         marginBottom: 2,
       }}
     >
       <div
-        onClick={onSelect}
         style={{
           display: "flex",
           alignItems: "center",
           gap: 8,
-          cursor: "pointer",
           userSelect: "none",
         }}
       >
@@ -211,8 +143,7 @@ function Entry({
           <div
             style={{
               fontSize: 12,
-              color: active ? "var(--fg-primary)" : "var(--fg-secondary)",
-              fontWeight: active ? 600 : 400,
+              color: "var(--fg-secondary)",
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
@@ -280,26 +211,24 @@ function Entry({
               {/* 数字跟着血条一起滚，否则「条在滑、数字在跳」反而更难看 */}
               {Math.round(hpDisplay)} / {hp.max}
             </span>
-            {!readOnly && (
-              <span style={{ marginLeft: "auto", display: "flex", gap: 3 }}>
-                <button
-                  className="btn"
-                  onClick={() => changeHp(-1)}
-                  style={{ fontSize: 10, padding: "0 5px" }}
-                  title="扣 1 点"
-                >
-                  −
-                </button>
-                <button
-                  className="btn"
-                  onClick={() => changeHp(1)}
-                  style={{ fontSize: 10, padding: "0 5px" }}
-                  title="加 1 点"
-                >
-                  +
-                </button>
-              </span>
-            )}
+            <span style={{ marginLeft: "auto", display: "flex", gap: 3 }}>
+              <button
+                className="btn"
+                onClick={() => changeHp(-1)}
+                style={{ fontSize: 10, padding: "0 5px" }}
+                title="扣 1 点"
+              >
+                −
+              </button>
+              <button
+                className="btn"
+                onClick={() => changeHp(1)}
+                style={{ fontSize: 10, padding: "0 5px" }}
+                title="加 1 点"
+              >
+                +
+              </button>
+            </span>
           </div>
         </div>
       )}
@@ -318,13 +247,12 @@ function Entry({
               key={s.key}
               className="btn"
               onClick={() => onQuickCheck(s, card)}
-              disabled={readOnly}
               style={{
                 fontSize: 10,
                 padding: "1px 5px",
                 color: "var(--fg-secondary)",
               }}
-              title={`对 ${s.label} ${s.value} 发起检定`}
+              title={`为 ${s.label} ${s.value} 掷骰`}
             >
               {s.label} {s.value}
             </button>

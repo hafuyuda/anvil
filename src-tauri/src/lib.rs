@@ -43,6 +43,8 @@ pub fn run() {
             project_stats,
             load_doc,
             save_doc,
+            list_doc_ids,
+            read_text_file,
             save_text_file,
             export_scenario_html,
             // cards
@@ -77,13 +79,18 @@ pub fn run() {
             list_boards,
             upsert_board,
             delete_board,
+            list_board_events,
+            append_board_event,
+            update_board_event,
+            delete_board_event,
+            export_board,
+            import_board,
             // sessions
             list_sessions,
             upsert_session,
             delete_session,
             list_events,
             append_event,
-            reveal_event,
             update_event,
             delete_event,
             // refs

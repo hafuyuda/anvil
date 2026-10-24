@@ -7,6 +7,7 @@ interface Props {
   cardTypes: CardType[];
   selectedCardIds: string[];
   onCardClick: (card: Card, e: React.MouseEvent) => void;
+  onCardContextMenu?: (card: Card, e: React.MouseEvent) => void;
 }
 
 export function CardGridView({
@@ -14,6 +15,7 @@ export function CardGridView({
   cardTypes,
   selectedCardIds,
   onCardClick,
+  onCardContextMenu,
 }: Props) {
   const typeMap = useMemo(() => {
     const m = new Map<string, CardType>();
@@ -33,7 +35,12 @@ export function CardGridView({
           selected={selectedCardIds.includes(c.id)}
           onClick={(e) => onCardClick(c, e)}
           // FLIP 过渡靠这个属性找元素、对位置
-          wrapperProps={{ "data-card-id": c.id }}
+          wrapperProps={{
+            "data-card-id": c.id,
+            onContextMenu: onCardContextMenu
+              ? (e: React.MouseEvent) => onCardContextMenu(c, e)
+              : undefined,
+          }}
         />
       ))}
     </CardGrid>

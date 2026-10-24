@@ -8,6 +8,8 @@ interface Props {
   tokens: Token[];
   relations: Relation[];
   relationKinds: RelationKind[];
+  selectedEdgeId?: string | null;
+  onSelectEdge?: (id: string) => void;
 }
 
 interface EdgeGroup {
@@ -22,6 +24,8 @@ export function RelationLines({
   tokens,
   relations,
   relationKinds,
+  selectedEdgeId,
+  onSelectEdge,
 }: Props) {
   const visibleKinds = board.visible_relation_kinds ?? [];
 
@@ -98,42 +102,66 @@ export function RelationLines({
     const arrowEnd = g.directed ? "url(#rl-arrow)" : undefined;
     const arrowAgg = g.directed ? "url(#rl-arrow-agg)" : undefined;
 
+    const selected = g.relations.some((r) => r.id === selectedEdgeId);
+    const firstId = g.relations[0].id;
+
     if (g.relations.length === 1) {
       items.push(
-        <line
-          key={key}
-          x1={x1}
-          y1={y1}
-          x2={x2}
-          y2={y2}
-          stroke={color}
-          strokeWidth={2}
-          markerEnd={arrowEnd}
-          opacity={0.85}
-          style={{ color }}
-        />,
-      );
-    } else {
-      items.push(
         <g key={key}>
+          {onSelectEdge && (
+            <line
+              x1={x1}
+              y1={y1}
+              x2={x2}
+              y2={y2}
+              stroke="transparent"
+              strokeWidth={14}
+              style={{ pointerEvents: "stroke", cursor: "pointer" }}
+              onClick={() => onSelectEdge(firstId)}
+            />
+          )}
           <line
             x1={x1}
             y1={y1}
             x2={x2}
             y2={y2}
-            stroke={color}
-            strokeWidth={4}
+            stroke={selected ? "var(--accent-gold)" : color}
+            strokeWidth={selected ? 4 : 2}
+            markerEnd={arrowEnd}
+            opacity={0.9}
+            style={{ color: selected ? "var(--accent-gold)" : color }}
+          />
+        </g>,
+      );
+    } else {
+      items.push(
+        <g
+          key={key}
+          style={{ cursor: onSelectEdge ? "pointer" : undefined }}
+          onClick={() => onSelectEdge?.(firstId)}
+        >
+          <line
+            x1={x1}
+            y1={y1}
+            x2={x2}
+            y2={y2}
+            stroke={selected ? "var(--accent-gold)" : color}
+            strokeWidth={selected ? 5 : 4}
             markerEnd={arrowAgg}
-            opacity={0.85}
-            style={{ color }}
+            opacity={0.9}
+            style={{
+              color: selected ? "var(--accent-gold)" : color,
+              pointerEvents: "stroke",
+            }}
           />
           <circle
             cx={mx}
             cy={my}
             r={12}
             fill="var(--bg-panel)"
-            stroke={color}
+            stroke={selected ? "var(--accent-gold)" : color}
             strokeWidth={2}
+            style={{ pointerEvents: "all" }}
           />
           <text
             x={mx}

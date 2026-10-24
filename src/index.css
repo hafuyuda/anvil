@@ -1,8 +1,8 @@
 :root {
   /* 背景层级 */
   --bg-app: #1a1612;
-  --bg-panel: #25201a;
-  --bg-surface: #2f2922;
+  --bg-panel: var(--tex-iron), #25201a;
+  --bg-surface: var(--tex-iron), #2f2922;
   --bg-raised: #3a332a;
   --bg-overlay: rgba(0, 0, 0, 0.55);
 
@@ -38,6 +38,23 @@
 
   /* 阴影 */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+
+  /* 材质 / 纹理（纯 CSS 渐变，不引图片，可被主题覆盖） */
+  --tex-iron: repeating-linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.022) 0px,
+    rgba(255, 255, 255, 0.022) 1px,
+    rgba(0, 0, 0, 0.025) 1px,
+    rgba(0, 0, 0, 0.025) 2px
+  );
+  --tex-wood: repeating-linear-gradient(
+    90deg,
+    rgba(120, 80, 40, 0.03) 0px,
+    rgba(120, 80, 40, 0.03) 2px,
+    rgba(50, 32, 16, 0.035) 2px,
+    rgba(50, 32, 16, 0.035) 5px
+  );
+  --glow-ember: 0 0 12px var(--accent-flame), 0 0 4px var(--accent-ember);
   --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.5);
   --shadow-card:
     0 2px 8px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.04);
@@ -136,6 +153,32 @@
   --card-rainbow-shadow: 0 2px 8px rgba(80, 40, 120, 0.45);
   --card-rainbow-shadow-selected: 0 4px 16px rgba(80, 40, 120, 0.6);
 
+  /* 卡牌：铁砧锻造（anvil）—— 矮人锻造 TCG 卡框，融合原型卡牌骨架 */
+  --card-anvil-frame-1: #3c352b;
+  --card-anvil-frame-2: #241e18;
+  --card-anvil-frame-3: #14100c;
+  --card-anvil-rivet-1: #e8c87a;
+  --card-anvil-rivet-2: #8a6a3a;
+  --card-anvil-rivet-3: #4a3a1f;
+  --card-anvil-inner-bg-1: #2c261e;
+  --card-anvil-inner-bg-2: #211c16;
+  --card-anvil-inner-border: #4a4033;
+  --card-anvil-title-bg-1: #4a4136;
+  --card-anvil-title-bg-2: #2a241d;
+  --card-anvil-title-border: #6a5a3d;
+  --card-anvil-title-text: #f0e4cc;
+  --card-anvil-art-border: #5a4d3d;
+  --card-anvil-art-bg: #1c1712;
+  --card-anvil-parchment: #e8dcc5;
+  --card-anvil-parchment-border: #8a6a3a;
+  --card-anvil-text: #2a1f10;
+  --card-anvil-text-dim: #5a4a30;
+  --card-anvil-star: #d8b25a;
+  --card-anvil-ember: var(--accent-ember);
+  --card-anvil-gold: var(--accent-gold);
+  --card-anvil-shadow: 0 2px 6px rgba(0, 0, 0, 0.55);
+  --card-anvil-shadow-selected: 0 4px 16px rgba(0, 0, 0, 0.7);
+
   /* 卡牌：闪卡（foil） */
   --card-foil-base: #c9a961;
   --card-foil-shine: #fff8d0;
@@ -154,11 +197,11 @@
   --card-back-glyph: #c9a961;
   --card-back-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
 
-  /* 卡背：符文（rune） */
-  --card-back-rune-bg: #1a1226;
-  --card-back-rune-border: #5a3a8a;
-  --card-back-rune-text: #f0e6ff;
-  --card-back-rune-shadow: 0 2px 8px rgba(40, 16, 80, 0.5);
+  /* 卡背：符文（rune）—— 青铜符石调，去奥术紫冲突 */
+  --card-back-rune-bg: #221d18;
+  --card-back-rune-border: #8a6a3a;
+  --card-back-rune-text: #e8dcc5;
+  --card-back-rune-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 
   /* 对话气泡（派生自主题，随主题变化） */
   --chat-panel-bg: var(--bg-panel);
@@ -179,29 +222,6 @@
   --chat-whisper-text: var(--fg-primary);
   --chat-system-text: var(--fg-muted);
   --chat-system-line: var(--border-subtle);
-
-  /* 帷幕：秘密消息（KP 独享）。各主题在 themes/presets 下逐个给出具体色值 */
-  --chat-secret-bg: #2a1f14;
-  --chat-secret-border: var(--accent-copper);
-  --chat-secret-text: #d08a5a;
-  --chat-secret-input-bg: #241a12;
-
-  /* 帷幕：揭示副本（公开给玩家的那一条） */
-  --chat-reveal-border: var(--accent-gold);
-  --chat-reveal-text: var(--accent-gold);
-
-  /* 掷骰判定色调 */
-  --chat-roll-good: #8fbf6a;
-  --chat-roll-bad: #e05a3a;
-  --chat-roll-warn: var(--accent-gold);
-
-  /* 先攻条 */
-  --initiative-bg: var(--bg-panel);
-  --initiative-border: var(--border-subtle);
-  --initiative-current-bg: var(--accent-gold);
-  --initiative-current-text: #1a1612;
-  --initiative-pc-accent: var(--accent-steel);
-  --initiative-npc-accent: var(--accent-copper);
 
   /* 角色状态面板 */
   --hp-bar-bg: var(--bg-surface);

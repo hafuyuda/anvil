@@ -1,3 +1,5 @@
+import { clamp } from "./math";
+
 /**
  * 数据级撤销的合并原语。
  *
@@ -49,7 +51,7 @@ export function insertAtIndices<T>(
   if (inserts.length === 0) return base;
   const byIndex = new Map<number, T[]>();
   for (const ins of inserts) {
-    const idx = Math.min(Math.max(ins.index, 0), base.length);
+    const idx = clamp(ins.index, 0, base.length);
     const arr = byIndex.get(idx) ?? [];
     arr.push(ins.item);
     byIndex.set(idx, arr);

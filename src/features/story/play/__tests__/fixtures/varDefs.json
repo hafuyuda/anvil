@@ -1,0 +1,47 @@
+{
+  "cases": [
+    { "line": "VAR gold = 10", "key": "gold", "ty": "number", "default": 10 },
+    { "line": "VAR hp = -3", "key": "hp", "ty": "number", "default": -3 },
+    {
+      "line": "VAR ratio = 1.5",
+      "key": "ratio",
+      "ty": "number",
+      "default": 1.5
+    },
+    { "line": "VAR code = 007", "key": "code", "ty": "number", "default": 7 },
+    { "line": "VAR sci = 1e3", "key": "sci", "ty": "text", "default": "1e3" },
+    { "line": "VAR plus = +5", "key": "plus", "ty": "text", "default": "+5" },
+    { "line": "VAR dot = .5", "key": "dot", "ty": "text", "default": ".5" },
+    { "line": "VAR trail = 1.", "key": "trail", "ty": "text", "default": "1." },
+    { "line": "VAR flag = true", "key": "flag", "ty": "bool", "default": true },
+    {
+      "line": "VAR other = false",
+      "key": "other",
+      "ty": "bool",
+      "default": false
+    },
+    {
+      "line": "VAR name = \"旅人\"",
+      "key": "name",
+      "ty": "text",
+      "default": "旅人"
+    },
+    {
+      "line": "VAR name2 = '旅人'",
+      "key": "name2",
+      "ty": "text",
+      "default": "旅人"
+    },
+    {
+      "line": "VAR half = \"旅人",
+      "key": "half",
+      "ty": "text",
+      "default": "\"旅人"
+    },
+    { "line": "VAR spaced=1", "key": "spaced", "ty": "number", "default": 1 },
+    { "line": "VARX = 1", "key": null },
+    { "line": "VAR  = 1", "key": null },
+    { "line": "VAR k =", "key": null },
+    { "line": "VAR 序号 = 1", "key": null }
+  ]
+}

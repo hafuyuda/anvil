@@ -23,6 +23,7 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm tsc --noEmit
+      - run: pnpm test
       - run: pnpm prettier --check src/
 
   rust:
@@ -49,3 +50,4 @@ jobs:
 
       - run: cd src-tauri && cargo fmt --check
       - run: cd src-tauri && cargo check
+      - run: cd src-tauri && cargo test

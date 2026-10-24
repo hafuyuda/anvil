@@ -313,6 +313,20 @@ pub fn save_doc(state: State<AppState>, card_id: String, content: String) -> Res
 }
 
 #[tauri::command]
+pub fn list_doc_ids(state: State<AppState>) -> Result<Vec<String>, String> {
+    let guard = state.project.lock().unwrap();
+    let p = guard.as_ref().ok_or("no project open")?;
+    p.list_doc_card_ids().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn read_text_file(path: String) -> Result<String, String> {
+    let bytes = std::fs::read(&path).map_err(|e| e.to_string())?;
+    let text = String::from_utf8(bytes).map_err(|_| "文件不是 UTF-8 编码".to_string())?;
+    Ok(text.trim_start_matches('\u{feff}').to_string())
+}
+
+#[tauri::command]
 pub fn save_text_file(path: String, content: String) -> Result<(), String> {
     std::fs::write(&path, content).map_err(|e| e.to_string())
 }
