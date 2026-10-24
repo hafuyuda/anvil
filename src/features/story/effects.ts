@@ -1,5 +1,5 @@
 import type { FieldType, VariableDef } from "../../core/ipc";
-import { rollDice, validateDiceExpression } from "../../lib/dice";
+import { rollDice } from "../../lib/dice";
 
 export interface ParsedEffect {
   key: string;
@@ -21,32 +21,6 @@ export interface ApplyResult {
   values: Record<string, unknown>;
   errors: string[];
   applied: AppliedEffect[];
-}
-
-export function parseEffect(line: string): ParsedEffect | null {
-  const trimmed = line.trim();
-  if (!trimmed || trimmed.startsWith("#")) return null;
-
-  const m = trimmed.match(/^([a-zA-Z_][a-zA-Z0-9_]*)\s*(\+=|-=|=)\s*(.+)$/);
-  if (!m) return null;
-
-  return {
-    key: m[1],
-    op: m[2] as ParsedEffect["op"],
-    rawValue: m[3].trim(),
-    raw: trimmed,
-  };
-}
-
-export function parseEffects(effects: unknown): ParsedEffect[] {
-  if (!Array.isArray(effects)) return [];
-  const out: ParsedEffect[] = [];
-  for (const e of effects) {
-    if (typeof e !== "string") continue;
-    const p = parseEffect(e);
-    if (p) out.push(p);
-  }
-  return out;
 }
 
 function parseLiteral(
@@ -161,36 +135,4 @@ export function applyEffects(
   }
 
   return { values: next, errors, applied };
-}
-
-export function validateEffects(
-  effects: string[],
-  variables: VariableDef[],
-): string[] {
-  const errors: string[] = [];
-  const varsByKey = new Map(variables.map((v) => [v.key, v]));
-
-  for (const line of effects) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#")) continue;
-    const p = parseEffect(trimmed);
-    if (!p) {
-      errors.push(`语法不合法：${trimmed}`);
-      continue;
-    }
-    const def = varsByKey.get(p.key);
-    if (!def) {
-      errors.push(`未知变量：${p.key}`);
-      continue;
-    }
-
-    // 骰子语法校验（只针对 number 类型 + 加减操作）
-    if (def.ty.kind === "number") {
-      if (!validateDiceExpression(p.rawValue)) {
-        errors.push(`无法解析数值或骰子：${p.rawValue}`);
-      }
-    }
-  }
-
-  return errors;
 }

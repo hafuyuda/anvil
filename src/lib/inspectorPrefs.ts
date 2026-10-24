@@ -73,11 +73,3 @@ export function saveInspectorPrefs(patch: Partial<InspectorPrefs>): void {
   }
 }
 
-export function resetInspectorPrefs(): void {
-  cached = { ...DEFAULTS };
-  try {
-    localStorage.removeItem(KEY);
-  } catch {
-    // 静默
-  }
-}

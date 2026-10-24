@@ -14,15 +14,6 @@ export function aggregate(cardIds: string[]): AggregateEntry[] {
   return order.map((id) => ({ cardId: id, count: counts.get(id)! }));
 }
 
-/** 展开成含重复的 cardIds 数组 */
-export function expand(entries: AggregateEntry[]): string[] {
-  const out: string[] = [];
-  for (const e of entries) {
-    for (let i = 0; i < e.count; i++) out.push(e.cardId);
-  }
-  return out;
-}
-
 /** 移除一份 */
 export function removeOne(cardIds: string[], cardId: string): string[] {
   const idx = cardIds.indexOf(cardId);

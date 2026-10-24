@@ -56,11 +56,3 @@ export interface ParsedScript {
   /** key = 组内第一个 * 行的 pc */
   choiceGroups: Record<number, ChoiceGroup>;
 }
-
-export const EMPTY_SCRIPT: ParsedScript = {
-  frontmatter: {},
-  lines: [],
-  knots: {},
-  vars: [],
-  choiceGroups: {},
-};

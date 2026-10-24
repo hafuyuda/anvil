@@ -7,7 +7,6 @@
   ],
   "permissions": [
     "core:default",
-    "opener:default",
     "dialog:default",
     "core:window:allow-close",
     "core:window:allow-center",

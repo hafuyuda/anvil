@@ -1,6 +1,6 @@
 [package]
 name = "anvil"
-version = "0.3.0"
+version = "0.4.0"
 description = "A Tauri App"
 authors = ["you"]
 edition = "2021"
@@ -21,14 +21,12 @@ serde_json = "1"
 
 [dependencies]
 tauri = { version = "2", features = ["protocol-asset"] }
-tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 anyhow = "1"
 tauri-plugin-dialog = "2.8.1"
 uuid = { version = "1.27.0", features = ["v4"] }
 rusqlite = { version = "0.40.2", features = ["bundled"] }
-evalexpr = "13.1.0"
 zip = "8.6.0"
 walkdir = "2.5.0"
 base64 = "0.23.1"

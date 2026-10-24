@@ -38,15 +38,6 @@ export function removeRecentProject(path: string): void {
   localStorage.setItem(KEY_LIST, JSON.stringify(list));
 }
 
-export function clearRecentProjects(): void {
-  localStorage.removeItem(KEY_LIST);
-}
-
-export function getLastOpenPath(): string | null {
-  const v = localStorage.getItem(KEY_LAST);
-  return v && v.length > 0 ? v : null;
-}
-
 export function setLastOpenPath(path: string | null): void {
   if (path) {
     localStorage.setItem(KEY_LAST, path);

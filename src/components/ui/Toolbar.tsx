@@ -29,34 +29,3 @@ export function Toolbar({ children, divider = true }: Props) {
 export function ToolbarSpacer() {
   return <div style={{ flex: 1 }} />;
 }
-
-export function ToolbarGroup({
-  children,
-  label,
-}: {
-  children: ReactNode;
-  label?: string;
-}) {
-  return (
-    <div
-      style={{
-        display: "flex",
-        gap: 4,
-        alignItems: "center",
-      }}
-    >
-      {label && (
-        <span
-          style={{
-            fontSize: 11,
-            color: "var(--fg-muted)",
-            marginRight: 2,
-          }}
-        >
-          {label}
-        </span>
-      )}
-      {children}
-    </div>
-  );
-}

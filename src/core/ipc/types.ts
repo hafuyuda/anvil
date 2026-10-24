@@ -225,8 +225,6 @@ export type ChatEventKind =
  */
 export type SystemEventKind = "session.start";
 
-export type AnyEventKind = ChatEventKind | SystemEventKind;
-
 /** 一次掷骰的原始结果。Anvil 只记录点数，不判定成败。 */
 export interface RollInfo {
   expr: string;

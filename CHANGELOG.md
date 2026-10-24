@@ -3,7 +3,7 @@
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 格式，
 版本号遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
-## [0.4.0] - 未发布
+## [0.4.0] - 2026-10-24
 
 ### 破坏性变更
 
@@ -400,6 +400,23 @@
 - 命令面板抽出结果源机制（`lib/commands.ts` 的 `ResultSource`），
   静态命令与动态结果（卡牌检索）分离，详见 DESIGN §20.1。
   排序规则抽成纯函数 `paletteRanking.ts` 并补 7 个用例。
+- **死代码清理（26 处），并新增 `scripts/audit-deadcode.mjs` 把这活固化成检查。**
+  0.4.x 连续删掉剧情边、规则集、战斗、帷幕、节点图，每次都留尾巴，靠人记住
+  「上次删了什么」不可靠。脚本扫三类：未引用的导出 / `package.json` 里无
+  import 的依赖 / CSS 里无人使用的类，`--strict` 可接 CI。本次清掉：
+
+  - 依赖 5 个：`d3-force` + `@types/d3-force`（关系图谱删后残留）、
+    `@tauri-apps/plugin-fs`（前后端均零引用）、`tauri-plugin-opener`
+    （Cargo 声明了但从未注册，连同 capabilities 里的 `opener:default`）、
+    `evalexpr`（`core::eval` 删后零引用）；
+  - 死导出 20 个，含 `story/effects.ts` 的 `parseEffect` / `parseEffects` /
+    `validateEffects`（旧 `Relation.meta` effects 的解析器，weave 改由
+    `machine.ts` 的 `toEffect` 自己构造 `ParsedEffect`）；
+  - CSS 死类 `.graph-handle`（节点图残留）。
+
+  刻意保留 7 个「无人引用但属于模式对称接口」的符号（registry 的
+  `get/list/has/DEFAULT` 四件套、`SystemEventKind` 事件词表），写进脚本的
+  `KEEP` 白名单并注明理由 —— 白名单是决策记录，不是垃圾桶。
 
 ## [0.3.0] - 2026-10-13
 

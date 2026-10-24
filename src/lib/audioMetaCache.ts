@@ -14,12 +14,6 @@ import { loadAsset } from "./assetCache";
 const durationCache = new Map<string, number>();
 const inflight = new Map<string, Promise<number | null>>();
 
-/** 同步读取已缓存的时长（秒）；未缓存返回 null。 */
-export function getCachedDuration(path: string): number | null {
-  const d = durationCache.get(path);
-  return d === undefined ? null : d;
-}
-
 /** 异步预取时长：命中缓存直接返回，未缓存则解码一次并写入缓存。 */
 export function prefetchDuration(path: string): Promise<number | null> {
   const cached = durationCache.get(path);
@@ -54,11 +48,6 @@ export function prefetchDuration(path: string): Promise<number | null> {
 
   inflight.set(path, p);
   return p;
-}
-
-/** 批量预取（列表加载时一次性触发，每行只解码一次）。 */
-export function prefetchDurations(paths: string[]): void {
-  for (const p of paths) void prefetchDuration(p);
 }
 
 /**

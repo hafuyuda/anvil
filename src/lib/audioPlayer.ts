@@ -364,15 +364,6 @@ export async function enqueue(
   await playCurrent();
 }
 
-/** 兼容旧调用：播放单首（队列即 [path]）。 */
-export async function playTrack(relative: string | null): Promise<void> {
-  if (!relative) {
-    stop();
-    return;
-  }
-  await enqueue([relative], 0);
-}
-
 export function play(): void {
   const el = getActive();
   if (!el || !state.current) return;

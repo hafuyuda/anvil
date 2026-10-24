@@ -13,7 +13,3 @@ export function saveCursor(cardId: string, state: Saved) {
 export function loadCursor(cardId: string): Saved | null {
   return cache.get(cardId) ?? null;
 }
-
-export function clearCursor(cardId: string) {
-  cache.delete(cardId);
-}

@@ -3,7 +3,7 @@ import { ipc, type Scenario } from "../../../core/ipc";
 import { toast } from "../../../lib/toast";
 import type { AppliedEffect } from "../effects";
 import { parseScript } from "../script/parser";
-import type { ParsedScript, ScriptLine } from "../script/types";
+import type { ParsedScript } from "../script/types";
 import type { Card, VariableDef } from "../../../core/ipc";
 import {
   buildKnotIndex,
@@ -363,7 +363,3 @@ export function usePlayState(scenario: Scenario) {
   };
 }
 
-/** 供导出 / 调试：显示行文本。 */
-export function lineTextOf(line: ScriptLine | null): string | null {
-  return line && "text" in line ? line.text : null;
-}
